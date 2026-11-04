@@ -12,6 +12,13 @@ type Props = {
   platform?: string | null;
   featured?: boolean;
   size?: "sm" | "md" | "lg";
+  /**
+   * well = tinted brand square (link rows)
+   * plain = glyph only (social strip)
+   */
+  chrome?: "well" | "plain";
+  /** Override fill; "brand" keeps official color */
+  iconColor?: string | "brand";
 };
 
 const SIZE = {
@@ -33,6 +40,8 @@ export function LinkVisual({
   platform,
   featured,
   size = "md",
+  chrome = "well",
+  iconColor = "brand",
 }: Props) {
   const box = SIZE[size];
   const brand = detectSocialBrand(url) || brandFromPlatform(platform);
@@ -49,11 +58,26 @@ export function LinkVisual({
   }
 
   if (brand) {
-    const color = brandColor(brand.id);
+    const brandHex = brandColor(brand.id);
+    const color = !iconColor || iconColor === "brand" ? brandHex : iconColor;
+
+    if (chrome === "plain") {
+      return (
+        <span
+          className={`${box} inline-flex shrink-0 items-center justify-center ${ICON_SIZE[size]}`}
+          style={{ color }}
+          aria-hidden
+          title={brand.label}
+        >
+          <SocialBrandIcon brandId={brand.id} />
+        </span>
+      );
+    }
+
     return (
       <span
         className={`${box} inline-flex shrink-0 items-center justify-center rounded-xl ${ICON_SIZE[size]}`}
-        style={{ background: `${color}18`, color }}
+        style={{ background: `${brandHex}18`, color }}
         aria-hidden
         title={brand.label}
       >

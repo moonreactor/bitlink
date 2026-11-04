@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BitlinkLogo } from "@/components/BitlinkLogo";
 import { ApiError, publicApi } from "@/lib/api";
 
 type Status = "idle" | "checking" | "available" | "taken" | "invalid";
@@ -98,12 +99,13 @@ export function ClaimUsername({
         </label>
         <button
           type="submit"
-          className={`min-h-[52px] shrink-0 rounded-full px-6 text-[15px] font-semibold transition hover:scale-[1.02] active:scale-[0.98] ${
+          className={`inline-flex min-h-[52px] shrink-0 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold transition hover:scale-[1.02] active:scale-[0.98] ${
             isDark
               ? "bg-white text-ink hover:bg-meetup-lavender"
               : "bg-black text-white hover:bg-ink"
           }`}
         >
+          <BitlinkLogo mark href={null} height={18} className="shrink-0" />
           {buttonLabel}
         </button>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BitlinkLogo } from "@/components/BitlinkLogo";
 import { ClaimUsername } from "./ClaimUsername";
 import { FaqAccordion } from "./FaqAccordion";
 import { LandingNav } from "./LandingNav";
@@ -244,12 +245,7 @@ export function LandingPage() {
 
       <footer className="border-t border-white/10 bg-[#1a1a1a] px-5 py-10 text-white md:px-8">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-meetup-pink text-xs font-extrabold">
-              B
-            </span>
-            <span className="font-display text-lg font-bold">bitlink</span>
-          </Link>
+          <BitlinkLogo onDark height={26} />
           <div className="flex flex-wrap gap-4 text-sm text-white/60">
             <Link href="/login" className="hover:text-white">
               Log in

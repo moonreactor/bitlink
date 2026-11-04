@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { BitlinkLogo } from "@/components/BitlinkLogo";
 import { authApi } from "@/lib/api";
 import { setTokens } from "@/lib/auth";
 
@@ -73,12 +74,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
   return (
     <div className="min-h-screen bg-meetup-bg">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-12">
-        <Link href="/" className="mb-8 flex items-center gap-1.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-meetup-pink text-sm font-extrabold text-white">
-            B
-          </span>
-          <span className="font-display text-xl font-bold text-ink">bitlink</span>
-        </Link>
+        <BitlinkLogo className="mb-8" height={30} />
 
         <div className="mu-card p-6 md:p-8">
           <h1 className="font-display text-2xl font-bold text-ink md:text-3xl">

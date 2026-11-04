@@ -19,6 +19,8 @@ class ThemeSchema(BaseModel):
     button_style: str = "rounded"
     font_family: str = "Inter"
     text_color: str = "#f8fafc"
+    social_icon_style: str = "mono"
+    social_icon_color: str = "#f8fafc"
 
 
 class ProfileUpdate(BaseModel):

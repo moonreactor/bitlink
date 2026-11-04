@@ -17,6 +17,8 @@ DEFAULT_THEME: dict[str, Any] = {
     "button_style": "rounded",
     "font_family": "Inter",
     "text_color": "#f8fafc",
+    "social_icon_style": "mono",
+    "social_icon_color": "#f8fafc",
 }
 
 

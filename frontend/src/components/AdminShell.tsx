@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { BitlinkLogo } from "@/components/BitlinkLogo";
 import { ToastProvider } from "@/components/Toast";
 import { authApi } from "@/lib/api";
 import { clearTokens, getAccessToken } from "@/lib/auth";
@@ -55,9 +56,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <aside className="border-b border-ink/10 bg-[#0b1220] text-white md:border-b-0 md:border-r md:border-ink/10">
           <div className="flex items-center justify-between px-5 py-5 md:block">
             <div>
-              <Link href="/admin" className="font-display text-xl font-bold">
-                Bitlink
-              </Link>
+              <BitlinkLogo href="/admin" onDark height={26} />
               <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-300/90">
                 Superuser
               </p>
