@@ -56,7 +56,15 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> TokenRe
             detail="This username is already taken. Please choose another.",
         )
 
-    user = User(email=payload.email.lower(), password_hash=hash_password(payload.password))
+    referred_by = payload.referred_by_username
+    if referred_by and referred_by == payload.username:
+        referred_by = None
+
+    user = User(
+        email=payload.email.lower(),
+        password_hash=hash_password(payload.password),
+        referred_by_username=referred_by,
+    )
     db.add(user)
     db.flush()
 

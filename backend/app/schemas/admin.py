@@ -4,6 +4,12 @@ from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field
 
 
+class AdminReferralSource(BaseModel):
+    username: str
+    cta_clicks: int = 0
+    signups: int = 0
+
+
 class AdminMetrics(BaseModel):
     total_users: int
     active_users: int
@@ -18,8 +24,13 @@ class AdminMetrics(BaseModel):
     new_users_30d: int
     views_7d: int
     clicks_7d: int
+    cta_clicks_total: int = 0
+    cta_clicks_7d: int = 0
+    referred_signups_total: int = 0
+    referred_signups_7d: int = 0
     daily: list["AdminDailyStat"]
     top_profiles: list["AdminTopProfile"]
+    top_referral_sources: list[AdminReferralSource] = []
 
 
 class AdminDailyStat(BaseModel):
@@ -46,6 +57,7 @@ class AdminUserListItem(BaseModel):
     created_at: datetime
     username: str | None = None
     display_name: str | None = None
+    referred_by_username: str | None = None
     links_count: int = 0
     views_count: int = 0
     clicks_count: int = 0
@@ -84,6 +96,7 @@ class AdminUserDetail(BaseModel):
     bio: str | None = None
     avatar_url: str | None = None
     is_verified: bool = False
+    referred_by_username: str | None = None
     profile_id: UUID | None = None
     links_count: int = 0
     views_count: int = 0

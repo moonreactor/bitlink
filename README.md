@@ -71,4 +71,4 @@ UPDATE users SET is_superuser = true WHERE email = 'you@example.com';
 - Custom domain (DNS TXT verify + Host rewrite; SSL via your DNS/host)
 - Profile products/offers with external checkout URLs
 - Always-visible “Create your Bitlink” CTA on public pages
-- Superuser admin area (`/admin`)
+- Superuser admin area (`/admin`) with referral sources from “Create your Bitlink” CTA

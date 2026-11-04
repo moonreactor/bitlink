@@ -16,18 +16,45 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [referredBy, setReferredBy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (mode !== "register") return;
     const fromQuery = searchParams.get("username");
-    if (!fromQuery) return;
-    const clean = fromQuery
-      .toLowerCase()
-      .replace(/[^a-z0-9_]/g, "")
-      .slice(0, 30);
-    if (clean) setUsername(clean);
+    if (fromQuery) {
+      const clean = fromQuery
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, "")
+        .slice(0, 30);
+      if (clean) setUsername(clean);
+    }
+
+    const refParam = searchParams.get("ref");
+    let ref =
+      refParam
+        ?.toLowerCase()
+        .replace(/[^a-z0-9_]/g, "")
+        .slice(0, 30) || "";
+    if (!ref) {
+      try {
+        ref = (localStorage.getItem("bitlink_ref") || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9_]/g, "")
+          .slice(0, 30);
+      } catch {
+        ref = "";
+      }
+    }
+    if (ref.length >= 3) {
+      setReferredBy(ref);
+      try {
+        localStorage.setItem("bitlink_ref", ref);
+      } catch {
+        /* ignore */
+      }
+    }
   }, [mode, searchParams]);
 
   async function onSubmit(e: FormEvent) {
@@ -55,8 +82,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
               password,
               username,
               display_name: displayName || username,
+              referred_by_username: referredBy || undefined,
             });
       setTokens(tokens.access_token, tokens.refresh_token);
+      try {
+        localStorage.removeItem("bitlink_ref");
+      } catch {
+        /* ignore */
+      }
       router.push("/dashboard");
     } catch (err) {
       setError(
@@ -81,7 +114,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
             {mode === "login" ? "Welcome back" : "Create your page"}
           </h1>
           <p className="mt-2 text-sm text-meetup-muted">
-            {mode === "login" ? "Log in to edit your links." : "Free forever. No credit card."}
+            {mode === "login"
+              ? "Log in to edit your links."
+              : referredBy
+                ? `Free forever. Invited from @${referredBy}.`
+                : "Free forever. No credit card."}
           </p>
 
           <form onSubmit={onSubmit} className="mt-7 space-y-4">

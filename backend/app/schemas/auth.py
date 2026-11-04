@@ -12,6 +12,7 @@ class RegisterRequest(BaseModel):
     password: str
     username: str
     display_name: str = Field(min_length=1, max_length=100)
+    referred_by_username: str | None = Field(default=None, max_length=30)
 
     @field_validator("password")
     @classmethod
@@ -59,6 +60,18 @@ class RegisterRequest(BaseModel):
         v = v.strip()
         if not v:
             raise ValueError("Display name cannot be empty.")
+        return v
+
+    @field_validator("referred_by_username")
+    @classmethod
+    def validate_referral(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.lower().strip()
+        if not v:
+            return None
+        if not USERNAME_RE.match(v):
+            return None
         return v
 
 

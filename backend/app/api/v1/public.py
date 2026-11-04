@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.security import verify_password
 from app.db.session import get_db
 from app.models.analytics import LinkClick, PageView
+from app.models.growth import GrowthCtaClick
 from app.models.link import Link
 from app.models.profile import Profile
 from app.models.subscriber import Subscriber
@@ -243,6 +244,40 @@ def track_view(
         payload.visitor_id if payload else None,
     )
     db.add(PageView(profile_id=profile.id, **meta))
+    db.commit()
+
+
+@router.post("/{username}/cta-click", status_code=status.HTTP_204_NO_CONTENT)
+def track_create_cta_click(
+    username: str,
+    request: Request,
+    payload: TrackMeta | None = None,
+    db: Session = Depends(get_db),
+) -> None:
+    """Record a click on the public “Create your Bitlink” CTA for growth attribution."""
+    profile = (
+        db.query(Profile)
+        .filter(Profile.username == username.lower())
+        .first()
+    )
+    meta = _client_meta(
+        request,
+        payload.referrer if payload else None,
+        payload.visitor_id if payload else None,
+    )
+    ua = meta.get("user_agent")
+    referrer = meta.get("referrer")
+    db.add(
+        GrowthCtaClick(
+            source_username=(profile.username if profile else username.lower())[:30],
+            source_profile_id=profile.id if profile else None,
+            visitor_hash=meta["visitor_hash"],
+            referrer=(referrer[:500] if referrer else None),
+            user_agent=(ua[:500] if ua else None),
+            country=meta["country"],
+            device=meta["device"],
+        )
+    )
     db.commit()
 
 

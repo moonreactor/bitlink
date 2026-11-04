@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-local",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd frontend && exec node_modules/.bin/next dev --port 3100"],
+      "port": 3100
+    }
+  ]
+}
