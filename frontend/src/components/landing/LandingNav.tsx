@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BitlinkLogo } from "@/components/BitlinkLogo";
 
 const LINKS = [
   { href: "#how", label: "How it works" },
@@ -37,12 +38,7 @@ export function LandingNav() {
         className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 md:px-8"
         aria-label="Main navigation"
       >
-        <Link href="/" className="flex items-center gap-1.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-meetup-pink text-sm font-extrabold text-white">
-            B
-          </span>
-          <span className="font-display text-xl font-bold tracking-tight text-ink">bitlink</span>
-        </Link>
+        <BitlinkLogo height={30} priority />
 
         <div className="hidden items-center gap-1 md:flex">
           {LINKS.map((link) => (

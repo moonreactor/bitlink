@@ -1,11 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LinkVisual } from "@/components/LinkVisual";
 import { useToast } from "@/components/Toast";
 import { profileApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
-import { THEME_PRESETS, buttonRadius } from "@/lib/themes";
-import type { Profile, Theme } from "@/lib/types";
+import { THEME_PRESETS, buttonRadius, resolveSocialIconColor } from "@/lib/themes";
+import type { Profile, SocialIconStyle, Theme } from "@/lib/types";
+import { brandColor, type SocialBrandId } from "@/lib/socialBrands";
+
+const SOCIAL_PREVIEW: { platform: SocialBrandId; url: string }[] = [
+  { platform: "instagram", url: "https://instagram.com" },
+  { platform: "tiktok", url: "https://tiktok.com" },
+  { platform: "youtube", url: "https://youtube.com" },
+  { platform: "twitter", url: "https://x.com" },
+  { platform: "github", url: "https://github.com" },
+];
+
+const SOCIAL_COLOR_SWATCHES = ["#ffffff", "#f8fafc", "#000000", "#171717", "#a3a3a3", "#fbbf24"];
 
 export default function AppearancePage() {
   const { success, error: toastError } = useToast();
@@ -43,6 +55,20 @@ export default function AppearancePage() {
     const t = THEME_PRESETS[key];
     setTheme(t);
     save(t);
+  }
+
+  function patchTheme(partial: Partial<Theme>) {
+    setTheme({ ...theme, ...partial, preset: "custom" });
+  }
+
+  function setSocialStyle(style: SocialIconStyle) {
+    patchTheme({
+      social_icon_style: style,
+      social_icon_color:
+        style === "mono" && !theme.social_icon_color
+          ? theme.text_color
+          : theme.social_icon_color || theme.text_color,
+    });
   }
 
   if (!profile) return <p className="text-sm text-meetup-muted">Loading…</p>;
@@ -88,7 +114,7 @@ export default function AppearancePage() {
               <input
                 type="color"
                 value={theme[key]}
-                onChange={(e) => setTheme({ ...theme, [key]: e.target.value, preset: "custom" })}
+                onChange={(e) => patchTheme({ [key]: e.target.value })}
               />
             </label>
           ))}
@@ -98,7 +124,7 @@ export default function AppearancePage() {
             <select
               className="mt-1 w-full rounded-xl border border-meetup-border px-3 py-2"
               value={theme.button_style}
-              onChange={(e) => setTheme({ ...theme, button_style: e.target.value, preset: "custom" })}
+              onChange={(e) => patchTheme({ button_style: e.target.value })}
             >
               <option value="rounded">Rounded</option>
               <option value="pill">Pill</option>
@@ -112,15 +138,79 @@ export default function AppearancePage() {
               className="mt-1 w-full rounded-xl border border-meetup-border px-3 py-2"
               value={theme.background_image || ""}
               onChange={(e) =>
-                setTheme({
-                  ...theme,
+                patchTheme({
                   background_image: e.target.value || null,
-                  preset: "custom",
                 })
               }
               placeholder="https://…"
             />
           </label>
+
+          <div className="border-t border-meetup-border pt-3">
+            <p className="text-sm font-medium">Social icons</p>
+            <p className="mt-0.5 text-xs text-meetup-muted">
+              Brand colors can disappear on dark backgrounds — pick a solid color when needed.
+            </p>
+
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {(
+                [
+                  ["brand", "Brand colors"],
+                  ["mono", "Custom color"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setSocialStyle(value)}
+                  className={`rounded-xl border px-3 py-2.5 text-left text-sm ${
+                    theme.social_icon_style === value
+                      ? "border-meetup-purple bg-meetup-lavender"
+                      : "border-meetup-border bg-white hover:border-meetup-purple/40"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {theme.social_icon_style === "mono" && (
+              <div className="mt-3 space-y-2">
+                <label className="flex items-center justify-between gap-3 text-sm">
+                  <span>Icon color</span>
+                  <input
+                    type="color"
+                    value={theme.social_icon_color || theme.text_color}
+                    onChange={(e) => patchTheme({ social_icon_color: e.target.value })}
+                  />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-meetup-border px-2.5 py-1 text-xs hover:border-meetup-purple/40"
+                    onClick={() => patchTheme({ social_icon_color: theme.text_color })}
+                  >
+                    Match text
+                  </button>
+                  {SOCIAL_COLOR_SWATCHES.map((hex) => (
+                    <button
+                      key={hex}
+                      type="button"
+                      title={hex}
+                      aria-label={`Use ${hex}`}
+                      onClick={() => patchTheme({ social_icon_color: hex })}
+                      className={`h-7 w-7 rounded-full border ${
+                        theme.social_icon_color?.toLowerCase() === hex
+                          ? "ring-2 ring-meetup-purple ring-offset-1"
+                          : "border-meetup-border"
+                      }`}
+                      style={{ background: hex }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           <button
             type="button"
@@ -148,8 +238,25 @@ export default function AppearancePage() {
         </div>
         <p className="font-display text-xl font-bold">{profile.display_name}</p>
         <p className="mt-1 max-w-xs text-center text-sm opacity-80">{profile.bio || "Your bio here"}</p>
+
+        <div className="mt-4 flex flex-wrap justify-center gap-2.5">
+          {SOCIAL_PREVIEW.map((s) => {
+            const fill = resolveSocialIconColor(theme, brandColor(s.platform));
+            return (
+              <LinkVisual
+                key={s.platform}
+                url={s.url}
+                platform={s.platform}
+                size="sm"
+                chrome="plain"
+                iconColor={theme.social_icon_style === "brand" ? "brand" : fill}
+              />
+            );
+          })}
+        </div>
+
         <div className="mt-8 w-full max-w-xs space-y-3">
-          {["Featured link", "Another link", "Socials"].map((t) => (
+          {["Featured link", "Another link"].map((t) => (
             <div
               key={t}
               className="px-4 py-3 text-center text-sm font-semibold"

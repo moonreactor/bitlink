@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { BitlinkLogo } from "@/components/BitlinkLogo";
 import { ToastProvider } from "@/components/Toast";
 import { clearTokens, getAccessToken } from "@/lib/auth";
 import { authApi, profileApi } from "@/lib/api";
@@ -72,14 +73,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               <MenuIcon />
             </button>
 
-            <Link href="/dashboard" className="flex shrink-0 items-center gap-1.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-meetup-pink text-sm font-extrabold text-white">
-                B
-              </span>
-              <span className="hidden font-display text-lg font-bold text-ink sm:inline">
-                bitlink
-              </span>
-            </Link>
+            <BitlinkLogo href="/dashboard" className="shrink-0" height={26} />
 
             <div className="mx-auto hidden max-w-xl flex-1 md:block">
               <div className="flex items-center rounded-full border border-meetup-border bg-white px-4 py-2 text-sm shadow-sm">

@@ -1,3 +1,5 @@
+export type SocialIconStyle = "brand" | "mono";
+
 export type Theme = {
   preset: string;
   background_color: string;
@@ -7,6 +9,10 @@ export type Theme = {
   button_style: string;
   font_family: string;
   text_color: string;
+  /** brand = official colors; mono = single color for all social logos */
+  social_icon_style: SocialIconStyle;
+  /** Used when social_icon_style is mono */
+  social_icon_color: string;
 };
 
 export type Profile = {

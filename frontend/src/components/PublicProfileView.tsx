@@ -2,11 +2,13 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { BackgroundMusicPlayer } from "@/components/BackgroundMusicPlayer";
+import { BitlinkLogo } from "@/components/BitlinkLogo";
 import { LinkVisual } from "@/components/LinkVisual";
 import { publicApi } from "@/lib/api";
 import { animationClass } from "@/lib/linkAnimations";
-import { buttonRadius } from "@/lib/themes";
-import type { PublicProfile } from "@/lib/types";
+import { buttonRadius, resolveSocialIconColor } from "@/lib/themes";
+import type { PublicProfile, SocialIconStyle } from "@/lib/types";
+import { brandColor, brandFromPlatform, detectSocialBrand } from "@/lib/socialBrands";
 
 function visitorId() {
   if (typeof window === "undefined") return undefined;
@@ -42,6 +44,8 @@ export function PublicProfileView({
       button_style: "rounded",
       text_color: "#f8fafc",
       background_image: null as string | null,
+      social_icon_style: "mono" as SocialIconStyle,
+      social_icon_color: "#f8fafc",
     };
     return { ...defaults, ...profile.theme_json };
   }, [profile.theme_json]);
@@ -114,7 +118,7 @@ export function PublicProfileView({
 
   return (
     <div
-      className="min-h-screen px-4 py-10"
+      className="relative min-h-screen px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-10"
       style={{
         backgroundColor: theme.background_color,
         backgroundImage: theme.background_image ? `url(${theme.background_image})` : undefined,
@@ -149,18 +153,29 @@ export function PublicProfileView({
 
         {!profile.is_locked && profile.social_links.length > 0 && (
           <div className="mt-4 flex flex-wrap justify-center gap-2.5">
-            {profile.social_links.map((s) => (
-              <a
-                key={`${s.platform}-${s.url}`}
-                href={s.url}
-                target="_blank"
-                rel="noreferrer"
-                title={s.platform}
-                className="transition hover:scale-110"
-              >
-                <LinkVisual url={s.url} platform={s.platform} size="sm" />
-              </a>
-            ))}
+            {profile.social_links.map((s) => {
+              const brand = detectSocialBrand(s.url) || brandFromPlatform(s.platform);
+              const brandHex = brand ? brandColor(brand.id) : theme.text_color;
+              const fill = resolveSocialIconColor(theme, brandHex);
+              return (
+                <a
+                  key={`${s.platform}-${s.url}`}
+                  href={s.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={s.platform}
+                  className="transition hover:scale-110"
+                >
+                  <LinkVisual
+                    url={s.url}
+                    platform={s.platform}
+                    size="sm"
+                    chrome="plain"
+                    iconColor={theme.social_icon_style === "brand" ? "brand" : fill}
+                  />
+                </a>
+              );
+            })}
           </div>
         )}
 
@@ -244,15 +259,21 @@ export function PublicProfileView({
           </div>
         )}
 
-        <div className="mt-12 flex w-full flex-col items-center gap-3">
+        <p className="mt-10 text-center text-xs opacity-55">
+          <a href="/" className="hover:opacity-90">
+            Made with Bitlink
+          </a>
+        </p>
+      </div>
+
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+        <div className="pointer-events-auto mx-auto w-full max-w-md">
           <a
             href="/register"
-            className="inline-flex w-full items-center justify-center rounded-full bg-white/95 px-5 py-3 text-sm font-bold text-ink shadow-lg shadow-black/15 transition hover:scale-[1.02] hover:bg-white"
+            className="inline-flex w-full items-center justify-center gap-2.5 rounded-full bg-white px-5 py-3 text-sm font-bold text-ink shadow-[0_-4px_24px_rgba(0,0,0,0.18)] ring-1 ring-black/5 transition hover:scale-[1.01] hover:bg-white"
           >
+            <BitlinkLogo mark href={null} height={22} className="shrink-0" />
             Create your Bitlink — free
-          </a>
-          <a href="/" className="text-xs opacity-55 hover:opacity-90">
-            Made with Bitlink
           </a>
         </div>
       </div>
