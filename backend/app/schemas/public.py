@@ -16,6 +16,9 @@ class PublicProfileOut(BaseModel):
     seo_description: str | None
     remove_branding: bool
     show_email_capture: bool
+    show_phone_capture: bool = False
+    google_analytics_id: str | None = None
+    meta_pixel_id: str | None = None
     is_locked: bool
     redirect_url: str | None
     background_music_enabled: bool = False

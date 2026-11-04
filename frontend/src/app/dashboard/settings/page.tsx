@@ -1,8 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { MediaUploadField } from "@/components/MediaUploadField";
 import { useToast } from "@/components/Toast";
-import { linksApi, profileApi, socialApi } from "@/lib/api";
+import { authApi, linksApi, profileApi, socialApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import type { LinkItem, Profile, SocialLink } from "@/lib/types";
 
@@ -14,6 +15,9 @@ export default function SettingsPage() {
   const [links, setLinks] = useState<LinkItem[]>([]);
   const [socials, setSocials] = useState<SocialLink[]>([]);
   const [profilePassword, setProfilePassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -44,12 +48,20 @@ export default function SettingsPage() {
       seo_title: profile.seo_title,
       seo_description: profile.seo_description,
       show_email_capture: profile.show_email_capture,
+      show_phone_capture: profile.show_phone_capture,
+      google_analytics_id: profile.google_analytics_id,
+      meta_pixel_id: profile.meta_pixel_id,
+      qr_fg_color: profile.qr_fg_color || "#000000",
+      qr_bg_color: profile.qr_bg_color || "#ffffff",
+      qr_logo_enabled: profile.qr_logo_enabled,
       background_music_url: profile.background_music_url,
       background_music_enabled: profile.background_music_enabled,
       redirect_link_id: profile.redirect_link_id,
     };
     if (!profile.redirect_link_id) body.clear_redirect = true;
     if (!profile.background_music_url) body.clear_background_music = true;
+    if (!profile.google_analytics_id) body.clear_google_analytics_id = true;
+    if (!profile.meta_pixel_id) body.clear_meta_pixel_id = true;
     if (profilePassword) body.profile_password = profilePassword;
     try {
       const updated = await profileApi.update(token, body);
@@ -89,6 +101,26 @@ export default function SettingsPage() {
     }
   }
 
+  async function changePassword(e: FormEvent) {
+    e.preventDefault();
+    const token = getAccessToken();
+    if (!token) return;
+    setChangingPassword(true);
+    try {
+      await authApi.changePassword(token, {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      success("Password updated");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Failed to change password");
+    } finally {
+      setChangingPassword(false);
+    }
+  }
+
   if (!profile) return <p className="text-sm text-meetup-muted">Loading…</p>;
 
   const qrSrc = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/me/qr`;
@@ -121,10 +153,11 @@ export default function SettingsPage() {
             onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
           />
         </label>
-        <Field
-          label="Avatar URL"
-          value={profile.avatar_url || ""}
-          onChange={(v) => setProfile({ ...profile, avatar_url: v || null })}
+        <MediaUploadField
+          label="Avatar"
+          value={profile.avatar_url}
+          onChange={(url) => setProfile({ ...profile, avatar_url: url })}
+          hint="Upload a square photo or paste an image URL."
         />
         <Field
           label="SEO title"
@@ -145,9 +178,32 @@ export default function SettingsPage() {
           />
           Show email capture on public page
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={profile.show_phone_capture}
+            onChange={(e) => setProfile({ ...profile, show_phone_capture: e.target.checked })}
+          />
+          Show phone capture on public page
+        </label>
         <p className="text-xs text-meetup-muted">
           The “Create your Bitlink” CTA always appears on your public page and can’t be turned off.
         </p>
+
+        <div className="space-y-3 rounded-xl border border-meetup-border p-3">
+          <p className="text-sm font-medium">Tracking pixels</p>
+          <Field
+            label="Google Analytics ID"
+            value={profile.google_analytics_id || ""}
+            onChange={(v) => setProfile({ ...profile, google_analytics_id: v || null })}
+          />
+          <Field
+            label="Meta Pixel ID"
+            value={profile.meta_pixel_id || ""}
+            onChange={(v) => setProfile({ ...profile, meta_pixel_id: v || null })}
+          />
+          <p className="text-xs text-meetup-muted">Example: G-XXXXXXXX / 123456789012345</p>
+        </div>
 
         <div className="space-y-3 rounded-xl border border-meetup-border p-3">
           <p className="text-sm font-medium">Background music (YouTube)</p>
@@ -274,32 +330,85 @@ export default function SettingsPage() {
         </div>
       </form>
 
-      <section className="mu-card p-5 md:p-6">
-        <h2 className="font-display text-lg font-semibold">QR code</h2>
-        <p className="mt-1 text-sm text-meetup-muted">Points to your public Bitlink page.</p>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={qrSrc}
-          alt="QR code"
-          className="mt-4 h-48 w-48 rounded-xl border border-meetup-border bg-white p-2"
-          onError={(e) => {
-            const token = getAccessToken();
-            if (!token) return;
-            fetch(qrSrc, { headers: { Authorization: `Bearer ${token}` } })
-              .then((r) => r.blob())
-              .then((blob) => {
-                (e.target as HTMLImageElement).src = URL.createObjectURL(blob);
-              });
-          }}
-        />
-        <QrLoader />
+      <form onSubmit={changePassword} className="space-y-3 mu-card p-5 md:p-6">
+        <h2 className="font-display text-lg font-semibold">Change password</h2>
+        <label className="block text-sm">
+          <span className="mb-1 block font-medium">Current password</span>
+          <input
+            type="password"
+            required
+            className="w-full rounded-xl border border-meetup-border px-3 py-2"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+          />
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block font-medium">New password</span>
+          <input
+            type="password"
+            required
+            minLength={8}
+            className="w-full rounded-xl border border-meetup-border px-3 py-2"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+        </label>
+        <button type="submit" disabled={changingPassword} className="mu-btn-primary disabled:opacity-60">
+          {changingPassword ? "Updating…" : "Update password"}
+        </button>
+      </form>
+
+      <section className="mu-card space-y-4 p-5 md:p-6">
+        <div>
+          <h2 className="font-display text-lg font-semibold">QR code</h2>
+          <p className="mt-1 text-sm text-meetup-muted">Customize colors and download PNG or SVG.</p>
+        </div>
+        <div className="flex flex-wrap items-start gap-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={qrSrc}
+            alt="QR code"
+            className="h-48 w-48 rounded-xl border border-meetup-border bg-white p-2"
+          />
+          <div className="min-w-0 flex-1 space-y-3">
+            <label className="flex items-center justify-between gap-3 text-sm">
+              <span>Foreground</span>
+              <input
+                type="color"
+                value={profile.qr_fg_color || "#000000"}
+                onChange={(e) => setProfile({ ...profile, qr_fg_color: e.target.value })}
+              />
+            </label>
+            <label className="flex items-center justify-between gap-3 text-sm">
+              <span>Background</span>
+              <input
+                type="color"
+                value={profile.qr_bg_color || "#ffffff"}
+                onChange={(e) => setProfile({ ...profile, qr_bg_color: e.target.value })}
+              />
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={profile.qr_logo_enabled}
+                onChange={(e) => setProfile({ ...profile, qr_logo_enabled: e.target.checked })}
+              />
+              Center avatar as logo
+            </label>
+            <p className="text-xs text-meetup-muted">Save settings to apply QR style, then download.</p>
+            <div className="flex flex-wrap gap-2">
+              <QrDownloadButton format="png" label="Download PNG" />
+              <QrDownloadButton format="svg" label="Download SVG" />
+            </div>
+          </div>
+        </div>
+        <QrLoader refreshKey={`${profile.qr_fg_color}-${profile.qr_bg_color}-${profile.qr_logo_enabled}-${profile.updated_at}`} />
       </section>
     </div>
   );
 }
 
-function QrLoader() {
-  // Ensure QR loads with auth header by replacing img via effect
+function QrLoader({ refreshKey }: { refreshKey: string }) {
   useEffect(() => {
     const token = getAccessToken();
     if (!token) return;
@@ -312,8 +421,37 @@ function QrLoader() {
       .then((blob) => {
         img.src = URL.createObjectURL(blob);
       });
-  }, []);
+  }, [refreshKey]);
   return null;
+}
+
+function QrDownloadButton({ format, label }: { format: "png" | "svg"; label: string }) {
+  const [busy, setBusy] = useState(false);
+  async function download() {
+    const token = getAccessToken();
+    if (!token) return;
+    setBusy(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/me/qr?fmt=${format}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bitlink-qr.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <button type="button" onClick={download} disabled={busy} className="mu-btn-secondary disabled:opacity-60">
+      {busy ? "…" : label}
+    </button>
+  );
 }
 
 function Field({

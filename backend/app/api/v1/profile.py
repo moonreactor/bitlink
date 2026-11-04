@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import Response as FastAPIResponse
 from sqlalchemy.orm import Session
 
@@ -26,6 +26,12 @@ def _profile_out(profile: Profile) -> ProfileOut:
         seo_description=profile.seo_description,
         remove_branding=profile.remove_branding,
         show_email_capture=profile.show_email_capture,
+        show_phone_capture=bool(getattr(profile, "show_phone_capture", False)),
+        google_analytics_id=getattr(profile, "google_analytics_id", None),
+        meta_pixel_id=getattr(profile, "meta_pixel_id", None),
+        qr_fg_color=getattr(profile, "qr_fg_color", None) or "#000000",
+        qr_bg_color=getattr(profile, "qr_bg_color", None) or "#ffffff",
+        qr_logo_enabled=bool(getattr(profile, "qr_logo_enabled", False)),
         background_music_url=profile.background_music_url,
         background_music_enabled=profile.background_music_enabled,
         background_music_video_id=extract_youtube_video_id(profile.background_music_url),
@@ -78,11 +84,22 @@ def update_profile(
         "seo_description",
         "remove_branding",
         "show_email_capture",
+        "show_phone_capture",
+        "google_analytics_id",
+        "meta_pixel_id",
+        "qr_fg_color",
+        "qr_bg_color",
+        "qr_logo_enabled",
         "background_music_url",
         "background_music_enabled",
     ):
         if field in data:
             setattr(profile, field, data[field])
+
+    if data.get("clear_google_analytics_id"):
+        profile.google_analytics_id = None
+    if data.get("clear_meta_pixel_id"):
+        profile.meta_pixel_id = None
 
     if data.get("clear_background_music"):
         profile.background_music_url = None
@@ -113,7 +130,20 @@ def update_profile(
 def get_qr(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    fmt: str = Query(default="png", pattern="^(png|svg)$"),
+    fg: str | None = Query(default=None),
+    bg: str | None = Query(default=None),
 ) -> FastAPIResponse:
     profile = get_user_profile(db, current_user)
-    png = generate_profile_qr(profile.username)
-    return Response(content=png, media_type="image/png")
+    fill = fg or profile.qr_fg_color or "#000000"
+    back = bg or profile.qr_bg_color or "#ffffff"
+    logo = profile.avatar_url if profile.qr_logo_enabled else None
+    content = generate_profile_qr(
+        profile.username,
+        fill_color=fill,
+        back_color=back,
+        logo_url=logo,
+        fmt=fmt,
+    )
+    media = "image/svg+xml" if fmt == "svg" else "image/png"
+    return Response(content=content, media_type=media)

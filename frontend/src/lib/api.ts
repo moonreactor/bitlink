@@ -12,6 +12,7 @@ import type {
   Subscriber,
   TokenResponse,
 } from "./types";
+import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "./auth";
 
 const BROWSER_API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const SERVER_API = process.env.INTERNAL_API_URL || BROWSER_API;
@@ -69,13 +70,50 @@ function formatApiDetail(detail: unknown, status: number): string {
   return "Request failed. Please try again.";
 }
 
+let refreshPromise: Promise<string | null> | null = null;
+
+async function tryRefreshAccessToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  const refresh = getRefreshToken();
+  if (!refresh) return null;
+
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const res = await fetch(`${BROWSER_API}/api/v1/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh_token: refresh }),
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          clearTokens();
+          return null;
+        }
+        const data = (await res.json()) as TokenResponse;
+        setTokens(data.access_token, data.refresh_token);
+        return data.access_token;
+      } catch {
+        clearTokens();
+        return null;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+  }
+
+  return refreshPromise;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
   token?: string | null,
+  retry = true,
 ): Promise<T> {
   const headers = new Headers(options.headers || {});
-  if (!headers.has("Content-Type") && options.body) {
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
+  if (!headers.has("Content-Type") && options.body && !isFormData) {
     headers.set("Content-Type", "application/json");
   }
   if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -85,6 +123,13 @@ async function request<T>(
     headers,
     cache: "no-store",
   });
+
+  if (res.status === 401 && retry && token && typeof window !== "undefined") {
+    const next = await tryRefreshAccessToken();
+    if (next) {
+      return request<T>(path, options, next, false);
+    }
+  }
 
   if (!res.ok) {
     let detail: unknown = null;
@@ -111,6 +156,22 @@ export const authApi = {
   login: (body: { email: string; password: string }) =>
     request<TokenResponse>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
   me: (token: string) => request<AuthUser>("/auth/me", {}, token),
+  forgotPassword: (email: string) =>
+    request<{ ok: boolean; message: string; reset_url?: string | null }>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+  resetPassword: (token: string, password: string) =>
+    request<TokenResponse>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    }),
+  changePassword: (token: string, body: { current_password: string; new_password: string }) =>
+    request<void>(
+      "/auth/change-password",
+      { method: "POST", body: JSON.stringify(body) },
+      token,
+    ),
 };
 
 export const adminApi = {
@@ -174,8 +235,26 @@ export const socialApi = {
     request<SocialLink[]>("/me/social-links", { method: "PUT", body: JSON.stringify({ items }) }, token),
 };
 
+export const mediaApi = {
+  upload: (token: string, file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return request<{ url: string; content_type: string; size: number }>(
+      "/me/media",
+      { method: "POST", body },
+      token,
+    );
+  },
+};
+
 export const analyticsApi = {
-  summary: (token: string) => request<AnalyticsSummary>("/me/analytics/summary", {}, token),
+  summary: (token: string, params?: { from?: string; to?: string }) => {
+    const sp = new URLSearchParams();
+    if (params?.from) sp.set("from", params.from);
+    if (params?.to) sp.set("to", params.to);
+    const qs = sp.toString();
+    return request<AnalyticsSummary>(`/me/analytics/summary${qs ? `?${qs}` : ""}`, {}, token);
+  },
   subscribers: (token: string) => request<Subscriber[]>("/me/subscribers", {}, token),
 };
 
@@ -198,10 +277,10 @@ export const publicApi = {
       method: "POST",
       body: JSON.stringify(body || {}),
     }),
-  subscribe: (username: string, email: string) =>
+  subscribe: (username: string, body: { email?: string; phone?: string }) =>
     request<{ ok: boolean }>(`/public/${username}/subscribe`, {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify(body),
     }),
   unlock: (username: string, password: string) =>
     request<{ unlocked: boolean; unlock_token?: string }>(`/public/${username}/unlock`, {
@@ -209,3 +288,8 @@ export const publicApi = {
       body: JSON.stringify({ password }),
     }),
 };
+
+/** Helper for authenticated calls that always use the latest access token. */
+export function withAuthToken(): string | null {
+  return getAccessToken();
+}

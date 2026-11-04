@@ -4,11 +4,14 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { BackgroundMusicPlayer } from "@/components/BackgroundMusicPlayer";
 import { BitlinkLogo } from "@/components/BitlinkLogo";
 import { LinkVisual } from "@/components/LinkVisual";
+import { TrackingPixels } from "@/components/TrackingPixels";
 import { publicApi } from "@/lib/api";
+import { fontStack, googleFontsHref } from "@/lib/fonts";
+import { buildLinkBlocks } from "@/lib/linkBlocks";
 import { animationClass } from "@/lib/linkAnimations";
-import { buttonRadius, resolveSocialIconColor } from "@/lib/themes";
-import type { PublicProfile, SocialIconStyle } from "@/lib/types";
 import { brandColor, brandFromPlatform, detectSocialBrand } from "@/lib/socialBrands";
+import { buttonRadius, resolveSocialIconColor } from "@/lib/themes";
+import type { PublicLink, PublicProfile, SocialIconStyle } from "@/lib/types";
 
 function visitorId() {
   if (typeof window === "undefined") return undefined;
@@ -31,6 +34,7 @@ export function PublicProfileView({
   const [profile, setProfile] = useState(initial);
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [subMsg, setSubMsg] = useState("");
   const [lockPrompt, setLockPrompt] = useState<{ id: string; title: string } | null>(null);
   const [linkCode, setLinkCode] = useState("");
@@ -42,6 +46,7 @@ export function PublicProfileView({
       button_color: "#ffffff",
       button_text_color: "#0f172a",
       button_style: "rounded",
+      font_family: "DM Sans",
       text_color: "#f8fafc",
       background_image: null as string | null,
       social_icon_style: "mono" as SocialIconStyle,
@@ -49,6 +54,20 @@ export function PublicProfileView({
     };
     return { ...defaults, ...profile.theme_json };
   }, [profile.theme_json]);
+
+  const blocks = useMemo(() => buildLinkBlocks(profile.links), [profile.links]);
+
+  useEffect(() => {
+    const href = googleFontsHref(theme.font_family);
+    if (!href) return;
+    const id = `bitlink-font-${theme.font_family}`;
+    if (document.getElementById(id)) return;
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = href;
+    document.head.appendChild(link);
+  }, [theme.font_family]);
 
   useEffect(() => {
     if (profile.redirect_url && !profile.is_locked) {
@@ -107,14 +126,24 @@ export function PublicProfileView({
 
   async function subscribe(e: FormEvent) {
     e.preventDefault();
+    const body: { email?: string; phone?: string } = {};
+    if (profile.show_email_capture && email.trim()) body.email = email.trim();
+    if (profile.show_phone_capture && phone.trim()) body.phone = phone.trim();
+    if (!body.email && !body.phone) {
+      setSubMsg("Add an email or phone number.");
+      return;
+    }
     try {
-      await publicApi.subscribe(username, email);
+      await publicApi.subscribe(username, body);
       setSubMsg("Thanks for subscribing!");
       setEmail("");
+      setPhone("");
     } catch (err) {
       setSubMsg(err instanceof Error ? err.message : "Failed");
     }
   }
+
+  const showLeadForm = profile.show_email_capture || profile.show_phone_capture;
 
   return (
     <div
@@ -125,8 +154,16 @@ export function PublicProfileView({
         backgroundSize: "cover",
         backgroundPosition: "center",
         color: theme.text_color,
+        fontFamily: fontStack(theme.font_family),
       }}
     >
+      {!profile.is_locked && (
+        <TrackingPixels
+          googleAnalyticsId={profile.google_analytics_id}
+          metaPixelId={profile.meta_pixel_id}
+        />
+      )}
+
       {!profile.is_locked &&
         profile.background_music_enabled &&
         profile.background_music_video_id && (
@@ -146,7 +183,7 @@ export function PublicProfileView({
             {profile.display_name.slice(0, 1).toUpperCase()}
           </div>
         )}
-        <h1 className="mt-4 text-center font-display text-2xl font-bold">{profile.display_name}</h1>
+        <h1 className="mt-4 text-center text-2xl font-bold">{profile.display_name}</h1>
         {!profile.is_locked && profile.bio && (
           <p className="mt-2 text-center text-sm opacity-80">{profile.bio}</p>
         )}
@@ -204,55 +241,68 @@ export function PublicProfileView({
             </button>
           </form>
         ) : (
-          <div className="mt-8 w-full space-y-3">
-            {profile.links.map((link) => (
-              <button
-                key={link.id}
-                type="button"
-                onClick={() => onLinkClick(link.id, link.has_lock, link.title)}
-                className={`flex w-full items-center gap-3 text-left font-semibold shadow-lg shadow-black/10 transition hover:scale-[1.01] ${animationClass(link.animation)} ${
-                  link.is_featured
-                    ? "min-h-[72px] px-4 py-4 text-base ring-2 ring-white/55"
-                    : "px-4 py-3 text-sm"
-                }`}
-                style={{
-                  background: theme.button_color,
-                  color: theme.button_text_color,
-                  borderRadius: buttonRadius(theme.button_style),
-                }}
-              >
-                <LinkVisual
-                  url={link.url}
-                  icon={link.icon}
-                  thumbnailUrl={link.thumbnail_url}
-                  featured={link.is_featured}
-                  size={link.is_featured ? "lg" : "sm"}
-                />
-                <span className="flex-1 text-center">{link.title}</span>
-                {link.has_lock && <span className="text-xs opacity-60">🔒</span>}
-              </button>
-            ))}
+          <div className="mt-8 w-full space-y-4">
+            {blocks.map((block) => {
+              if (block.kind === "single") {
+                return (
+                  <ProfileLinkItem
+                    key={block.link.id}
+                    link={block.link}
+                    theme={theme}
+                    onClick={onLinkClick}
+                  />
+                );
+              }
+              return (
+                <div key={`c-${block.name}`} className="space-y-2">
+                  <p className="px-1 text-xs font-semibold uppercase tracking-wide opacity-70">
+                    {block.name}
+                  </p>
+                  <div className={block.layout === "grid" ? "grid grid-cols-2 gap-2" : "space-y-2"}>
+                    {block.links.map((link) => (
+                      <ProfileLinkItem
+                        key={link.id}
+                        link={link}
+                        theme={theme}
+                        compact={block.layout === "grid"}
+                        onClick={onLinkClick}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
 
-            {profile.show_email_capture && (
+            {showLeadForm && (
               <form onSubmit={subscribe} className="mt-6 space-y-2">
                 <p className="text-center text-xs opacity-70">Get updates</p>
-                <div className="flex gap-2">
+                {profile.show_email_capture && (
                   <input
                     type="email"
-                    required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@email.com"
-                    className="flex-1 rounded-xl border-0 px-3 py-2.5 text-sm text-ink outline-none"
+                    className="w-full rounded-xl border-0 px-3 py-2.5 text-sm text-ink outline-none"
+                    required={!profile.show_phone_capture}
                   />
-                  <button
-                    type="submit"
-                    className="rounded-xl px-4 text-sm font-semibold"
-                    style={{ background: theme.button_color, color: theme.button_text_color }}
-                  >
-                    Join
-                  </button>
-                </div>
+                )}
+                {profile.show_phone_capture && (
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+54 9 11 1234 5678"
+                    className="w-full rounded-xl border-0 px-3 py-2.5 text-sm text-ink outline-none"
+                    required={!profile.show_email_capture}
+                  />
+                )}
+                <button
+                  type="submit"
+                  className="w-full rounded-xl px-4 py-2.5 text-sm font-semibold"
+                  style={{ background: theme.button_color, color: theme.button_text_color }}
+                >
+                  Join
+                </button>
                 {subMsg && <p className="text-center text-xs opacity-80">{subMsg}</p>}
               </form>
             )}
@@ -303,5 +353,88 @@ export function PublicProfileView({
         </div>
       )}
     </div>
+  );
+}
+
+function ProfileLinkItem({
+  link,
+  theme,
+  compact,
+  onClick,
+}: {
+  link: PublicLink;
+  theme: {
+    button_color: string;
+    button_text_color: string;
+    button_style: string;
+  };
+  compact?: boolean;
+  onClick: (id: string, hasLock: boolean, title: string) => void;
+}) {
+  const type = link.link_type || "url";
+
+  if (type === "header") {
+    return (
+      <p className="px-1 pt-2 text-sm font-bold tracking-wide opacity-90">{link.title}</p>
+    );
+  }
+
+  if ((type === "youtube" || type === "spotify") && link.embed?.embed_url && !link.has_lock) {
+    return (
+      <div className="overflow-hidden rounded-2xl shadow-lg shadow-black/10">
+        <div className="px-3 py-2 text-center text-sm font-semibold" style={{ background: theme.button_color, color: theme.button_text_color }}>
+          {link.title}
+        </div>
+        {type === "youtube" ? (
+          <div className="aspect-video w-full bg-black">
+            <iframe
+              title={link.title}
+              src={link.embed.embed_url}
+              className="h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        ) : (
+          <iframe
+            title={link.title}
+            src={link.embed.embed_url}
+            className="h-[152px] w-full"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(link.id, link.has_lock, link.title)}
+      className={`flex w-full items-center gap-3 text-left font-semibold shadow-lg shadow-black/10 transition hover:scale-[1.01] ${animationClass(link.animation)} ${
+        compact
+          ? "min-h-[64px] flex-col justify-center px-3 py-3 text-xs"
+          : link.is_featured
+            ? "min-h-[72px] px-4 py-4 text-base ring-2 ring-white/55"
+            : "px-4 py-3 text-sm"
+      }`}
+      style={{
+        background: theme.button_color,
+        color: theme.button_text_color,
+        borderRadius: buttonRadius(theme.button_style),
+      }}
+    >
+      {!compact && (
+        <LinkVisual
+          url={link.url}
+          icon={link.icon}
+          thumbnailUrl={link.thumbnail_url}
+          featured={link.is_featured}
+          size={link.is_featured ? "lg" : "sm"}
+        />
+      )}
+      <span className={compact ? "text-center" : "flex-1 text-center"}>{link.title}</span>
+      {link.has_lock && <span className="text-xs opacity-60">🔒</span>}
+    </button>
   );
 }

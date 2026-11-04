@@ -1,3 +1,4 @@
+import re
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
@@ -14,6 +15,7 @@ from app.schemas.link import PublicLinkOut
 from app.schemas.public import PublicProfileOut
 from app.schemas.social import SocialLinkOut
 from app.services.analytics import detect_device, hash_visitor, normalize_referrer
+from app.services.embeds import public_embed_payload
 from app.services.scheduling import is_link_visible
 from app.services.youtube import extract_youtube_video_id
 
@@ -45,6 +47,25 @@ def _client_meta(request: Request, referrer: str | None, visitor_id: str | None)
     }
 
 
+def _public_link(link: Link) -> PublicLinkOut:
+    link_type = link.link_type or "url"
+    hide_url = bool(link.lock_code_hash) or link_type == "header"
+    return PublicLinkOut(
+        id=link.id,
+        title=link.title,
+        url=None if hide_url else link.url,
+        link_type=link_type,
+        collection=link.collection,
+        collection_layout=link.collection_layout or "list",
+        thumbnail_url=link.thumbnail_url,
+        icon=link.icon,
+        animation=link.animation or "none",
+        is_featured=link.is_featured,
+        has_lock=bool(link.lock_code_hash),
+        embed=None if link.lock_code_hash else public_embed_payload(link_type, link.url),
+    )
+
+
 @router.get("/{username}", response_model=PublicProfileOut)
 def get_public_profile(
     username: str,
@@ -68,6 +89,9 @@ def get_public_profile(
             seo_description=profile.seo_description,
             remove_branding=profile.remove_branding,
             show_email_capture=False,
+            show_phone_capture=False,
+            google_analytics_id=None,
+            meta_pixel_id=None,
             is_locked=True,
             redirect_url=None,
             background_music_enabled=False,
@@ -80,25 +104,16 @@ def get_public_profile(
     redirect_url = None
     if profile.redirect_link_id:
         for link in visible_links:
-            if link.id == profile.redirect_link_id and not link.lock_code_hash:
+            if (
+                link.id == profile.redirect_link_id
+                and not link.lock_code_hash
+                and (link.link_type or "url") == "url"
+            ):
                 redirect_url = link.url
                 break
 
-    # Featured links first, then keep relative order within each group
     ordered = sorted(visible_links, key=lambda l: (0 if l.is_featured else 1, l.position))
-    public_links = [
-        PublicLinkOut(
-            id=l.id,
-            title=l.title,
-            url=None if l.lock_code_hash else l.url,
-            thumbnail_url=l.thumbnail_url,
-            icon=l.icon,
-            animation=l.animation or "none",
-            is_featured=l.is_featured,
-            has_lock=bool(l.lock_code_hash),
-        )
-        for l in ordered
-    ]
+    public_links = [_public_link(l) for l in ordered]
 
     return PublicProfileOut(
         username=profile.username,
@@ -110,6 +125,9 @@ def get_public_profile(
         seo_description=profile.seo_description,
         remove_branding=profile.remove_branding,
         show_email_capture=profile.show_email_capture,
+        show_phone_capture=bool(getattr(profile, "show_phone_capture", False)),
+        google_analytics_id=getattr(profile, "google_analytics_id", None),
+        meta_pixel_id=getattr(profile, "meta_pixel_id", None),
         is_locked=False,
         redirect_url=redirect_url,
         background_music_enabled=bool(
@@ -173,6 +191,9 @@ def track_click(
     if link is None or not is_link_visible(link):
         raise HTTPException(status_code=404, detail="Link not found")
 
+    if (link.link_type or "url") == "header":
+        raise HTTPException(status_code=400, detail="Headers are not clickable")
+
     if link.lock_code_hash:
         if not payload.unlock_code or not verify_password(payload.unlock_code, link.lock_code_hash):
             raise HTTPException(status_code=401, detail="Invalid unlock code")
@@ -190,17 +211,50 @@ def subscribe(
     db: Session = Depends(get_db),
 ) -> dict:
     profile = _get_profile(db, username)
-    if not profile.show_email_capture:
+    email = payload.email.lower().strip() if payload.email else None
+    phone_raw = (payload.phone or "").strip() or None
+    phone = re.sub(r"[^\d+]", "", phone_raw) if phone_raw else None
+
+    if not email and not phone:
+        raise HTTPException(status_code=400, detail="Email or phone is required.")
+
+    if email and not profile.show_email_capture:
         raise HTTPException(status_code=400, detail="Email capture disabled")
+    if phone and not getattr(profile, "show_phone_capture", False):
+        raise HTTPException(status_code=400, detail="Phone capture disabled")
+    if not profile.show_email_capture and not getattr(profile, "show_phone_capture", False):
+        raise HTTPException(status_code=400, detail="Lead capture disabled")
 
-    existing = (
-        db.query(Subscriber)
-        .filter(Subscriber.profile_id == profile.id, Subscriber.email == payload.email.lower())
-        .first()
+    if email:
+        existing = (
+            db.query(Subscriber)
+            .filter(Subscriber.profile_id == profile.id, Subscriber.email == email)
+            .first()
+        )
+        if existing:
+            if phone and not existing.phone:
+                existing.phone = phone
+                db.commit()
+            return {"ok": True, "already_subscribed": True}
+
+    if phone:
+        existing_phone = (
+            db.query(Subscriber)
+            .filter(Subscriber.profile_id == profile.id, Subscriber.phone == phone)
+            .first()
+        )
+        if existing_phone:
+            if email and not existing_phone.email:
+                existing_phone.email = email
+                db.commit()
+            return {"ok": True, "already_subscribed": True}
+
+    db.add(
+        Subscriber(
+            profile_id=profile.id,
+            email=email if profile.show_email_capture else None,
+            phone=phone if getattr(profile, "show_phone_capture", False) else None,
+        )
     )
-    if existing:
-        return {"ok": True, "already_subscribed": True}
-
-    db.add(Subscriber(profile_id=profile.id, email=payload.email.lower()))
     db.commit()
     return {"ok": True, "already_subscribed": False}

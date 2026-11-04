@@ -15,6 +15,9 @@ export type Theme = {
   social_icon_color: string;
 };
 
+export type LinkType = "url" | "youtube" | "spotify" | "header" | "contact";
+export type CollectionLayout = "list" | "grid";
+
 export type Profile = {
   id: string;
   username: string;
@@ -26,6 +29,12 @@ export type Profile = {
   seo_description: string | null;
   remove_branding: boolean;
   show_email_capture: boolean;
+  show_phone_capture: boolean;
+  google_analytics_id: string | null;
+  meta_pixel_id: string | null;
+  qr_fg_color: string;
+  qr_bg_color: string;
+  qr_logo_enabled: boolean;
   background_music_url: string | null;
   background_music_enabled: boolean;
   background_music_video_id: string | null;
@@ -39,6 +48,9 @@ export type LinkItem = {
   id: string;
   title: string;
   url: string;
+  link_type: LinkType;
+  collection: string | null;
+  collection_layout: CollectionLayout;
   thumbnail_url: string | null;
   icon: string | null;
   animation: string;
@@ -52,15 +64,26 @@ export type LinkItem = {
   updated_at: string;
 };
 
+export type LinkEmbed = {
+  provider: string;
+  id: string;
+  kind?: string;
+  embed_url: string;
+};
+
 export type PublicLink = {
   id: string;
   title: string;
   url: string | null;
+  link_type: LinkType;
+  collection: string | null;
+  collection_layout: CollectionLayout;
   thumbnail_url: string | null;
   icon: string | null;
   animation: string;
   is_featured: boolean;
   has_lock: boolean;
+  embed: LinkEmbed | null;
 };
 
 export type SocialLink = {
@@ -80,6 +103,9 @@ export type PublicProfile = {
   seo_description: string | null;
   remove_branding: boolean;
   show_email_capture: boolean;
+  show_phone_capture: boolean;
+  google_analytics_id: string | null;
+  meta_pixel_id: string | null;
   is_locked: boolean;
   redirect_url: string | null;
   background_music_enabled: boolean;
@@ -100,7 +126,8 @@ export type AnalyticsSummary = {
 
 export type Subscriber = {
   id: string;
-  email: string;
+  email: string | null;
+  phone: string | null;
   created_at: string;
 };
 

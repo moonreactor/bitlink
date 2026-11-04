@@ -19,16 +19,28 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { LinkAnimationPicker } from "@/components/LinkAnimationPicker";
 import { LinkIconPicker } from "@/components/LinkIconPicker";
 import { LinkVisual } from "@/components/LinkVisual";
+import { MediaUploadField } from "@/components/MediaUploadField";
 import { useToast } from "@/components/Toast";
 import { linksApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { animationClass } from "@/lib/linkAnimations";
 import { detectSocialBrand } from "@/lib/socialBrands";
-import type { LinkItem } from "@/lib/types";
+import type { CollectionLayout, LinkItem, LinkType } from "@/lib/types";
+
+const LINK_TYPES: { id: LinkType; label: string }[] = [
+  { id: "url", label: "Link" },
+  { id: "youtube", label: "YouTube" },
+  { id: "spotify", label: "Spotify" },
+  { id: "header", label: "Header" },
+  { id: "contact", label: "Contact" },
+];
 
 type Draft = {
   title: string;
   url: string;
+  link_type: LinkType;
+  collection: string;
+  collection_layout: CollectionLayout;
   thumbnail_url: string;
   icon: string | null;
   animation: string;
@@ -40,6 +52,9 @@ type Draft = {
 const emptyDraft = (): Draft => ({
   title: "",
   url: "",
+  link_type: "url",
+  collection: "",
+  collection_layout: "list",
   thumbnail_url: "",
   icon: null,
   animation: "none",
@@ -134,20 +149,28 @@ export function LinksEditor() {
     e.preventDefault();
     const token = getAccessToken();
     if (!token) return;
-    if (!draft.url.trim()) {
-      toastError("Paste a link first");
+    if (draft.link_type !== "header" && !draft.url.trim()) {
+      toastError(draft.link_type === "contact" ? "Add an email or phone" : "Paste a link first");
+      return;
+    }
+    if (!draft.title.trim() && draft.link_type === "header") {
+      toastError("Header needs a title");
       return;
     }
     try {
-      const normalized = draft.url.startsWith("http") ? draft.url : `https://${draft.url}`;
-      const title = draft.title.trim() || normalized;
+      const title =
+        draft.title.trim() ||
+        (draft.link_type === "header" ? "Section" : draft.url.trim() || "Link");
       await linksApi.create(token, {
         title,
-        url: normalized,
+        url: draft.url.trim() || null,
+        link_type: draft.link_type,
+        collection: draft.collection.trim() || null,
+        collection_layout: draft.collection_layout,
         thumbnail_url: draft.thumbnail_url.trim() || null,
         icon: draft.icon,
         animation: draft.animation,
-        is_featured: draft.is_featured,
+        is_featured: draft.link_type === "header" ? false : draft.is_featured,
         visible_from: draft.visible_from,
         visible_until: draft.visible_until,
       });
@@ -215,12 +238,23 @@ export function LinksEditor() {
     }
   }
 
-  async function saveInline(link: LinkItem, patch: Partial<LinkItem> & { clear_thumbnail?: boolean; clear_icon?: boolean }) {
+  async function saveInline(
+    link: LinkItem,
+    patch: Partial<LinkItem> & {
+      clear_thumbnail?: boolean;
+      clear_icon?: boolean;
+      clear_collection?: boolean;
+    },
+  ) {
     const token = getAccessToken();
     if (!token) return;
     const body: Record<string, unknown> = { ...patch };
     if (patch.thumbnail_url === null || patch.thumbnail_url === "") body.clear_thumbnail = true;
     if (patch.icon === null || patch.icon === "") body.clear_icon = true;
+    if (patch.clear_collection || patch.collection === null || patch.collection === "") {
+      body.clear_collection = true;
+      delete body.collection;
+    }
     try {
       await linksApi.update(token, link.id, body);
       await load();
@@ -252,11 +286,27 @@ export function LinksEditor() {
       <div>
         <h1 className="font-display text-3xl font-bold tracking-tight text-ink">Links</h1>
         <p className="mt-1 text-sm text-meetup-muted">
-          Paste a URL — we fill title and icon. Then tweak and save.
+          Links, embeds, headers, and collections — paste a URL or pick a type.
         </p>
       </div>
 
       <form onSubmit={onCreate} className="mu-card space-y-4 p-4 md:p-5">
+        <div className="flex flex-wrap gap-2">
+          {LINK_TYPES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => {
+                setDraft((prev) => ({ ...prev, link_type: t.id }));
+                setComposerOpen(true);
+              }}
+              className={`mu-chip ${draft.link_type === t.id ? "mu-chip-active" : ""}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative min-w-0 flex-1">
             <input
@@ -266,7 +316,6 @@ export function LinksEditor() {
               onPaste={(e) => {
                 const pasted = e.clipboardData.getData("text");
                 if (looksLikeUrl(pasted)) {
-                  // Let paste apply, then hydrate
                   window.setTimeout(() => void hydrateFromUrl(pasted), 0);
                 }
               }}
@@ -276,7 +325,17 @@ export function LinksEditor() {
                   onUrlCommit();
                 }
               }}
-              placeholder="Paste or type a link (https://…)"
+              placeholder={
+                draft.link_type === "header"
+                  ? "Optional — headers only need a title"
+                  : draft.link_type === "contact"
+                    ? "Email or phone"
+                    : draft.link_type === "youtube"
+                      ? "YouTube URL or video id"
+                      : draft.link_type === "spotify"
+                        ? "Spotify track / playlist URL"
+                        : "Paste or type a link (https://…)"
+              }
               autoComplete="url"
               className="mu-input w-full pr-24"
             />
@@ -289,8 +348,11 @@ export function LinksEditor() {
           {!composerOpen && (
             <button
               type="button"
-              onClick={onUrlCommit}
-              disabled={!looksLikeUrl(draft.url)}
+              onClick={() => {
+                if (draft.link_type === "header") setComposerOpen(true);
+                else onUrlCommit();
+              }}
+              disabled={draft.link_type !== "header" && !looksLikeUrl(draft.url) && draft.link_type !== "contact"}
               className="mu-btn-primary shrink-0 disabled:opacity-50"
             >
               Continue
@@ -326,14 +388,41 @@ export function LinksEditor() {
               </div>
             </div>
 
-            <label className="inline-flex items-center gap-2 text-sm text-meetup-muted">
-              <input
-                type="checkbox"
-                checked={draft.is_featured}
-                onChange={(e) => setDraft({ ...draft, is_featured: e.target.checked })}
-              />
-              Featured link
-            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm">
+                <span className="mb-1 block font-semibold text-ink">Collection</span>
+                <input
+                  className="mu-input"
+                  value={draft.collection}
+                  onChange={(e) => setDraft({ ...draft, collection: e.target.value })}
+                  placeholder="e.g. Music, Shop"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-semibold text-ink">Collection layout</span>
+                <select
+                  className="mu-input"
+                  value={draft.collection_layout}
+                  onChange={(e) =>
+                    setDraft({ ...draft, collection_layout: e.target.value as CollectionLayout })
+                  }
+                >
+                  <option value="list">List</option>
+                  <option value="grid">Grid</option>
+                </select>
+              </label>
+            </div>
+
+            {draft.link_type !== "header" && (
+              <label className="inline-flex items-center gap-2 text-sm text-meetup-muted">
+                <input
+                  type="checkbox"
+                  checked={draft.is_featured}
+                  onChange={(e) => setDraft({ ...draft, is_featured: e.target.checked })}
+                />
+                Featured link
+              </label>
+            )}
 
             <LinkIconPicker value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
 
@@ -430,39 +519,12 @@ function ImageUrlField({
   hint?: string;
 }) {
   return (
-    <div className="space-y-2">
-      <span className="text-xs font-medium text-ink/70">Image / favicon</span>
-      <div className="flex items-start gap-3">
-        {value ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={value} alt="" className="h-14 w-14 rounded-xl object-cover ring-1 ring-ink/10" />
-        ) : (
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-meetup-border text-[10px] text-meetup-muted">
-            Preview
-          </div>
-        )}
-        <div className="min-w-0 flex-1 space-y-1">
-          <input
-            className="mu-input"
-            placeholder="https://…/image.jpg"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-          />
-          <p className="text-[11px] text-ink/40">
-            {hint || "Paste a direct image URL. Thumbnail overrides the icon on the public page."}
-          </p>
-          {value && (
-            <button
-              type="button"
-              onClick={() => onChange("")}
-              className="text-[11px] font-medium text-meetup-muted hover:text-ink"
-            >
-              Remove image
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+    <MediaUploadField
+      label="Image / favicon"
+      value={value || null}
+      onChange={(url) => onChange(url || "")}
+      hint={hint || "Upload or paste a URL. Thumbnail overrides the icon on the public page."}
+    />
   );
 }
 
@@ -489,7 +551,11 @@ function SortableLink({
   onRemove: (id: string) => void;
   onSave: (
     link: LinkItem,
-    patch: Partial<LinkItem> & { clear_thumbnail?: boolean; clear_icon?: boolean },
+    patch: Partial<LinkItem> & {
+      clear_thumbnail?: boolean;
+      clear_icon?: boolean;
+      clear_collection?: boolean;
+    },
   ) => Promise<void>;
   onSetLock: (link: LinkItem, code: string | null) => void;
 }) {
@@ -504,6 +570,11 @@ function SortableLink({
 
   const [title, setTitle] = useState(link.title);
   const [url, setUrl] = useState(link.url);
+  const [linkType, setLinkType] = useState<LinkType>(link.link_type || "url");
+  const [collection, setCollection] = useState(link.collection || "");
+  const [collectionLayout, setCollectionLayout] = useState<CollectionLayout>(
+    link.collection_layout || "list",
+  );
   const [icon, setIcon] = useState<string | null>(link.icon);
   const [thumbnail, setThumbnail] = useState(link.thumbnail_url || "");
   const [animation, setAnimation] = useState(link.animation || "none");
@@ -515,6 +586,9 @@ function SortableLink({
     if (!expanded) return;
     setTitle(link.title);
     setUrl(link.url);
+    setLinkType(link.link_type || "url");
+    setCollection(link.collection || "");
+    setCollectionLayout(link.collection_layout || "list");
     setIcon(link.icon);
     setThumbnail(link.thumbnail_url || "");
     setAnimation(link.animation || "none");
@@ -554,6 +628,14 @@ function SortableLink({
           <button type="button" onClick={onToggleExpand} className="w-full text-left">
             <div className="flex flex-wrap items-center gap-2">
               <p className="truncate font-semibold text-ink">{link.title}</p>
+              <span className="rounded-full bg-mist px-2 py-0.5 text-[10px] font-bold uppercase text-meetup-muted">
+                {link.link_type || "url"}
+              </span>
+              {link.collection && (
+                <span className="rounded-full bg-meetup-lavender px-2 py-0.5 text-[10px] font-bold uppercase text-meetup-purple">
+                  {link.collection}
+                </span>
+              )}
               {link.is_featured && (
                 <span className="rounded-full bg-meetup-lavender px-2 py-0.5 text-[10px] font-bold uppercase text-meetup-purple">
                   Featured
@@ -570,7 +652,9 @@ function SortableLink({
                 </span>
               )}
             </div>
-            <p className="truncate text-xs text-meetup-muted">{link.url}</p>
+            <p className="truncate text-xs text-meetup-muted">
+              {link.link_type === "header" ? "Section header" : link.url}
+            </p>
           </button>
 
           {!expanded && (
@@ -604,22 +688,65 @@ function SortableLink({
       {expanded && (
         <div className="mt-4 space-y-4 border-t border-meetup-border pt-4">
           <label className="block text-sm">
+            <span className="mb-1 block font-semibold">Type</span>
+            <select
+              className="mu-input"
+              value={linkType}
+              onChange={(e) => setLinkType(e.target.value as LinkType)}
+            >
+              {LINK_TYPES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm">
             <span className="mb-1 block font-semibold">Title</span>
             <input className="mu-input" value={title} onChange={(e) => setTitle(e.target.value)} />
           </label>
-          <label className="block text-sm">
-            <span className="mb-1 block font-semibold">URL</span>
-            <input className="mu-input" value={url} onChange={(e) => setUrl(e.target.value)} />
-          </label>
+          {linkType !== "header" && (
+            <label className="block text-sm">
+              <span className="mb-1 block font-semibold">
+                {linkType === "contact" ? "Email / phone" : "URL"}
+              </span>
+              <input className="mu-input" value={url} onChange={(e) => setUrl(e.target.value)} />
+            </label>
+          )}
 
-          <label className="inline-flex items-center gap-2 text-sm text-meetup-muted">
-            <input
-              type="checkbox"
-              checked={featured}
-              onChange={(e) => setFeatured(e.target.checked)}
-            />
-            Featured link
-          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm">
+              <span className="mb-1 block font-semibold">Collection</span>
+              <input
+                className="mu-input"
+                value={collection}
+                onChange={(e) => setCollection(e.target.value)}
+                placeholder="Optional group"
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block font-semibold">Layout</span>
+              <select
+                className="mu-input"
+                value={collectionLayout}
+                onChange={(e) => setCollectionLayout(e.target.value as CollectionLayout)}
+              >
+                <option value="list">List</option>
+                <option value="grid">Grid</option>
+              </select>
+            </label>
+          </div>
+
+          {linkType !== "header" && (
+            <label className="inline-flex items-center gap-2 text-sm text-meetup-muted">
+              <input
+                type="checkbox"
+                checked={featured}
+                onChange={(e) => setFeatured(e.target.checked)}
+              />
+              Featured link
+            </label>
+          )}
 
           <LinkIconPicker value={icon} onChange={setIcon} />
           <ImageUrlField value={thumbnail} onChange={setThumbnail} />
@@ -655,17 +782,19 @@ function SortableLink({
               <MiniBtn onClick={() => onToggle(link, "is_active")}>
                 {link.is_active ? "Disable" : "Enable"}
               </MiniBtn>
-              <MiniBtn
-                onClick={() => {
-                  if (link.has_lock) onSetLock(link, null);
-                  else {
-                    const code = prompt("Lock code for this link:");
-                    if (code) onSetLock(link, code);
-                  }
-                }}
-              >
-                {link.has_lock ? "Remove lock" : "Add lock"}
-              </MiniBtn>
+              {linkType !== "header" && (
+                <MiniBtn
+                  onClick={() => {
+                    if (link.has_lock) onSetLock(link, null);
+                    else {
+                      const code = prompt("Lock code for this link:");
+                      if (code) onSetLock(link, code);
+                    }
+                  }}
+                >
+                  {link.has_lock ? "Remove lock" : "Add lock"}
+                </MiniBtn>
+              )}
               <MiniBtn onClick={() => onRemove(link.id)} danger>
                 Delete
               </MiniBtn>
@@ -681,13 +810,17 @@ function SortableLink({
                   onSave(link, {
                     title,
                     url,
+                    link_type: linkType,
+                    collection: collection.trim() || null,
+                    collection_layout: collectionLayout,
+                    clear_collection: !collection.trim(),
                     icon,
                     thumbnail_url: thumbnail || null,
                     animation,
-                    is_featured: featured,
+                    is_featured: linkType === "header" ? false : featured,
                     visible_from: visibleFrom,
                     visible_until: visibleUntil,
-                  })
+                  } as Partial<LinkItem> & { clear_thumbnail?: boolean; clear_icon?: boolean; clear_collection?: boolean })
                 }
               >
                 Save changes

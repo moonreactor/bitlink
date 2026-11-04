@@ -21,7 +21,8 @@ class ClickResponse(BaseModel):
 
 
 class SubscribeRequest(BaseModel):
-    email: EmailStr
+    email: EmailStr | None = None
+    phone: str | None = None
 
 
 class UnlockProfileRequest(BaseModel):
@@ -69,7 +70,8 @@ class AnalyticsSummary(BaseModel):
 
 class SubscriberOut(BaseModel):
     id: UUID
-    email: EmailStr
+    email: EmailStr | None = None
+    phone: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

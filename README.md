@@ -57,11 +57,14 @@ UPDATE users SET is_superuser = true WHERE email = 'you@example.com';
 
 ## Features (v1)
 
-- Auth (register / login)
-- Public profile at `/{username}`
+- Auth (register / login / refresh / forgot & reset password)
+- Public profile at `/{username}` with Open Graph previews
 - Unlimited links with reorder, featured, scheduling, thumbnails
-- Themes & appearance
-- Analytics (views, clicks, device, referrer)
-- QR code, email capture, profile/link locks
+- Link types: URL, YouTube/Spotify embeds, headers, contact + collections (list/grid)
+- Media uploads (avatar, thumbnails, backgrounds)
+- Themes, fonts & appearance
+- Analytics with date ranges, daily chart, countries + CSV export
+- Custom QR (colors, avatar logo, PNG/SVG)
+- Email + phone capture, GA / Meta pixels, profile/link locks
 - Always-visible “Create your Bitlink” CTA on public pages
 - Superuser admin area (`/admin`)

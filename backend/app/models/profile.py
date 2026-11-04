@@ -42,6 +42,12 @@ class Profile(Base):
         UUID(as_uuid=True), ForeignKey("links.id", ondelete="SET NULL", use_alter=True), nullable=True
     )
     show_email_capture: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    show_phone_capture: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    google_analytics_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    meta_pixel_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    qr_fg_color: Mapped[str] = mapped_column(String(7), default="#000000", nullable=False)
+    qr_bg_color: Mapped[str] = mapped_column(String(7), default="#ffffff", nullable=False)
+    qr_logo_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     background_music_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     background_music_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
