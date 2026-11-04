@@ -11,8 +11,10 @@ from qrcode.image.svg import SvgPathImage
 from app.core.config import settings
 
 
-def _profile_url(username: str) -> str:
-    return f"{settings.PUBLIC_WEB_URL.rstrip('/')}/{username}"
+def _public_path_url(path: str, *, base_url: str | None = None) -> str:
+    base = (base_url or settings.PUBLIC_WEB_URL).rstrip("/")
+    segment = path.lstrip("/")
+    return f"{base}/{segment}"
 
 
 def _load_logo(logo_url: str | None) -> Image.Image | None:
@@ -44,8 +46,9 @@ def generate_profile_qr(
     back_color: str = "#ffffff",
     logo_url: str | None = None,
     fmt: str = "png",
+    base_url: str | None = None,
 ) -> bytes:
-    url = _profile_url(username)
+    url = _public_path_url(username, base_url=base_url)
     fmt = (fmt or "png").lower()
     if fmt not in {"png", "svg"}:
         fmt = "png"

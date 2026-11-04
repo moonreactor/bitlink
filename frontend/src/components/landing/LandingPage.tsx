@@ -176,9 +176,9 @@ export function LandingPage() {
               </div>
               <div className="mu-card space-y-3 p-5 md:p-6">
                 {[
-                  { code: "bitlink.app/promo", clicks: "1.2k" },
-                  { code: "bitlink.app/ig", clicks: "840" },
-                  { code: "bitlink.app/qr", clicks: "312" },
+                  { code: "bitlink.click/promo", clicks: "1.2k" },
+                  { code: "bitlink.click/ig", clicks: "840" },
+                  { code: "bitlink.click/qr", clicks: "312" },
                 ].map((row) => (
                   <div
                     key={row.code}

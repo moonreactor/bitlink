@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     CORS_ORIGINS: str = "http://localhost:3000"
     PUBLIC_WEB_URL: str = "http://localhost:3000"
+    # Public base for short links / QR (production: https://bitlink.click).
+    # Falls back to PUBLIC_WEB_URL when empty (local docker).
+    PUBLIC_SHORT_BASE_URL: str = ""
     PUBLIC_API_URL: str = "http://localhost:8000"
     MEDIA_ROOT: str = "/app/media"
     # When true, forgot-password responses include reset_url (local/dev only).
@@ -30,6 +33,11 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def short_base_url(self) -> str:
+        base = (self.PUBLIC_SHORT_BASE_URL or self.PUBLIC_WEB_URL or "").strip().rstrip("/")
+        return base or "https://bitlink.click"
 
 
 @lru_cache
