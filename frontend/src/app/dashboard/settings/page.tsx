@@ -412,15 +412,19 @@ export default function SettingsPage() {
           </div>
         )}
         {domainMsg && <p className="text-xs text-meetup-muted">{domainMsg}</p>}
-        <div className="flex flex-wrap gap-2">
-          <button type="submit" disabled={domainBusy} className="mu-btn-primary disabled:opacity-60">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <button
+            type="submit"
+            disabled={domainBusy}
+            className="mu-btn-primary min-h-[44px] disabled:opacity-60"
+          >
             Save domain
           </button>
           <button
             type="button"
             disabled={domainBusy || !domain?.custom_domain}
             onClick={verifyDomain}
-            className="mu-btn-secondary disabled:opacity-60"
+            className="mu-btn-secondary min-h-[44px] disabled:opacity-60"
           >
             Verify DNS
           </button>
@@ -428,7 +432,7 @@ export default function SettingsPage() {
             type="button"
             disabled={domainBusy || !domain?.custom_domain}
             onClick={clearDomain}
-            className="mu-btn-secondary text-red-600 disabled:opacity-60"
+            className="mu-btn-secondary min-h-[44px] text-red-600 disabled:opacity-60"
           >
             Remove
           </button>
@@ -438,9 +442,9 @@ export default function SettingsPage() {
       <form onSubmit={saveSocials} className="space-y-3 mu-card p-5 md:p-6">
         <h2 className="font-display text-lg font-semibold">Social icons</h2>
         {socials.map((s, idx) => (
-          <div key={idx} className="grid grid-cols-[140px_1fr] gap-2">
+          <div key={idx} className="grid gap-2 sm:grid-cols-[140px_1fr]">
             <select
-              className="rounded-xl border border-meetup-border px-2 py-2 text-sm"
+              className="min-h-[44px] rounded-xl border border-meetup-border px-2 py-2 text-sm"
               value={s.platform}
               onChange={(e) => {
                 const next = [...socials];
@@ -455,7 +459,7 @@ export default function SettingsPage() {
               ))}
             </select>
             <input
-              className="rounded-xl border border-meetup-border px-3 py-2 text-sm"
+              className="min-h-[44px] min-w-0 rounded-xl border border-meetup-border px-3 py-2 text-sm"
               placeholder="https://…"
               value={s.url}
               onChange={(e) => {
@@ -513,12 +517,12 @@ export default function SettingsPage() {
           <h2 className="font-display text-lg font-semibold">QR code</h2>
           <p className="mt-1 text-sm text-meetup-muted">Customize colors and download PNG or SVG.</p>
         </div>
-        <div className="flex flex-wrap items-start gap-6">
+        <div className="flex flex-col items-stretch gap-6 sm:flex-row sm:items-start">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={qrSrc}
             alt="QR code"
-            className="h-48 w-48 rounded-xl border border-meetup-border bg-white p-2"
+            className="mx-auto h-48 w-48 shrink-0 rounded-xl border border-meetup-border bg-white p-2 sm:mx-0"
           />
           <div className="min-w-0 flex-1 space-y-3">
             <label className="flex items-center justify-between gap-3 text-sm">

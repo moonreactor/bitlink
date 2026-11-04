@@ -217,22 +217,30 @@ export default function ProductsPage() {
                       href={item.checkout_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-1 block truncate text-xs text-meetup-pink hover:underline"
+                      className="mt-1 block break-all text-xs text-meetup-pink hover:underline"
                     >
                       {item.checkout_url}
                     </a>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" className="mu-btn-secondary text-xs" onClick={() => setEditingId(item.id)}>
+                  <button
+                    type="button"
+                    className="mu-btn-secondary min-h-[40px] px-3 text-xs"
+                    onClick={() => setEditingId(item.id)}
+                  >
                     Edit
                   </button>
-                  <button type="button" className="mu-btn-secondary text-xs" onClick={() => toggleActive(item)}>
+                  <button
+                    type="button"
+                    className="mu-btn-secondary min-h-[40px] px-3 text-xs"
+                    onClick={() => toggleActive(item)}
+                  >
                     {item.is_active ? "Hide" : "Show"}
                   </button>
                   <button
                     type="button"
-                    className="mu-btn-secondary text-xs"
+                    className="mu-btn-secondary min-h-[40px] px-3 text-xs"
                     disabled={index === 0}
                     onClick={() => move(item.id, -1)}
                   >
@@ -240,13 +248,17 @@ export default function ProductsPage() {
                   </button>
                   <button
                     type="button"
-                    className="mu-btn-secondary text-xs"
+                    className="mu-btn-secondary min-h-[40px] px-3 text-xs"
                     disabled={index === items.length - 1}
                     onClick={() => move(item.id, 1)}
                   >
                     ↓
                   </button>
-                  <button type="button" className="mu-btn-secondary text-xs text-red-600" onClick={() => remove(item.id)}>
+                  <button
+                    type="button"
+                    className="mu-btn-secondary min-h-[40px] px-3 text-xs text-red-600"
+                    onClick={() => remove(item.id)}
+                  >
                     Delete
                   </button>
                 </div>

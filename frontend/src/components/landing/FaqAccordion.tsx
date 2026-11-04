@@ -16,6 +16,10 @@ const FAQS = [
     a: "Yes. Verify ownership with a DNS TXT record, CNAME to Bitlink, and serve your profile on links.yourbrand.com.",
   },
   {
+    q: "Can I sell products?",
+    a: "Yes. Add product cards with a price label and an external checkout URL (Mercado Pago, Stripe, Gumroad…). We don’t take a cut.",
+  },
+  {
     q: "Do I need a website?",
     a: "No. Bitlink is your page. Put one URL on Instagram, TikTok, YouTube, or print a QR.",
   },

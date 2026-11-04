@@ -81,8 +81,8 @@ export function LandingPage() {
               <h1 className="mt-3 max-w-lg text-2xl font-semibold leading-snug text-ink/85 md:text-3xl">
                 Link-in-bio + short links, free forever.
               </h1>
-              <p className="mt-3 max-w-md text-base text-meetup-muted">
-                Unlimited shorts with analytics. No 5-links/month cap.
+              <p className="mt-3 max-w-md text-base leading-relaxed text-meetup-muted">
+                Unlimited shorts, products, and your own domain — no caps, no plans.
               </p>
               <div className="mt-7">
                 <ClaimUsername buttonLabel="Claim free" />
@@ -168,7 +168,7 @@ export function LandingPage() {
               <div>
                 <h2 className="mu-section-title">Short links that work</h2>
                 <p className="mt-3 text-meetup-muted">
-                  Custom back-halves, UTMs, editable destinations, QR — no monthly cap.
+                  Custom back-halves, UTMs, device/geo rules, QR — no monthly cap.
                 </p>
                 <Link href="/register" className="mu-btn-primary mt-6">
                   Create shorts free
@@ -230,6 +230,72 @@ export function LandingPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Products / offers */}
+            <div className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
+              <div className="order-2 space-y-3 md:order-1">
+                {[
+                  { title: "1:1 coaching", price: "$49", tone: "bg-meetup-lavender text-meetup-purple" },
+                  { title: "Preset pack", price: "$12", tone: "bg-mist text-ink" },
+                  { title: "Merch drop", price: "Shop", tone: "bg-black text-white" },
+                ].map((item) => (
+                  <div
+                    key={item.title}
+                    className="flex items-center gap-3 rounded-2xl border border-meetup-border bg-white p-3 shadow-meetup"
+                  >
+                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${item.tone}`}>
+                      {item.price}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-ink">{item.title}</p>
+                      <p className="text-xs text-meetup-muted">External checkout · MP, Stripe, Gumroad</p>
+                    </div>
+                    <span className="shrink-0 text-xs font-semibold text-meetup-purple">Buy →</span>
+                  </div>
+                ))}
+              </div>
+              <div className="order-1 md:order-2">
+                <h2 className="mu-section-title">Sell from your page</h2>
+                <p className="mt-3 text-meetup-muted">
+                  Product cards with price and checkout link — no marketplace fees from us.
+                </p>
+                <Link href="/register" className="mu-btn-secondary mt-6">
+                  Add a product
+                </Link>
+              </div>
+            </div>
+
+            {/* Custom domain */}
+            <div className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
+              <div>
+                <h2 className="mu-section-title">Your domain. Your page.</h2>
+                <p className="mt-3 text-meetup-muted">
+                  Verify with a TXT record, CNAME to Bitlink, go live on links.yourbrand.com.
+                </p>
+                <Link href="/register" className="mu-btn-primary mt-6">
+                  Connect a domain
+                </Link>
+              </div>
+              <div className="overflow-hidden rounded-[1.75rem] border border-meetup-border bg-meetup-bg p-5 shadow-meetup md:p-6">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-meetup-muted">
+                  Browser
+                </p>
+                <div className="mt-3 flex items-center gap-2 rounded-full bg-white px-3 py-2.5 shadow-sm ring-1 ring-meetup-border">
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                  <p className="truncate font-mono text-sm font-semibold text-ink">
+                    links.yourbrand.com
+                  </p>
+                </div>
+                <div className="mt-4 space-y-2 rounded-2xl bg-[#212121] p-4">
+                  <div className="mx-auto h-10 w-10 rounded-full bg-meetup-lavender" />
+                  <div className="mx-auto h-2.5 w-20 rounded-full bg-white/35" />
+                  <div className="space-y-2 pt-2">
+                    <div className="h-9 rounded-full bg-[#D2E823]" />
+                    <div className="h-9 rounded-full bg-white" />
+                  </div>
                 </div>
               </div>
             </div>

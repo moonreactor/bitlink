@@ -96,9 +96,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   href={`/${username}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="mu-btn-secondary hidden sm:inline-flex"
+                  className="mu-btn-secondary px-3 py-2 text-xs sm:px-5 sm:py-2.5 sm:text-sm"
                 >
-                  View page
+                  View
                 </a>
               )}
               <div
@@ -188,7 +188,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             onClick={() => setMobileNav(false)}
           >
             <div
-              className="absolute left-0 top-0 h-full w-[280px] bg-meetup-bg p-4 shadow-meetup-lg"
+              className="absolute left-0 top-0 flex h-full w-[min(280px,88vw)] flex-col overflow-y-auto bg-meetup-bg p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] shadow-meetup-lg"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-4 flex items-center justify-between">
@@ -203,13 +203,15 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               </div>
               <nav className="mu-card space-y-1 p-2">
                 {NAV.map((item) => {
-                  const active = pathname === item.href;
+                  const active =
+                    pathname === item.href ||
+                    (item.href !== "/dashboard" && pathname.startsWith(item.href));
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
                       onClick={() => setMobileNav(false)}
-                      className={`block rounded-xl px-3 py-2.5 text-sm font-semibold ${
+                      className={`flex min-h-[44px] items-center rounded-xl px-3 py-2.5 text-sm font-semibold ${
                         active ? "bg-meetup-lavender text-meetup-purple" : "text-ink"
                       }`}
                     >

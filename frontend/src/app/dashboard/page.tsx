@@ -97,7 +97,7 @@ export default function DashboardOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight text-ink">Your page</h1>
           <p className="mt-1 text-sm text-meetup-muted">

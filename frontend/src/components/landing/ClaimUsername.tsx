@@ -86,7 +86,9 @@ export function ClaimUsername({
                 : "ring-meetup-border"
           }`}
         >
-          <span className="shrink-0 font-medium text-meetup-muted">bitlink.app/</span>
+          <span className="shrink-0 text-sm font-medium text-meetup-muted sm:text-[15px]">
+            bitlink.app/
+          </span>
           <input
             value={username}
             onChange={(e) => setUsername(sanitize(e.target.value))}
@@ -95,11 +97,13 @@ export function ClaimUsername({
             className="w-full min-w-0 bg-transparent py-3 text-ink outline-none placeholder:text-meetup-muted/60"
             autoComplete="username"
             spellCheck={false}
+            inputMode="text"
+            enterKeyHint="go"
           />
         </label>
         <button
           type="submit"
-          className={`inline-flex min-h-[52px] shrink-0 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold transition hover:scale-[1.02] active:scale-[0.98] ${
+          className={`inline-flex min-h-[52px] w-full shrink-0 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold transition hover:scale-[1.02] active:scale-[0.98] sm:w-auto ${
             isDark
               ? "bg-white text-ink hover:bg-meetup-lavender"
               : "bg-black text-white hover:bg-ink"
