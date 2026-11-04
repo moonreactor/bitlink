@@ -9,7 +9,7 @@ Link-in-bio MVP inspired by Linktree. All core features are free — no plans or
 - **PostgreSQL** — database
 - **Docker Compose** — local orchestration
 
-## Quick start
+## Quick start (local)
 
 ```bash
 make build
@@ -18,6 +18,18 @@ make up
 
 - Web: http://localhost:3000
 - API docs: http://localhost:8000/docs
+
+## Production (Railway)
+
+Project **bitlink** on Railway with services:
+
+| Service | Role | URL |
+|---------|------|-----|
+| `web` | Next.js | https://web-production-0b39d.up.railway.app |
+| `bitlink` | FastAPI | https://bitlink-production.up.railway.app |
+| `Postgres` | PostgreSQL | private network only |
+
+API docs: https://bitlink-production.up.railway.app/docs
 
 ## Make targets
 
