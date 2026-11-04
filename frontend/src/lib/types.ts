@@ -1,0 +1,105 @@
+export type Theme = {
+  preset: string;
+  background_color: string;
+  background_image: string | null;
+  button_color: string;
+  button_text_color: string;
+  button_style: string;
+  font_family: string;
+  text_color: string;
+};
+
+export type Profile = {
+  id: string;
+  username: string;
+  display_name: string;
+  bio: string | null;
+  avatar_url: string | null;
+  theme_json: Theme;
+  seo_title: string | null;
+  seo_description: string | null;
+  remove_branding: boolean;
+  show_email_capture: boolean;
+  background_music_url: string | null;
+  background_music_enabled: boolean;
+  background_music_video_id: string | null;
+  has_profile_lock: boolean;
+  redirect_link_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LinkItem = {
+  id: string;
+  title: string;
+  url: string;
+  thumbnail_url: string | null;
+  icon: string | null;
+  animation: string;
+  is_active: boolean;
+  is_featured: boolean;
+  position: number;
+  visible_from: string | null;
+  visible_until: string | null;
+  has_lock: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PublicLink = {
+  id: string;
+  title: string;
+  url: string | null;
+  thumbnail_url: string | null;
+  icon: string | null;
+  animation: string;
+  is_featured: boolean;
+  has_lock: boolean;
+};
+
+export type SocialLink = {
+  id?: string;
+  platform: string;
+  url: string;
+  position: number;
+};
+
+export type PublicProfile = {
+  username: string;
+  display_name: string;
+  bio: string | null;
+  avatar_url: string | null;
+  theme_json: Theme;
+  seo_title: string | null;
+  seo_description: string | null;
+  remove_branding: boolean;
+  show_email_capture: boolean;
+  is_locked: boolean;
+  redirect_url: string | null;
+  background_music_enabled: boolean;
+  background_music_video_id: string | null;
+  links: PublicLink[];
+  social_links: SocialLink[];
+};
+
+export type AnalyticsSummary = {
+  total_views: number;
+  total_clicks: number;
+  links: { link_id: string; title: string; clicks: number }[];
+  devices: { device: string; count: number }[];
+  referrers: { referrer: string; count: number }[];
+  countries: { country: string; count: number }[];
+  daily: { date: string; views: number; clicks: number }[];
+};
+
+export type Subscriber = {
+  id: string;
+  email: string;
+  created_at: string;
+};
+
+export type TokenResponse = {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+};
