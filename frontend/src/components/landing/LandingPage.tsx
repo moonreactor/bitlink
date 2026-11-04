@@ -384,7 +384,7 @@ export function LandingPage() {
           </div>
         </div>
         <div className="mx-auto mt-10 max-w-6xl border-t border-white/10 pt-6 text-xs text-white/40">
-          © {new Date().getFullYear()} Bitlink. Inspired by community platforms like Meetup.
+          © {new Date().getFullYear()} Bitlink.
         </div>
       </footer>
     </div>
