@@ -82,7 +82,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 <span className="text-meetup-muted">Search links…</span>
                 <span className="mx-3 h-4 w-px bg-meetup-border" />
                 <span className="flex-1 truncate text-meetup-muted">
-                  {username ? `bitlink.app/${username}` : "your page"}
+                  {username ? `bitlink.click/${username}` : "your page"}
                 </span>
                 <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-black text-white">
                   <SearchIcon />

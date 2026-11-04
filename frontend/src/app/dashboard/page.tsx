@@ -102,7 +102,7 @@ export default function DashboardOverviewPage() {
           <h1 className="font-display text-3xl font-bold tracking-tight text-ink">Your page</h1>
           <p className="mt-1 text-sm text-meetup-muted">
             {profile
-              ? `Hi ${profile.display_name} — here’s how bitlink.app/${profile.username} is doing.`
+              ? `Hi ${profile.display_name} — here’s how bitlink.click/${profile.username} is doing.`
               : "Loading…"}
           </p>
         </div>

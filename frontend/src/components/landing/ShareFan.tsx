@@ -6,7 +6,7 @@ import { EXAMPLES } from "./examples";
 import { useInView } from "./motion";
 
 const chef = EXAMPLES.find((e) => e.id === "chef")!;
-const url = `bitlink.app/${chef.handle}`;
+const url = `bitlink.click/${chef.handle}`;
 
 const CARDS: { id: string; label: string; bg: string; fg: string; icon?: SocialBrandId }[] = [
   { id: "qr", label: "Printed on the menu", bg: "#fff4e6", fg: "#3b1d0a" },

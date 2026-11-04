@@ -87,7 +87,7 @@ export function ClaimUsername({
           }`}
         >
           <span className="shrink-0 text-sm font-medium text-meetup-muted sm:text-[15px]">
-            bitlink.app/
+            bitlink.click/
           </span>
           <input
             value={username}

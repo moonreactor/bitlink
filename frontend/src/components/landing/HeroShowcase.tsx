@@ -44,7 +44,7 @@ export function HeroShowcase() {
       </div>
 
       <div className="absolute -bottom-3 left-0 w-[44%] min-w-[190px] max-w-[228px] origin-bottom-left -rotate-[4deg] scale-[0.8] sm:scale-100 transition-transform duration-500 hover:rotate-0">
-        <PhoneFrame url={active.domain ?? `bitlink.app/${active.handle}`} screenClassName="h-[440px]">
+        <PhoneFrame url={active.domain ?? `bitlink.click/${active.handle}`} screenClassName="h-[440px]">
           <div key={active.id} className="landing-screen-in h-full">
             <ProfilePreview profile={active} />
           </div>

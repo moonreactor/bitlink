@@ -77,7 +77,7 @@ def fetch_link_meta(raw_url: str, timeout: float = 6.0) -> dict[str, str | None]
     req = Request(
         url,
         headers={
-            "User-Agent": "BitlinkBot/1.0 (+https://bitlink.app)",
+            "User-Agent": "BitlinkBot/1.0 (+https://bitlink.click)",
             "Accept": "text/html,application/xhtml+xml",
         },
         method="GET",
