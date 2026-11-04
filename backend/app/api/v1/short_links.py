@@ -33,7 +33,7 @@ router = APIRouter(tags=["short-links"])
 
 
 def _short_url(code: str) -> str:
-    return f"{settings.PUBLIC_WEB_URL.rstrip('/')}/{code}"
+    return f"{settings.short_base_url}/{code}"
 
 
 def _final_url(
@@ -271,8 +271,8 @@ def short_link_qr(
     )
     if link is None:
         raise HTTPException(status_code=404, detail="Short link not found")
-    # Reuse QR generator with code as path segment (same as username path)
-    content = generate_profile_qr(link.code, fmt=fmt)
+    # Encode the public short URL (bitlink.click/code), not the Railway host.
+    content = generate_profile_qr(link.code, fmt=fmt, base_url=settings.short_base_url)
     media = "image/svg+xml" if fmt == "svg" else "image/png"
     return Response(content=content, media_type=media)
 

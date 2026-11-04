@@ -66,7 +66,7 @@ UPDATE users SET is_superuser = true WHERE email = 'you@example.com';
 - Analytics with date ranges, daily chart, countries + CSV export
 - Custom QR (colors, avatar logo, PNG/SVG)
 - Email + phone capture, GA / Meta pixels, profile/link locks
-- Short links with custom back-half, UTMs, device/geo routing, click stats + QR
+- Short links on `bitlink.click/{code}` with UTMs, device/geo routing, click stats + QR
 - Tip jar (external MP/PayPal/Cafecito URL) + verified badge (admin)
 - Custom domain (DNS TXT verify + Host rewrite; SSL via your DNS/host)
 - Profile products/offers with external checkout URLs
