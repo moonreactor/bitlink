@@ -34,18 +34,17 @@ export function PublicProfileView({
   const [linkCode, setLinkCode] = useState("");
   const [error, setError] = useState("");
 
-  const theme = useMemo(
-    () => ({
+  const theme = useMemo(() => {
+    const defaults = {
       background_color: "#0f172a",
       button_color: "#ffffff",
       button_text_color: "#0f172a",
       button_style: "rounded",
       text_color: "#f8fafc",
       background_image: null as string | null,
-      ...profile.theme_json,
-    }),
-    [profile.theme_json],
-  );
+    };
+    return { ...defaults, ...profile.theme_json };
+  }, [profile.theme_json]);
 
   useEffect(() => {
     if (profile.redirect_url && !profile.is_locked) {
