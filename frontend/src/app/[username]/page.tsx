@@ -71,7 +71,8 @@ export async function generateMetadata({
   const title = profile.seo_title || `${profile.display_name} | Bitlink`;
   const description = profile.seo_description || profile.bio || `${profile.display_name} on Bitlink`;
   const url = `${WEB.replace(/\/$/, "")}/${profile.username}`;
-  const image = absoluteUrl(profile.avatar_url);
+  const image =
+    absoluteUrl(profile.avatar_url) || absoluteUrl("/bitlink-og.webp") || `${WEB.replace(/\/$/, "")}/bitlink-og.webp`;
 
   return {
     title,
@@ -82,13 +83,13 @@ export async function generateMetadata({
       url,
       siteName: "Bitlink",
       type: "profile",
-      ...(image ? { images: [{ url: image, alt: profile.display_name }] } : {}),
+      images: [{ url: image, alt: profile.display_name }],
     },
     twitter: {
-      card: image ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title,
       description,
-      ...(image ? { images: [image] } : {}),
+      images: [image],
     },
   };
 }

@@ -14,10 +14,33 @@ const dmSans = DM_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
+const WEB =
+  process.env.NEXT_PUBLIC_WEB_URL ||
+  process.env.NEXT_PUBLIC_API_URL?.replace(":8000", ":3000") ||
+  "http://localhost:3000";
+
+const OG_IMAGE = `${WEB.replace(/\/$/, "")}/bitlink-og.webp`;
+
 export const metadata: Metadata = {
   title: "Bitlink — Link-in-bio + short links, free forever",
   description:
     "Unlimited link-in-bio and short links with analytics, QR, UTMs, embeds, and themes — free forever. No monthly caps.",
+  metadataBase: new URL(WEB),
+  openGraph: {
+    title: "Bitlink — Link-in-bio + short links, free forever",
+    description:
+      "Unlimited link-in-bio and short links with analytics, QR, UTMs, embeds, and themes — free forever. No monthly caps.",
+    siteName: "Bitlink",
+    type: "website",
+    images: [{ url: "/bitlink-og.webp", alt: "Bitlink" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Bitlink — Link-in-bio + short links, free forever",
+    description:
+      "Unlimited link-in-bio and short links with analytics, QR, UTMs, embeds, and themes — free forever. No monthly caps.",
+    images: [OG_IMAGE],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

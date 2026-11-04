@@ -21,11 +21,11 @@ export function HeroShowcase() {
 
   return (
     <div
-      className="relative mx-auto w-full max-w-[520px]"
+      className="relative mx-auto w-full max-w-[520px] pt-6 sm:pt-0"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="relative ml-auto aspect-[4/5] w-[78%] overflow-hidden rounded-[2.5rem] bg-meetup-lavender shadow-meetup-lg">
+      <div className="relative ml-auto aspect-[4/5] w-[80%] overflow-hidden sm:w-[78%] rounded-[2.5rem] bg-meetup-lavender shadow-meetup-lg">
         {EXAMPLES.map((ex, i) => (
           <img
             key={ex.id}
@@ -37,13 +37,13 @@ export function HeroShowcase() {
           />
         ))}
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
-        <div key={active.id} className="landing-link-in absolute bottom-5 right-5 text-right text-white">
+        <div key={active.id} className="landing-link-in absolute bottom-5 right-5 hidden text-right text-white sm:block">
           <p className="font-display text-lg font-bold leading-tight">{active.name}</p>
           <p className="text-sm text-white/80">{active.role}</p>
         </div>
       </div>
 
-      <div className="absolute -bottom-3 left-0 w-[44%] min-w-[190px] max-w-[228px] -rotate-[4deg] transition-transform duration-500 hover:rotate-0">
+      <div className="absolute -bottom-3 left-0 w-[44%] min-w-[190px] max-w-[228px] origin-bottom-left -rotate-[4deg] scale-[0.8] sm:scale-100 transition-transform duration-500 hover:rotate-0">
         <PhoneFrame url={active.domain ?? `bitlink.app/${active.handle}`} screenClassName="h-[440px]">
           <div key={active.id} className="landing-screen-in h-full">
             <ProfilePreview profile={active} />
