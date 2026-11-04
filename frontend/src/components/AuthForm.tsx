@@ -32,6 +32,18 @@ export function AuthForm({ mode }: { mode: Mode }) {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (mode === "register") {
+      if (username.trim().length < 3) {
+        setError("Username must be at least 3 characters.");
+        return;
+      }
+      if (password.length < 8) {
+        setError("Password must be at least 8 characters.");
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const tokens =
@@ -46,7 +58,13 @@ export function AuthForm({ mode }: { mode: Mode }) {
       setTokens(tokens.access_token, tokens.refresh_token);
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(
+        err instanceof Error
+          ? err.message
+          : mode === "login"
+            ? "Could not log in. Please try again."
+            : "Could not create your account. Please try again.",
+      );
     } finally {
       setLoading(false);
     }

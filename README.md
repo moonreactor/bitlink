@@ -43,6 +43,18 @@ API docs: https://bitlink-production.up.railway.app/docs
 | `make shell-api` | Shell into API container |
 | `make shell-db` | `psql` into Postgres |
 
+## Superuser admin
+
+Panel at `/admin` (superusers only): platform metrics, users, links.
+
+Promote a user from the DB:
+
+```bash
+make shell-db
+# then:
+UPDATE users SET is_superuser = true WHERE email = 'you@example.com';
+```
+
 ## Features (v1)
 
 - Auth (register / login)
@@ -51,3 +63,4 @@ API docs: https://bitlink-production.up.railway.app/docs
 - Themes & appearance
 - Analytics (views, clicks, device, referrer)
 - QR code, email capture, profile/link locks, remove branding
+- Superuser admin area (`/admin`)

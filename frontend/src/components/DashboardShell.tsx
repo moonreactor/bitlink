@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ToastProvider } from "@/components/Toast";
 import { clearTokens, getAccessToken } from "@/lib/auth";
-import { profileApi } from "@/lib/api";
+import { authApi, profileApi } from "@/lib/api";
 
 const NAV = [
   { href: "/dashboard", label: "Overview" },
@@ -18,6 +18,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [username, setUsername] = useState<string | null>(null);
+  const [isSuperuser, setIsSuperuser] = useState(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -26,10 +27,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       router.replace("/login");
       return;
     }
-    profileApi
-      .get(token)
-      .then((p) => {
+    Promise.all([profileApi.get(token), authApi.me(token)])
+      .then(([p, user]) => {
         setUsername(p.username);
+        setIsSuperuser(user.is_superuser);
         setReady(true);
       })
       .catch(() => {
@@ -79,6 +80,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
+            {isSuperuser && (
+              <Link
+                href="/admin"
+                className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-accent hover:bg-accent/10"
+              >
+                Admin
+              </Link>
+            )}
           </nav>
           {username && (
             <div className="hidden px-5 pb-6 md:block">

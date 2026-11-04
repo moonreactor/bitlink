@@ -26,9 +26,15 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> TokenResponse:
     if db.query(User).filter(User.email == payload.email.lower()).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(
+            status_code=400,
+            detail="This email is already registered. Try logging in instead.",
+        )
     if db.query(Profile).filter(Profile.username == payload.username).first():
-        raise HTTPException(status_code=400, detail="Username already taken")
+        raise HTTPException(
+            status_code=400,
+            detail="This username is already taken. Please choose another.",
+        )
 
     user = User(email=payload.email.lower(), password_hash=hash_password(payload.password))
     db.add(user)
@@ -53,9 +59,12 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> TokenRe
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     user = db.query(User).filter(User.email == payload.email.lower()).first()
     if user is None or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="Incorrect email or password.")
     if not user.is_active:
-        raise HTTPException(status_code=401, detail="Account disabled")
+        raise HTTPException(
+            status_code=401,
+            detail="This account has been disabled. Contact support if you need help.",
+        )
 
     return TokenResponse(
         access_token=create_access_token(str(user.id)),

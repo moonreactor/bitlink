@@ -44,6 +44,7 @@ export default async function PublicUsernamePage({
     "settings",
     "appearance",
     "links",
+    "admin",
   ]);
   if (reserved.has(username.toLowerCase())) notFound();
 

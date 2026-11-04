@@ -103,3 +103,105 @@ export type TokenResponse = {
   refresh_token: string;
   token_type: string;
 };
+
+export type AuthUser = {
+  id: string;
+  email: string;
+  is_active: boolean;
+  is_superuser: boolean;
+  created_at: string;
+};
+
+export type AdminDailyStat = {
+  date: string;
+  users: number;
+  views: number;
+  clicks: number;
+};
+
+export type AdminTopProfile = {
+  user_id: string;
+  username: string;
+  display_name: string;
+  views: number;
+  clicks: number;
+  links_count: number;
+};
+
+export type AdminMetrics = {
+  total_users: number;
+  active_users: number;
+  superusers: number;
+  total_profiles: number;
+  total_links: number;
+  active_links: number;
+  total_views: number;
+  total_clicks: number;
+  total_subscribers: number;
+  new_users_7d: number;
+  new_users_30d: number;
+  views_7d: number;
+  clicks_7d: number;
+  daily: AdminDailyStat[];
+  top_profiles: AdminTopProfile[];
+};
+
+export type AdminUserListItem = {
+  id: string;
+  email: string;
+  is_active: boolean;
+  is_superuser: boolean;
+  created_at: string;
+  username: string | null;
+  display_name: string | null;
+  links_count: number;
+  views_count: number;
+  clicks_count: number;
+  subscribers_count: number;
+};
+
+export type AdminUserListResponse = {
+  items: AdminUserListItem[];
+  total: number;
+  page: number;
+  page_size: number;
+};
+
+export type AdminLinkItem = {
+  id: string;
+  title: string;
+  url: string;
+  is_active: boolean;
+  is_featured: boolean;
+  position: number;
+  created_at: string;
+  clicks_count: number;
+  username: string | null;
+  user_id: string | null;
+  profile_id: string;
+};
+
+export type AdminUserDetail = {
+  id: string;
+  email: string;
+  is_active: boolean;
+  is_superuser: boolean;
+  created_at: string;
+  username: string | null;
+  display_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  profile_id: string | null;
+  links_count: number;
+  views_count: number;
+  clicks_count: number;
+  subscribers_count: number;
+  links: AdminLinkItem[];
+};
+
+export type AdminLinkListResponse = {
+  items: AdminLinkItem[];
+  total: number;
+  page: number;
+  page_size: number;
+};

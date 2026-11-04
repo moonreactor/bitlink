@@ -1,5 +1,10 @@
 import type {
+  AdminLinkListResponse,
+  AdminMetrics,
+  AdminUserDetail,
+  AdminUserListResponse,
   AnalyticsSummary,
+  AuthUser,
   LinkItem,
   Profile,
   PublicProfile,
@@ -23,6 +28,47 @@ export class ApiError extends Error {
   }
 }
 
+function humanizeValidationMsg(msg: string, loc?: unknown): string {
+  const cleaned = msg.replace(/^Value error,\s*/i, "").trim();
+  const field = Array.isArray(loc) ? String(loc[loc.length - 1] || "") : "";
+
+  if (/email/i.test(cleaned) || field === "email") {
+    return "Please enter a valid email address.";
+  }
+  if (/at least \d+ characters/i.test(cleaned) && field === "password") {
+    return "Password must be at least 8 characters.";
+  }
+  if (/at least \d+ characters/i.test(cleaned) && field === "display_name") {
+    return "Display name cannot be empty.";
+  }
+
+  return cleaned;
+}
+
+function formatApiDetail(detail: unknown, status: number): string {
+  if (typeof detail === "string" && detail.trim()) return detail.trim();
+
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "msg" in item) {
+          const entry = item as { msg: unknown; loc?: unknown };
+          return humanizeValidationMsg(String(entry.msg), entry.loc);
+        }
+        return "";
+      })
+      .filter(Boolean);
+
+    if (messages.length) return [...new Set(messages)].join(" ");
+  }
+
+  if (status === 401) return "Incorrect email or password.";
+  if (status === 422) return "Please check the form and try again.";
+  if (status >= 500) return "Something went wrong on our side. Please try again.";
+  return "Request failed. Please try again.";
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -41,14 +87,14 @@ async function request<T>(
   });
 
   if (!res.ok) {
-    let detail = "Request failed";
+    let detail: unknown = null;
     try {
       const data = await res.json();
-      detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+      detail = data.detail;
     } catch {
       /* ignore */
     }
-    throw new ApiError(res.status, detail);
+    throw new ApiError(res.status, formatApiDetail(detail, res.status));
   }
 
   if (res.status === 204) return undefined as T;
@@ -64,6 +110,34 @@ export const authApi = {
   }) => request<TokenResponse>("/auth/register", { method: "POST", body: JSON.stringify(body) }),
   login: (body: { email: string; password: string }) =>
     request<TokenResponse>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
+  me: (token: string) => request<AuthUser>("/auth/me", {}, token),
+};
+
+export const adminApi = {
+  metrics: (token: string) => request<AdminMetrics>("/admin/metrics", {}, token),
+  users: (token: string, params?: { q?: string; page?: number; page_size?: number }) => {
+    const sp = new URLSearchParams();
+    if (params?.q) sp.set("q", params.q);
+    if (params?.page) sp.set("page", String(params.page));
+    if (params?.page_size) sp.set("page_size", String(params.page_size));
+    const qs = sp.toString();
+    return request<AdminUserListResponse>(`/admin/users${qs ? `?${qs}` : ""}`, {}, token);
+  },
+  user: (token: string, id: string) => request<AdminUserDetail>(`/admin/users/${id}`, {}, token),
+  updateUser: (token: string, id: string, body: { is_active?: boolean; is_superuser?: boolean }) =>
+    request<AdminUserDetail>(
+      `/admin/users/${id}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+      token,
+    ),
+  links: (token: string, params?: { q?: string; page?: number; page_size?: number }) => {
+    const sp = new URLSearchParams();
+    if (params?.q) sp.set("q", params.q);
+    if (params?.page) sp.set("page", String(params.page));
+    if (params?.page_size) sp.set("page_size", String(params.page_size));
+    const qs = sp.toString();
+    return request<AdminLinkListResponse>(`/admin/links${qs ? `?${qs}` : ""}`, {}, token);
+  },
 };
 
 export const profileApi = {
