@@ -15,7 +15,7 @@ function sanitize(raw: string) {
 
 export function ClaimUsername({
   variant = "hero",
-  buttonLabel = "Get started for free",
+  buttonLabel = "Claim free",
 }: {
   variant?: "hero" | "footer";
   buttonLabel?: string;

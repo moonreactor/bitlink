@@ -4,28 +4,20 @@ import { useState } from "react";
 
 const FAQS = [
   {
-    q: "Is Bitlink really free forever?",
-    a: "Yes. Auth, unlimited links, themes, analytics, QR codes, email capture, scheduling, and locks are all included — no plans or paywalls on the core.",
+    q: "Is it free?",
+    a: "Yes. Links, themes, analytics, QR, email capture, scheduling, and locks — all included. No plans.",
   },
   {
-    q: "Do I need a website to use Bitlink?",
-    a: "No. Bitlink is your page. Share one URL on Instagram, TikTok, YouTube, email signatures, or print a QR for offline traffic.",
+    q: "Do I need a website?",
+    a: "No. Bitlink is your page. Put one URL on Instagram, TikTok, YouTube, or print a QR.",
   },
   {
-    q: "Can I schedule links and lock content?",
-    a: "Yes. Schedule drops for a future window, feature important links, password-lock the whole page or individual links, and capture emails from visitors.",
+    q: "Can I lock or schedule links?",
+    a: "Yes. Password-lock the page or a link, and schedule when links appear.",
   },
   {
-    q: "How do analytics work?",
-    a: "Track page views and link clicks with device and referrer context so you know what actually converts — then reorder or restyle on the fly.",
-  },
-  {
-    q: "Can I hide the Bitlink CTA on my page?",
-    a: "No. Every public page shows a “Create your Bitlink” call to action so visitors can start their own page. It can’t be turned off.",
-  },
-  {
-    q: "Is my Bitlink safe to put on every social profile?",
-    a: "Your public page only exposes what you publish. Use profile or link locks when you need gated content.",
+    q: "Can I hide the Bitlink CTA?",
+    a: "No. Every public page shows “Create your Bitlink” so visitors can start their own.",
   },
 ];
 
