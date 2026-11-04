@@ -11,6 +11,7 @@ import { authApi, profileApi } from "@/lib/api";
 const NAV = [
   { href: "/dashboard", label: "Overview", icon: OverviewIcon },
   { href: "/dashboard/links", label: "Links", icon: LinksIcon },
+  { href: "/dashboard/products", label: "Products", icon: ProductsIcon },
   { href: "/dashboard/short-links", label: "Short links", icon: ShortIcon },
   { href: "/dashboard/appearance", label: "Appearance", icon: AppearIcon },
   { href: "/dashboard/settings", label: "Settings", icon: SettingsIcon },
@@ -95,9 +96,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   href={`/${username}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="mu-btn-secondary hidden sm:inline-flex"
+                  className="mu-btn-secondary px-3 py-2 text-xs sm:px-5 sm:py-2.5 sm:text-sm"
                 >
-                  View page
+                  View
                 </a>
               )}
               <div
@@ -187,7 +188,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             onClick={() => setMobileNav(false)}
           >
             <div
-              className="absolute left-0 top-0 h-full w-[280px] bg-meetup-bg p-4 shadow-meetup-lg"
+              className="absolute left-0 top-0 flex h-full w-[min(280px,88vw)] flex-col overflow-y-auto bg-meetup-bg p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] shadow-meetup-lg"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-4 flex items-center justify-between">
@@ -202,13 +203,15 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               </div>
               <nav className="mu-card space-y-1 p-2">
                 {NAV.map((item) => {
-                  const active = pathname === item.href;
+                  const active =
+                    pathname === item.href ||
+                    (item.href !== "/dashboard" && pathname.startsWith(item.href));
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
                       onClick={() => setMobileNav(false)}
-                      className={`block rounded-xl px-3 py-2.5 text-sm font-semibold ${
+                      className={`flex min-h-[44px] items-center rounded-xl px-3 py-2.5 text-sm font-semibold ${
                         active ? "bg-meetup-lavender text-meetup-purple" : "text-ink"
                       }`}
                     >
@@ -263,6 +266,15 @@ function ShortIcon() {
       <path d="M7 7h6a5 5 0 0 1 0 10H9" strokeLinecap="round" />
       <path d="M11 12H4m0 0 2.5-2.5M4 12l2.5 2.5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M13 12h7m0 0-2.5-2.5M20 12l-2.5 2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ProductsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M4 7h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7z" strokeLinejoin="round" />
+      <path d="M8 7V5a4 4 0 0 1 8 0v2" strokeLinecap="round" />
     </svg>
   );
 }

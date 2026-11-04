@@ -3,6 +3,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from app.schemas.link import PublicLinkOut
+from app.schemas.product import PublicProductOut
 from app.schemas.social import SocialLinkOut
 
 
@@ -29,3 +30,9 @@ class PublicProfileOut(BaseModel):
     background_music_video_id: str | None = None
     links: list[PublicLinkOut]
     social_links: list[SocialLinkOut]
+    products: list[PublicProductOut] = []
+
+
+class PublicDomainResolveOut(BaseModel):
+    username: str
+    custom_domain: str

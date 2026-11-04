@@ -44,8 +44,41 @@ export type Profile = {
   background_music_video_id: string | null;
   has_profile_lock: boolean;
   redirect_link_id: string | null;
+  custom_domain: string | null;
+  custom_domain_verified: boolean;
+  custom_domain_verify_token: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type DomainInfo = {
+  custom_domain: string | null;
+  custom_domain_verified: boolean;
+  custom_domain_verify_token: string | null;
+  txt_hostnames: string[];
+  cname_target: string | null;
+};
+
+export type ProductItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  price_label: string | null;
+  checkout_url: string;
+  thumbnail_url: string | null;
+  position: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PublicProduct = {
+  id: string;
+  title: string;
+  description: string | null;
+  price_label: string | null;
+  checkout_url: string;
+  thumbnail_url: string | null;
 };
 
 export type LinkItem = {
@@ -120,6 +153,7 @@ export type PublicProfile = {
   background_music_video_id: string | null;
   links: PublicLink[];
   social_links: SocialLink[];
+  products: PublicProduct[];
 };
 
 export type AnalyticsSummary = {

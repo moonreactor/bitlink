@@ -340,12 +340,12 @@ export default function ShortLinksPage() {
                 </p>
                 <button
                   type="button"
-                  className="mt-0.5 text-sm font-semibold text-meetup-purple hover:underline"
+                  className="mt-0.5 max-w-full break-all text-left text-sm font-semibold text-meetup-purple hover:underline"
                   onClick={() => copyText(item.short_url)}
                 >
                   {item.short_url}
                 </button>
-                <p className="mt-1 truncate text-xs text-meetup-muted">{item.final_url}</p>
+                <p className="mt-1 break-all text-xs text-meetup-muted">{item.final_url}</p>
                 {(item.rule_mobile_url || item.rule_desktop_url || item.geo_rules) && (
                   <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-meetup-purple">
                     Smart routing on
@@ -411,7 +411,7 @@ function MiniBtn({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl border px-3 py-1.5 text-xs font-semibold ${
+      className={`min-h-[40px] rounded-xl border px-3 py-2 text-xs font-semibold ${
         danger
           ? "border-red-200 text-red-600 hover:bg-red-50"
           : "border-meetup-border text-meetup-muted hover:border-meetup-purple/40 hover:text-ink"

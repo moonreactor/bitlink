@@ -163,6 +163,9 @@ class ProfileOut(BaseModel):
     background_music_video_id: str | None = None
     has_profile_lock: bool
     redirect_link_id: UUID | None
+    custom_domain: str | None = None
+    custom_domain_verified: bool = False
+    custom_domain_verify_token: str | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -41,6 +41,9 @@ def _profile_out(profile: Profile) -> ProfileOut:
         background_music_video_id=extract_youtube_video_id(profile.background_music_url),
         has_profile_lock=bool(profile.profile_password_hash),
         redirect_link_id=profile.redirect_link_id,
+        custom_domain=getattr(profile, "custom_domain", None),
+        custom_domain_verified=bool(getattr(profile, "custom_domain_verified", False)),
+        custom_domain_verify_token=getattr(profile, "custom_domain_verify_token", None),
         created_at=profile.created_at,
         updated_at=profile.updated_at,
     )

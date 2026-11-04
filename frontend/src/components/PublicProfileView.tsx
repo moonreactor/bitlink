@@ -292,6 +292,47 @@ export function PublicProfileView({
               );
             })}
 
+            {(profile.products || []).length > 0 && (
+              <div className="space-y-3">
+                {(profile.products || []).map((product) => (
+                  <a
+                    key={product.id}
+                    href={product.checkout_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex w-full items-center gap-3 overflow-hidden px-3 py-3 text-left shadow-lg shadow-black/10 transition hover:scale-[1.01]"
+                    style={{
+                      background: theme.button_color,
+                      color: theme.button_text_color,
+                      borderRadius: buttonRadius(theme.button_style),
+                    }}
+                  >
+                    {product.thumbnail_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={product.thumbnail_url}
+                        alt=""
+                        className="h-14 w-14 shrink-0 rounded-lg object-cover"
+                      />
+                    ) : null}
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-bold leading-tight">{product.title}</span>
+                      {product.description ? (
+                        <span className="mt-0.5 block text-xs opacity-80 line-clamp-2">
+                          {product.description}
+                        </span>
+                      ) : null}
+                    </span>
+                    {product.price_label ? (
+                      <span className="shrink-0 rounded-full bg-black/10 px-2.5 py-1 text-xs font-semibold">
+                        {product.price_label}
+                      </span>
+                    ) : null}
+                  </a>
+                ))}
+              </div>
+            )}
+
             {profile.tip_jar_enabled && profile.tip_jar_url && (
               <a
                 href={profile.tip_jar_url}
