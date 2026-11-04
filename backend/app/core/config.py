@@ -15,6 +15,15 @@ class Settings(BaseSettings):
     MEDIA_ROOT: str = "/app/media"
     ALGORITHM: str = "HS256"
 
+    def model_post_init(self, __context: object) -> None:
+        # Railway/Postgres often provides postgresql://; SQLAlchemy+psycopg needs +psycopg
+        url = self.DATABASE_URL
+        if url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://") :]
+        if url.startswith("postgresql://") and not url.startswith("postgresql+"):
+            url = "postgresql+psycopg://" + url[len("postgresql://") :]
+        object.__setattr__(self, "DATABASE_URL", url)
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]

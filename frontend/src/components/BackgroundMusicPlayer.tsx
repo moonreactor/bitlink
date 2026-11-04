@@ -66,7 +66,9 @@ function loadYouTubeApi(): Promise<void> {
 
 export function BackgroundMusicPlayer({ videoId }: { videoId: string }) {
   const playerRef = useRef<YTPlayer | null>(null);
-  const containerId = useRef(`yt-bg-${videoId}-${Math.random().toString(36).slice(2, 8)}`);
+  // Stable across SSR/CSR to avoid hydration mismatches
+  const containerId = `yt-bg-${videoId}`;
+  const [mounted, setMounted] = useState(false);
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -74,6 +76,11 @@ export function BackgroundMusicPlayer({ videoId }: { videoId: string }) {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     let cancelled = false;
 
     async function setup() {
@@ -82,7 +89,7 @@ export function BackgroundMusicPlayer({ videoId }: { videoId: string }) {
         if (cancelled || !window.YT?.Player) return;
 
         playerRef.current?.destroy();
-        playerRef.current = new window.YT.Player(containerId.current, {
+        playerRef.current = new window.YT.Player(containerId, {
           videoId,
           width: 1,
           height: 1,
@@ -155,7 +162,7 @@ export function BackgroundMusicPlayer({ videoId }: { videoId: string }) {
       }
       playerRef.current = null;
     };
-  }, [videoId]);
+  }, [mounted, videoId, containerId]);
 
   function togglePlay() {
     const player = playerRef.current;
@@ -188,12 +195,12 @@ export function BackgroundMusicPlayer({ videoId }: { videoId: string }) {
     }
   }
 
-  if (failed) return null;
+  if (!mounted || failed) return null;
 
   return (
     <>
       <div className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0" aria-hidden>
-        <div id={containerId.current} />
+        <div id={containerId} />
       </div>
 
       <div className="fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-full border border-white/15 bg-black/55 px-2 py-2 text-white shadow-xl backdrop-blur-md">

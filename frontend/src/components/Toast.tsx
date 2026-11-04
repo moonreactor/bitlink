@@ -56,7 +56,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <div
-        className="pointer-events-none fixed inset-x-0 bottom-4 z-[100] flex flex-col items-center gap-2 px-4 sm:bottom-6 sm:items-end sm:px-6"
+        className="pointer-events-none fixed inset-x-0 top-4 z-[100] flex flex-col items-center gap-3 px-4 sm:top-6"
         aria-live="polite"
         aria-relevant="additions"
       >
@@ -64,16 +64,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={item.id}
             role="status"
-            className={`pointer-events-auto flex max-w-sm items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg backdrop-blur transition ${
+            className={`pointer-events-auto flex w-full max-w-xl items-center gap-4 rounded-2xl border px-5 py-4 text-base shadow-2xl backdrop-blur transition sm:px-6 sm:py-5 sm:text-lg ${
               item.kind === "success"
-                ? "border-accent/25 bg-white/95 text-ink"
+                ? "border-accent/30 bg-white/95 text-ink"
                 : item.kind === "error"
                   ? "border-red-200 bg-white/95 text-ink"
                   : "border-ink/10 bg-white/95 text-ink"
             }`}
           >
             <span
-              className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${
+              className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white sm:h-9 sm:w-9 sm:text-base ${
                 item.kind === "success"
                   ? "bg-accent"
                   : item.kind === "error"
@@ -84,11 +84,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             >
               {item.kind === "success" ? "✓" : item.kind === "error" ? "!" : "i"}
             </span>
-            <p className="min-w-0 flex-1 font-medium leading-snug">{item.message}</p>
+            <p className="min-w-0 flex-1 font-semibold leading-snug">{item.message}</p>
             <button
               type="button"
               onClick={() => dismiss(item.id)}
-              className="shrink-0 text-ink/40 hover:text-ink"
+              className="shrink-0 px-1 text-2xl leading-none text-ink/40 hover:text-ink"
               aria-label="Dismiss"
             >
               ×

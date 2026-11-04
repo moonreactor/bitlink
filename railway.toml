@@ -1,0 +1,4 @@
+# Default project hints for Railway. Per-service rootDirectory / Dockerfile
+# are configured in the Railway dashboard / MCP (api -> backend, web -> frontend).
+[build]
+builder = "DOCKERFILE"
