@@ -183,7 +183,26 @@ export function PublicProfileView({
             {profile.display_name.slice(0, 1).toUpperCase()}
           </div>
         )}
-        <h1 className="mt-4 text-center text-2xl font-bold">{profile.display_name}</h1>
+        <h1 className="mt-4 flex items-center justify-center gap-2 text-center text-2xl font-bold">
+          <span>{profile.display_name}</span>
+          {profile.is_verified && (
+            <span
+              title="Verified"
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-sky-500 text-white shadow"
+              aria-label="Verified"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path
+                  d="M20 6 9 17l-5-5"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+          )}
+        </h1>
         {!profile.is_locked && profile.bio && (
           <p className="mt-2 text-center text-sm opacity-80">{profile.bio}</p>
         )}
@@ -272,6 +291,23 @@ export function PublicProfileView({
                 </div>
               );
             })}
+
+            {profile.tip_jar_enabled && profile.tip_jar_url && (
+              <a
+                href={profile.tip_jar_url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex w-full items-center justify-center gap-2 px-4 py-3 text-sm font-bold shadow-lg shadow-black/10 transition hover:scale-[1.01]"
+                style={{
+                  background: theme.button_color,
+                  color: theme.button_text_color,
+                  borderRadius: buttonRadius(theme.button_style),
+                }}
+              >
+                <span aria-hidden>♡</span>
+                {profile.tip_jar_label || "Tip me"}
+              </a>
+            )}
 
             {showLeadForm && (
               <form onSubmit={subscribe} className="mt-6 space-y-2">

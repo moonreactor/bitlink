@@ -13,6 +13,17 @@ GA_ID_RE = re.compile(r"^(G|UA)-[A-Z0-9-]+$", re.I)
 META_PIXEL_RE = re.compile(r"^\d{5,20}$")
 
 
+def _normalize_http_url(v: str | None, field: str) -> str | None:
+    if v is None:
+        return None
+    v = v.strip()
+    if not v:
+        return None
+    if not v.startswith(("http://", "https://")):
+        v = f"https://{v}"
+    return v
+
+
 class ThemeSchema(BaseModel):
     preset: str = "midnight"
     background_color: str = "#0f172a"
@@ -37,6 +48,10 @@ class ProfileUpdate(BaseModel):
     remove_branding: bool | None = None
     show_email_capture: bool | None = None
     show_phone_capture: bool | None = None
+    tip_jar_enabled: bool | None = None
+    tip_jar_url: str | None = Field(default=None, max_length=500)
+    tip_jar_label: str | None = Field(default=None, max_length=80)
+    clear_tip_jar_url: bool | None = None
     google_analytics_id: str | None = Field(default=None, max_length=32)
     meta_pixel_id: str | None = Field(default=None, max_length=32)
     clear_google_analytics_id: bool | None = None
@@ -108,6 +123,19 @@ class ProfileUpdate(BaseModel):
             raise ValueError("Color must be hex like #000000")
         return v.lower()
 
+    @field_validator("tip_jar_url")
+    @classmethod
+    def validate_tip_url(cls, v: str | None) -> str | None:
+        return _normalize_http_url(v, "tip_jar_url")
+
+    @field_validator("tip_jar_label")
+    @classmethod
+    def validate_tip_label(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip()
+        return v or "Tip me"
+
 
 class ProfileOut(BaseModel):
     id: UUID
@@ -119,8 +147,12 @@ class ProfileOut(BaseModel):
     seo_title: str | None
     seo_description: str | None
     remove_branding: bool
+    is_verified: bool = False
     show_email_capture: bool
     show_phone_capture: bool = False
+    tip_jar_enabled: bool = False
+    tip_jar_url: str | None = None
+    tip_jar_label: str = "Tip me"
     google_analytics_id: str | None = None
     meta_pixel_id: str | None = None
     qr_fg_color: str = "#000000"

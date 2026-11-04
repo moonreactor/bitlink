@@ -28,8 +28,12 @@ export type Profile = {
   seo_title: string | null;
   seo_description: string | null;
   remove_branding: boolean;
+  is_verified: boolean;
   show_email_capture: boolean;
   show_phone_capture: boolean;
+  tip_jar_enabled: boolean;
+  tip_jar_url: string | null;
+  tip_jar_label: string;
   google_analytics_id: string | null;
   meta_pixel_id: string | null;
   qr_fg_color: string;
@@ -102,8 +106,12 @@ export type PublicProfile = {
   seo_title: string | null;
   seo_description: string | null;
   remove_branding: boolean;
+  is_verified: boolean;
   show_email_capture: boolean;
   show_phone_capture: boolean;
+  tip_jar_enabled: boolean;
+  tip_jar_url: string | null;
+  tip_jar_label: string;
   google_analytics_id: string | null;
   meta_pixel_id: string | null;
   is_locked: boolean;
@@ -143,6 +151,9 @@ export type ShortLinkItem = {
   utm_campaign: string | null;
   utm_term: string | null;
   utm_content: string | null;
+  rule_mobile_url: string | null;
+  rule_desktop_url: string | null;
+  geo_rules: Record<string, string> | null;
   is_active: boolean;
   clicks: number;
   created_at: string;
@@ -242,6 +253,7 @@ export type AdminUserDetail = {
   display_name: string | null;
   bio: string | null;
   avatar_url: string | null;
+  is_verified: boolean;
   profile_id: string | null;
   links_count: number;
   views_count: number;

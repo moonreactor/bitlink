@@ -19,7 +19,15 @@ from app.schemas.short_link import (
 )
 from app.services.analytics import detect_device, hash_visitor, normalize_referrer
 from app.services.qr import generate_profile_qr
-from app.services.short_links import CODE_RE, RESERVED_CODES, allocate_code, apply_utm, code_available, normalize_code
+from app.services.short_links import (
+    CODE_RE,
+    RESERVED_CODES,
+    allocate_code,
+    apply_utm,
+    code_available,
+    normalize_code,
+    pick_destination,
+)
 
 router = APIRouter(tags=["short-links"])
 
@@ -28,9 +36,22 @@ def _short_url(code: str) -> str:
     return f"{settings.PUBLIC_WEB_URL.rstrip('/')}/{code}"
 
 
-def _final_url(link: ShortLink) -> str:
+def _final_url(
+    link: ShortLink,
+    *,
+    device: str | None = None,
+    country: str | None = None,
+) -> str:
+    base = pick_destination(
+        destination_url=link.destination_url,
+        rule_mobile_url=getattr(link, "rule_mobile_url", None),
+        rule_desktop_url=getattr(link, "rule_desktop_url", None),
+        geo_rules=getattr(link, "geo_rules", None),
+        device=device,
+        country=country,
+    )
     return apply_utm(
-        link.destination_url,
+        base,
         utm_source=link.utm_source,
         utm_medium=link.utm_medium,
         utm_campaign=link.utm_campaign,
@@ -52,6 +73,9 @@ def _out(link: ShortLink, clicks: int = 0) -> ShortLinkOut:
         utm_campaign=link.utm_campaign,
         utm_term=link.utm_term,
         utm_content=link.utm_content,
+        rule_mobile_url=getattr(link, "rule_mobile_url", None),
+        rule_desktop_url=getattr(link, "rule_desktop_url", None),
+        geo_rules=getattr(link, "geo_rules", None),
         is_active=link.is_active,
         clicks=clicks,
         created_at=link.created_at,
@@ -138,6 +162,9 @@ def create_short_link(
         utm_campaign=payload.utm_campaign,
         utm_term=payload.utm_term,
         utm_content=payload.utm_content,
+        rule_mobile_url=payload.rule_mobile_url,
+        rule_desktop_url=payload.rule_desktop_url,
+        geo_rules=payload.geo_rules,
         is_active=payload.is_active,
     )
     db.add(link)
@@ -188,6 +215,21 @@ def update_short_link(
             if field in data:
                 value = data[field]
                 setattr(link, field, value.strip() if isinstance(value, str) and value.strip() else None)
+
+    if data.get("clear_rule_mobile_url"):
+        link.rule_mobile_url = None
+    elif "rule_mobile_url" in data:
+        link.rule_mobile_url = data["rule_mobile_url"]
+
+    if data.get("clear_rule_desktop_url"):
+        link.rule_desktop_url = None
+    elif "rule_desktop_url" in data:
+        link.rule_desktop_url = data["rule_desktop_url"]
+
+    if data.get("clear_geo_rules"):
+        link.geo_rules = None
+    elif "geo_rules" in data:
+        link.geo_rules = data["geo_rules"]
 
     if "is_active" in data and data["is_active"] is not None:
         link.is_active = data["is_active"]
@@ -247,7 +289,11 @@ def resolve_short_link(
     if link is None:
         raise HTTPException(status_code=404, detail="Short link not found")
 
-    url = _final_url(link)
+    ua = request.headers.get("user-agent")
+    country_hdr = request.headers.get("cf-ipcountry") or request.headers.get("x-country-code")
+    country = country_hdr[:2].upper() if country_hdr else None
+    device = detect_device(ua)
+    url = _final_url(link, device=device, country=country)
     _track_click(db, link, request)
     return ShortLinkVisitOut(code=link.code, url=url, title=link.title)
 

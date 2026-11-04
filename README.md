@@ -66,6 +66,7 @@ UPDATE users SET is_superuser = true WHERE email = 'you@example.com';
 - Analytics with date ranges, daily chart, countries + CSV export
 - Custom QR (colors, avatar logo, PNG/SVG)
 - Email + phone capture, GA / Meta pixels, profile/link locks
-- Short links with custom back-half, UTMs, editable destination, click stats + QR
+- Short links with custom back-half, UTMs, device/geo routing, click stats + QR
+- Tip jar (external MP/PayPal/Cafecito URL) + verified badge (admin)
 - Always-visible “Create your Bitlink” CTA on public pages
 - Superuser admin area (`/admin`)

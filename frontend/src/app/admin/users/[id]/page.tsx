@@ -28,7 +28,7 @@ export default function AdminUserDetailPage() {
     load();
   }, [load]);
 
-  async function patch(body: { is_active?: boolean; is_superuser?: boolean }) {
+  async function patch(body: { is_active?: boolean; is_superuser?: boolean; is_verified?: boolean }) {
     const token = getAccessToken();
     if (!token || !user) return;
     setSaving(true);
@@ -97,6 +97,13 @@ export default function AdminUserDetailPage() {
           >
             {user.is_superuser ? "Remove superuser" : "Make superuser"}
           </button>
+          <button
+            disabled={saving || !user.profile_id}
+            onClick={() => patch({ is_verified: !user.is_verified })}
+            className="rounded-xl border border-ink/10 px-4 py-2 text-sm font-medium hover:bg-ink/5 disabled:opacity-50"
+          >
+            {user.is_verified ? "Remove verified badge" : "Verify profile"}
+          </button>
           {user.username && (
             <a
               href={`/${user.username}`}
@@ -111,6 +118,7 @@ export default function AdminUserDetailPage() {
         <div className="mt-3 flex gap-2 text-xs">
           <Badge ok={user.is_active}>{user.is_active ? "Active" : "Disabled"}</Badge>
           {user.is_superuser && <Badge ok>Superuser</Badge>}
+          {user.is_verified && <Badge ok>Verified</Badge>}
         </div>
       </section>
 

@@ -1,9 +1,15 @@
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.services.short_links import normalize_destination, validate_code_format
+from app.services.short_links import (
+    normalize_destination,
+    normalize_geo_rules,
+    normalize_optional_url,
+    validate_code_format,
+)
 
 
 class ShortLinkCreate(BaseModel):
@@ -15,12 +21,25 @@ class ShortLinkCreate(BaseModel):
     utm_campaign: str | None = Field(default=None, max_length=120)
     utm_term: str | None = Field(default=None, max_length=120)
     utm_content: str | None = Field(default=None, max_length=120)
+    rule_mobile_url: str | None = Field(default=None, max_length=2000)
+    rule_desktop_url: str | None = Field(default=None, max_length=2000)
+    geo_rules: dict[str, str] | None = None
     is_active: bool = True
 
     @field_validator("destination_url")
     @classmethod
     def validate_destination(cls, v: str) -> str:
         return normalize_destination(v)
+
+    @field_validator("rule_mobile_url", "rule_desktop_url")
+    @classmethod
+    def validate_rule_urls(cls, v: str | None) -> str | None:
+        return normalize_optional_url(v)
+
+    @field_validator("geo_rules")
+    @classmethod
+    def validate_geo(cls, v: dict[str, Any] | None) -> dict[str, str] | None:
+        return normalize_geo_rules(v)
 
     @field_validator("code")
     @classmethod
@@ -49,6 +68,12 @@ class ShortLinkUpdate(BaseModel):
     utm_term: str | None = Field(default=None, max_length=120)
     utm_content: str | None = Field(default=None, max_length=120)
     clear_utm: bool | None = None
+    rule_mobile_url: str | None = Field(default=None, max_length=2000)
+    rule_desktop_url: str | None = Field(default=None, max_length=2000)
+    clear_rule_mobile_url: bool | None = None
+    clear_rule_desktop_url: bool | None = None
+    geo_rules: dict[str, str] | None = None
+    clear_geo_rules: bool | None = None
     is_active: bool | None = None
 
     @field_validator("destination_url")
@@ -57,6 +82,16 @@ class ShortLinkUpdate(BaseModel):
         if v is None:
             return v
         return normalize_destination(v)
+
+    @field_validator("rule_mobile_url", "rule_desktop_url")
+    @classmethod
+    def validate_rule_urls(cls, v: str | None) -> str | None:
+        return normalize_optional_url(v)
+
+    @field_validator("geo_rules")
+    @classmethod
+    def validate_geo(cls, v: dict[str, Any] | None) -> dict[str, str] | None:
+        return normalize_geo_rules(v)
 
     @field_validator("code")
     @classmethod
@@ -78,6 +113,9 @@ class ShortLinkOut(BaseModel):
     utm_campaign: str | None
     utm_term: str | None
     utm_content: str | None
+    rule_mobile_url: str | None = None
+    rule_desktop_url: str | None = None
+    geo_rules: dict[str, str] | None = None
     is_active: bool
     clicks: int = 0
     created_at: datetime

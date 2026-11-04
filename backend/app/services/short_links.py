@@ -114,3 +114,50 @@ def apply_utm(
     existing = dict(parse_qsl(parsed.query, keep_blank_values=True))
     existing.update(clean)
     return urlunparse(parsed._replace(query=urlencode(existing)))
+
+
+def normalize_optional_url(url: str | None) -> str | None:
+    if url is None:
+        return None
+    raw = url.strip()
+    if not raw:
+        return None
+    return normalize_destination(raw)
+
+
+def normalize_geo_rules(rules: dict | None) -> dict[str, str] | None:
+    if not rules:
+        return None
+    cleaned: dict[str, str] = {}
+    for key, value in rules.items():
+        country = str(key).strip().upper()
+        if len(country) != 2 or not country.isalpha():
+            raise ValueError("Geo rules keys must be ISO country codes (e.g. AR, US).")
+        if not isinstance(value, str) or not value.strip():
+            continue
+        cleaned[country] = normalize_destination(value)
+    return cleaned or None
+
+
+def pick_destination(
+    *,
+    destination_url: str,
+    rule_mobile_url: str | None,
+    rule_desktop_url: str | None,
+    geo_rules: dict | None,
+    device: str | None,
+    country: str | None,
+) -> str:
+    """Choose destination by device, then geo, then default."""
+    device_key = (device or "").lower()
+    if device_key in {"mobile", "tablet"} and rule_mobile_url:
+        return rule_mobile_url
+    if device_key == "desktop" and rule_desktop_url:
+        return rule_desktop_url
+
+    if geo_rules and country:
+        cc = country.upper()[:2]
+        if cc in geo_rules and geo_rules[cc]:
+            return str(geo_rules[cc])
+
+    return destination_url

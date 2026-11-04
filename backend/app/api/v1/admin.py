@@ -90,6 +90,7 @@ def _build_user_detail(db: Session, user: User) -> AdminUserDetail:
         display_name=profile.display_name if profile else None,
         bio=profile.bio if profile else None,
         avatar_url=profile.avatar_url if profile else None,
+        is_verified=bool(getattr(profile, "is_verified", False)) if profile else False,
         profile_id=profile.id if profile else None,
         links_count=links_count,
         views_count=views_count,
@@ -354,6 +355,12 @@ def update_user(
         user.is_active = payload.is_active
     if payload.is_superuser is not None:
         user.is_superuser = payload.is_superuser
+
+    if payload.is_verified is not None:
+        profile = db.query(Profile).filter(Profile.user_id == user.id).first()
+        if profile is None:
+            raise HTTPException(status_code=400, detail="User has no profile to verify")
+        profile.is_verified = payload.is_verified
 
     db.commit()
     db.refresh(user)

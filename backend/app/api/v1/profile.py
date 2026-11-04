@@ -25,8 +25,12 @@ def _profile_out(profile: Profile) -> ProfileOut:
         seo_title=profile.seo_title,
         seo_description=profile.seo_description,
         remove_branding=profile.remove_branding,
+        is_verified=bool(getattr(profile, "is_verified", False)),
         show_email_capture=profile.show_email_capture,
         show_phone_capture=bool(getattr(profile, "show_phone_capture", False)),
+        tip_jar_enabled=bool(getattr(profile, "tip_jar_enabled", False)),
+        tip_jar_url=getattr(profile, "tip_jar_url", None),
+        tip_jar_label=getattr(profile, "tip_jar_label", None) or "Tip me",
         google_analytics_id=getattr(profile, "google_analytics_id", None),
         meta_pixel_id=getattr(profile, "meta_pixel_id", None),
         qr_fg_color=getattr(profile, "qr_fg_color", None) or "#000000",
@@ -85,6 +89,9 @@ def update_profile(
         "remove_branding",
         "show_email_capture",
         "show_phone_capture",
+        "tip_jar_enabled",
+        "tip_jar_url",
+        "tip_jar_label",
         "google_analytics_id",
         "meta_pixel_id",
         "qr_fg_color",
@@ -100,6 +107,9 @@ def update_profile(
         profile.google_analytics_id = None
     if data.get("clear_meta_pixel_id"):
         profile.meta_pixel_id = None
+    if data.get("clear_tip_jar_url"):
+        profile.tip_jar_url = None
+        profile.tip_jar_enabled = False
 
     if data.get("clear_background_music"):
         profile.background_music_url = None

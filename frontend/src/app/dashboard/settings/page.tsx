@@ -49,6 +49,9 @@ export default function SettingsPage() {
       seo_description: profile.seo_description,
       show_email_capture: profile.show_email_capture,
       show_phone_capture: profile.show_phone_capture,
+      tip_jar_enabled: profile.tip_jar_enabled,
+      tip_jar_url: profile.tip_jar_url,
+      tip_jar_label: profile.tip_jar_label || "Tip me",
       google_analytics_id: profile.google_analytics_id,
       meta_pixel_id: profile.meta_pixel_id,
       qr_fg_color: profile.qr_fg_color || "#000000",
@@ -62,6 +65,7 @@ export default function SettingsPage() {
     if (!profile.background_music_url) body.clear_background_music = true;
     if (!profile.google_analytics_id) body.clear_google_analytics_id = true;
     if (!profile.meta_pixel_id) body.clear_meta_pixel_id = true;
+    if (!profile.tip_jar_url) body.clear_tip_jar_url = true;
     if (profilePassword) body.profile_password = profilePassword;
     try {
       const updated = await profileApi.update(token, body);
@@ -189,6 +193,31 @@ export default function SettingsPage() {
         <p className="text-xs text-meetup-muted">
           The “Create your Bitlink” CTA always appears on your public page and can’t be turned off.
         </p>
+
+        <div className="space-y-3 rounded-xl border border-meetup-border p-3">
+          <p className="text-sm font-medium">Tip jar</p>
+          <p className="text-xs text-meetup-muted">
+            Paste a Mercado Pago, Cafecito, PayPal, or any tip link. Shows as a button on your page.
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={profile.tip_jar_enabled}
+              onChange={(e) => setProfile({ ...profile, tip_jar_enabled: e.target.checked })}
+            />
+            Show tip jar on public page
+          </label>
+          <Field
+            label="Tip button label"
+            value={profile.tip_jar_label || "Tip me"}
+            onChange={(v) => setProfile({ ...profile, tip_jar_label: v || "Tip me" })}
+          />
+          <Field
+            label="Tip URL"
+            value={profile.tip_jar_url || ""}
+            onChange={(v) => setProfile({ ...profile, tip_jar_url: v || null })}
+          />
+        </div>
 
         <div className="space-y-3 rounded-xl border border-meetup-border p-3">
           <p className="text-sm font-medium">Tracking pixels</p>

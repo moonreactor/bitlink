@@ -15,6 +15,9 @@ type Draft = {
   utm_campaign: string;
   utm_term: string;
   utm_content: string;
+  rule_mobile_url: string;
+  rule_desktop_url: string;
+  geo_rules_text: string;
 };
 
 const emptyDraft = (): Draft => ({
@@ -26,13 +29,33 @@ const emptyDraft = (): Draft => ({
   utm_campaign: "",
   utm_term: "",
   utm_content: "",
+  rule_mobile_url: "",
+  rule_desktop_url: "",
+  geo_rules_text: "",
 });
+
+function parseGeoRules(text: string): Record<string, string> | null {
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (!lines.length) return null;
+  const out: Record<string, string> = {};
+  for (const line of lines) {
+    const [cc, ...rest] = line.split(/[:=\s]+/);
+    const url = rest.join(" ").trim();
+    if (!cc || !url) continue;
+    out[cc.toUpperCase()] = url;
+  }
+  return Object.keys(out).length ? out : null;
+}
 
 export default function ShortLinksPage() {
   const { success, error: toastError } = useToast();
   const [items, setItems] = useState<ShortLinkItem[]>([]);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [showUtm, setShowUtm] = useState(false);
+  const [showRules, setShowRules] = useState(false);
   const [saving, setSaving] = useState(false);
   const [codeHint, setCodeHint] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -80,9 +103,13 @@ export default function ShortLinksPage() {
         utm_campaign: draft.utm_campaign.trim() || null,
         utm_term: draft.utm_term.trim() || null,
         utm_content: draft.utm_content.trim() || null,
+        rule_mobile_url: draft.rule_mobile_url.trim() || null,
+        rule_desktop_url: draft.rule_desktop_url.trim() || null,
+        geo_rules: parseGeoRules(draft.geo_rules_text),
       });
       setDraft(emptyDraft());
       setShowUtm(false);
+      setShowRules(false);
       setCodeHint("");
       await load();
       success("Short link created");
@@ -215,13 +242,22 @@ export default function ShortLinksPage() {
           </label>
         </div>
 
-        <button
-          type="button"
-          className="text-sm font-semibold text-meetup-purple hover:underline"
-          onClick={() => setShowUtm((v) => !v)}
-        >
-          {showUtm ? "Hide UTM builder" : "Add UTMs"}
-        </button>
+        <div className="flex flex-wrap gap-4">
+          <button
+            type="button"
+            className="text-sm font-semibold text-meetup-purple hover:underline"
+            onClick={() => setShowUtm((v) => !v)}
+          >
+            {showUtm ? "Hide UTM builder" : "Add UTMs"}
+          </button>
+          <button
+            type="button"
+            className="text-sm font-semibold text-meetup-purple hover:underline"
+            onClick={() => setShowRules((v) => !v)}
+          >
+            {showRules ? "Hide routing rules" : "Add routing rules"}
+          </button>
+        </div>
 
         {showUtm && (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -243,6 +279,41 @@ export default function ShortLinksPage() {
                 />
               </label>
             ))}
+          </div>
+        )}
+
+        {showRules && (
+          <div className="space-y-3 rounded-xl border border-meetup-border bg-meetup-bg/50 p-4">
+            <p className="text-xs text-meetup-muted">
+              Optional overrides by device or country. Default destination is used when no rule matches.
+            </p>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">Mobile / tablet URL</span>
+              <input
+                className="mu-input"
+                placeholder="https://m.example.com"
+                value={draft.rule_mobile_url}
+                onChange={(e) => setDraft({ ...draft, rule_mobile_url: e.target.value })}
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">Desktop URL</span>
+              <input
+                className="mu-input"
+                placeholder="https://www.example.com"
+                value={draft.rule_desktop_url}
+                onChange={(e) => setDraft({ ...draft, rule_desktop_url: e.target.value })}
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">Geo rules (one per line: AR https://…)</span>
+              <textarea
+                className="mu-input min-h-[88px]"
+                placeholder={"AR https://example.com/ar\nUS https://example.com/us"}
+                value={draft.geo_rules_text}
+                onChange={(e) => setDraft({ ...draft, geo_rules_text: e.target.value })}
+              />
+            </label>
           </div>
         )}
 
@@ -275,6 +346,11 @@ export default function ShortLinksPage() {
                   {item.short_url}
                 </button>
                 <p className="mt-1 truncate text-xs text-meetup-muted">{item.final_url}</p>
+                {(item.rule_mobile_url || item.rule_desktop_url || item.geo_rules) && (
+                  <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-meetup-purple">
+                    Smart routing on
+                  </p>
+                )}
               </div>
               <span className="rounded-full bg-meetup-lavender px-2.5 py-1 text-xs font-bold tabular-nums text-meetup-purple">
                 {item.clicks} clicks

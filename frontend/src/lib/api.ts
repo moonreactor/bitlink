@@ -186,7 +186,11 @@ export const adminApi = {
     return request<AdminUserListResponse>(`/admin/users${qs ? `?${qs}` : ""}`, {}, token);
   },
   user: (token: string, id: string) => request<AdminUserDetail>(`/admin/users/${id}`, {}, token),
-  updateUser: (token: string, id: string, body: { is_active?: boolean; is_superuser?: boolean }) =>
+  updateUser: (
+    token: string,
+    id: string,
+    body: { is_active?: boolean; is_superuser?: boolean; is_verified?: boolean },
+  ) =>
     request<AdminUserDetail>(
       `/admin/users/${id}`,
       { method: "PATCH", body: JSON.stringify(body) },
