@@ -15,9 +15,9 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Bitlink — Everything you are, in one simple link",
+  title: "Bitlink — Link-in-bio + short links, free forever",
   description:
-    "One link for every link you share. Themes, analytics, QR, locks, scheduling, and email capture — free forever on the core.",
+    "Unlimited link-in-bio and short links with analytics, QR, UTMs, embeds, and themes — free forever. No monthly caps.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

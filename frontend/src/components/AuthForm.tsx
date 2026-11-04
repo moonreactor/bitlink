@@ -111,6 +111,17 @@ export function AuthForm({ mode }: { mode: Mode }) {
               required
             />
 
+            {mode === "login" && (
+              <div className="-mt-2 text-right">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm font-semibold text-meetup-purple hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+            )}
+
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             <button type="submit" disabled={loading} className="mu-btn-primary w-full py-3">

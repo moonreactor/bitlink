@@ -79,10 +79,10 @@ export function LandingPage() {
                 bitlink
               </p>
               <h1 className="mt-3 max-w-lg text-2xl font-semibold leading-snug text-ink/85 md:text-3xl">
-                One link for everything you share.
+                Link-in-bio + short links, free forever.
               </h1>
               <p className="mt-3 max-w-md text-base text-meetup-muted">
-                Free forever. Live in under a minute.
+                Unlimited shorts with analytics. No 5-links/month cap.
               </p>
               <div className="mt-7">
                 <ClaimUsername buttonLabel="Claim free" />
@@ -160,6 +160,36 @@ export function LandingPage() {
                 <Link href="/register" className="mu-btn-secondary mt-6">
                   Start free
                 </Link>
+              </div>
+            </div>
+
+            {/* Short links */}
+            <div className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
+              <div>
+                <h2 className="mu-section-title">Short links that work</h2>
+                <p className="mt-3 text-meetup-muted">
+                  Custom back-halves, UTMs, editable destinations, QR — no monthly cap.
+                </p>
+                <Link href="/register" className="mu-btn-primary mt-6">
+                  Create shorts free
+                </Link>
+              </div>
+              <div className="mu-card space-y-3 p-5 md:p-6">
+                {[
+                  { code: "bitlink.app/promo", clicks: "1.2k" },
+                  { code: "bitlink.app/ig", clicks: "840" },
+                  { code: "bitlink.app/qr", clicks: "312" },
+                ].map((row) => (
+                  <div
+                    key={row.code}
+                    className="flex items-center justify-between gap-3 rounded-xl bg-mist px-4 py-3"
+                  >
+                    <span className="truncate font-semibold text-meetup-purple">{row.code}</span>
+                    <span className="text-xs font-bold tabular-nums text-meetup-muted">
+                      {row.clicks}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
 

@@ -2,12 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { LinkVisual } from "@/components/LinkVisual";
+import { MediaUploadField } from "@/components/MediaUploadField";
 import { useToast } from "@/components/Toast";
 import { profileApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
+import { PROFILE_FONTS, fontStack, googleFontsHref } from "@/lib/fonts";
+import { brandColor, type SocialBrandId } from "@/lib/socialBrands";
 import { THEME_PRESETS, buttonRadius, resolveSocialIconColor } from "@/lib/themes";
 import type { Profile, SocialIconStyle, Theme } from "@/lib/types";
-import { brandColor, type SocialBrandId } from "@/lib/socialBrands";
+
+function usePreviewFont(fontFamily: string | undefined) {
+  useEffect(() => {
+    const href = googleFontsHref(fontFamily);
+    if (!href) return;
+    const id = `bitlink-font-preview-${fontFamily}`;
+    if (document.getElementById(id)) return;
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = href;
+    document.head.appendChild(link);
+  }, [fontFamily]);
+}
 
 const SOCIAL_PREVIEW: { platform: SocialBrandId; url: string }[] = [
   { platform: "instagram", url: "https://instagram.com" },
@@ -24,6 +40,7 @@ export default function AppearancePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [theme, setTheme] = useState<Theme>(THEME_PRESETS.midnight);
   const [saving, setSaving] = useState(false);
+  usePreviewFont(theme.font_family);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -133,18 +150,27 @@ export default function AppearancePage() {
           </label>
 
           <label className="block text-sm">
-            Background image URL
-            <input
+            Font
+            <select
               className="mt-1 w-full rounded-xl border border-meetup-border px-3 py-2"
-              value={theme.background_image || ""}
-              onChange={(e) =>
-                patchTheme({
-                  background_image: e.target.value || null,
-                })
-              }
-              placeholder="https://…"
-            />
+              value={theme.font_family || "DM Sans"}
+              onChange={(e) => patchTheme({ font_family: e.target.value })}
+              style={{ fontFamily: fontStack(theme.font_family) }}
+            >
+              {PROFILE_FONTS.map((f) => (
+                <option key={f.id} value={f.id} style={{ fontFamily: f.stack }}>
+                  {f.id}
+                </option>
+              ))}
+            </select>
           </label>
+
+          <MediaUploadField
+            label="Background image"
+            value={theme.background_image}
+            onChange={(url) => patchTheme({ background_image: url })}
+            hint="Upload or paste a direct image URL."
+          />
 
           <div className="border-t border-meetup-border pt-3">
             <p className="text-sm font-medium">Social icons</p>
@@ -231,6 +257,7 @@ export default function AppearancePage() {
           backgroundSize: "cover",
           backgroundPosition: "center",
           color: theme.text_color,
+          fontFamily: fontStack(theme.font_family),
         }}
       >
         <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-full bg-white/20 text-2xl font-bold">

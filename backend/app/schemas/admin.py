@@ -83,6 +83,7 @@ class AdminUserDetail(BaseModel):
     display_name: str | None = None
     bio: str | None = None
     avatar_url: str | None = None
+    is_verified: bool = False
     profile_id: UUID | None = None
     links_count: int = 0
     views_count: int = 0
@@ -94,6 +95,7 @@ class AdminUserDetail(BaseModel):
 class AdminUserUpdate(BaseModel):
     is_active: bool | None = None
     is_superuser: bool | None = None
+    is_verified: bool | None = None
 
 
 class AdminLinkListResponse(BaseModel):

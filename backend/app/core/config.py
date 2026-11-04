@@ -12,7 +12,10 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     CORS_ORIGINS: str = "http://localhost:3000"
     PUBLIC_WEB_URL: str = "http://localhost:3000"
+    PUBLIC_API_URL: str = "http://localhost:8000"
     MEDIA_ROOT: str = "/app/media"
+    # When true, forgot-password responses include reset_url (local/dev only).
+    EXPOSE_RESET_URL: bool = True
     ALGORITHM: str = "HS256"
 
     def model_post_init(self, __context: object) -> None:

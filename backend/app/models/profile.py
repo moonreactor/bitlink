@@ -41,7 +41,17 @@ class Profile(Base):
     redirect_link_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("links.id", ondelete="SET NULL", use_alter=True), nullable=True
     )
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    tip_jar_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    tip_jar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    tip_jar_label: Mapped[str] = mapped_column(String(80), default="Tip me", nullable=False)
     show_email_capture: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    show_phone_capture: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    google_analytics_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    meta_pixel_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    qr_fg_color: Mapped[str] = mapped_column(String(7), default="#000000", nullable=False)
+    qr_bg_color: Mapped[str] = mapped_column(String(7), default="#ffffff", nullable=False)
+    qr_logo_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     background_music_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     background_music_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

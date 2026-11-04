@@ -11,6 +11,7 @@ from app.db.session import get_db
 from app.models.link import Link
 from app.models.user import User
 from app.schemas.link import LinkCreate, LinkOut, LinkReorderRequest, LinkUpdate
+from app.services.embeds import prepare_link_url
 from app.services.link_meta import fetch_link_meta
 
 router = APIRouter(prefix="/me/links", tags=["links"])
@@ -28,6 +29,9 @@ def _link_out(link: Link) -> LinkOut:
         id=link.id,
         title=link.title,
         url=link.url,
+        link_type=link.link_type or "url",
+        collection=link.collection,
+        collection_layout=link.collection_layout or "list",
         thumbnail_url=link.thumbnail_url,
         icon=link.icon,
         animation=link.animation or "none",
@@ -85,19 +89,31 @@ def create_link(
     )
     position = (max_pos[0] + 1) if max_pos else 0
 
+    try:
+        url = prepare_link_url(payload.link_type, payload.url, payload.title)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     link = Link(
         profile_id=profile.id,
         title=payload.title,
-        url=payload.url,
+        url=url,
+        link_type=payload.link_type,
+        collection=payload.collection,
+        collection_layout=payload.collection_layout,
         thumbnail_url=payload.thumbnail_url,
         icon=payload.icon,
         animation=payload.animation,
         is_active=payload.is_active,
-        is_featured=payload.is_featured,
+        is_featured=False if payload.link_type == "header" else payload.is_featured,
         position=position,
         visible_from=payload.visible_from,
         visible_until=payload.visible_until,
-        lock_code_hash=hash_password(payload.lock_code) if payload.lock_code else None,
+        lock_code_hash=(
+            None
+            if payload.link_type == "header"
+            else (hash_password(payload.lock_code) if payload.lock_code else None)
+        ),
     )
     db.add(link)
     db.commit()
@@ -118,9 +134,24 @@ def update_link(
         raise HTTPException(status_code=404, detail="Link not found")
 
     data = payload.model_dump(exclude_unset=True)
-    for field in ("title", "url", "thumbnail_url", "icon", "animation", "is_active", "is_featured"):
+    for field in (
+        "title",
+        "thumbnail_url",
+        "icon",
+        "animation",
+        "is_active",
+        "is_featured",
+        "link_type",
+        "collection_layout",
+    ):
         if field in data:
             setattr(link, field, data[field])
+
+    if data.get("clear_collection"):
+        link.collection = None
+    elif "collection" in data:
+        value = data["collection"]
+        link.collection = value.strip() if isinstance(value, str) and value.strip() else None
 
     if data.get("clear_thumbnail"):
         link.thumbnail_url = None
@@ -136,10 +167,21 @@ def update_link(
         if "visible_until" in data:
             link.visible_until = data["visible_until"]
 
-    if data.get("clear_lock_code"):
+    if data.get("clear_lock_code") or link.link_type == "header":
         link.lock_code_hash = None
     elif data.get("lock_code"):
         link.lock_code_hash = hash_password(data["lock_code"])
+
+    next_type = link.link_type or "url"
+    next_title = link.title
+    next_url = data["url"] if "url" in data else link.url
+    try:
+        link.url = prepare_link_url(next_type, next_url, next_title)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if link.link_type == "header":
+        link.is_featured = False
 
     db.commit()
     db.refresh(link)
