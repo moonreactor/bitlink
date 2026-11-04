@@ -43,8 +43,8 @@ const FEATURE_CARDS = [
     tone: "bg-[#FFF7E8] text-[#D97706]",
   },
   {
-    title: "Remove branding",
-    body: "Ship a clean page that feels entirely yours.",
+    title: "Always-on CTA",
+    body: "Every public page invites visitors to create their own Bitlink — built-in growth.",
     tone: "bg-mist text-ink",
   },
 ];

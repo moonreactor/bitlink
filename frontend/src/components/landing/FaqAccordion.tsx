@@ -5,7 +5,7 @@ import { useState } from "react";
 const FAQS = [
   {
     q: "Is Bitlink really free forever?",
-    a: "Yes. Auth, unlimited links, themes, analytics, QR codes, email capture, scheduling, locks, and remove branding are all included — no plans or paywalls on the core.",
+    a: "Yes. Auth, unlimited links, themes, analytics, QR codes, email capture, scheduling, and locks are all included — no plans or paywalls on the core.",
   },
   {
     q: "Do I need a website to use Bitlink?",
@@ -20,8 +20,8 @@ const FAQS = [
     a: "Track page views and link clicks with device and referrer context so you know what actually converts — then reorder or restyle on the fly.",
   },
   {
-    q: "Can I remove Bitlink branding?",
-    a: "Yes. In appearance settings you can hide branding so the page feels 100% yours.",
+    q: "Can I hide the Bitlink CTA on my page?",
+    a: "No. Every public page shows a “Create your Bitlink” call to action so visitors can start their own page. It can’t be turned off.",
   },
   {
     q: "Is my Bitlink safe to put on every social profile?",

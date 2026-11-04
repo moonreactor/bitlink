@@ -43,7 +43,6 @@ export default function SettingsPage() {
       avatar_url: profile.avatar_url,
       seo_title: profile.seo_title,
       seo_description: profile.seo_description,
-      remove_branding: profile.remove_branding,
       show_email_capture: profile.show_email_capture,
       background_music_url: profile.background_music_url,
       background_music_enabled: profile.background_music_enabled,
@@ -98,7 +97,7 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-3xl space-y-8">
       <div>
         <h1 className="font-display text-3xl font-bold tracking-tight text-ink">Settings</h1>
-        <p className="mt-1 text-sm text-meetup-muted">Profile, SEO, music, locks, branding, QR.</p>
+        <p className="mt-1 text-sm text-meetup-muted">Profile, SEO, music, locks, QR.</p>
       </div>
 
       <form onSubmit={saveProfile} className="space-y-4 mu-card p-5 md:p-6">
@@ -141,19 +140,14 @@ export default function SettingsPage() {
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
-            checked={profile.remove_branding}
-            onChange={(e) => setProfile({ ...profile, remove_branding: e.target.checked })}
-          />
-          Remove Bitlink branding
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
             checked={profile.show_email_capture}
             onChange={(e) => setProfile({ ...profile, show_email_capture: e.target.checked })}
           />
           Show email capture on public page
         </label>
+        <p className="text-xs text-meetup-muted">
+          The “Create your Bitlink” CTA always appears on your public page and can’t be turned off.
+        </p>
 
         <div className="space-y-3 rounded-xl border border-meetup-border p-3">
           <p className="text-sm font-medium">Background music (YouTube)</p>

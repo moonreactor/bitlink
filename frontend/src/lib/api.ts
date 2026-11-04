@@ -147,8 +147,17 @@ export const profileApi = {
   qrUrl: () => `${BROWSER_API}/api/v1/me/qr`,
 };
 
+export type LinkMeta = {
+  url: string;
+  title: string;
+  favicon_url: string | null;
+  domain: string | null;
+};
+
 export const linksApi = {
   list: (token: string) => request<LinkItem[]>("/me/links", {}, token),
+  meta: (token: string, url: string) =>
+    request<LinkMeta>(`/me/links/meta?url=${encodeURIComponent(url)}`, {}, token),
   create: (token: string, body: Record<string, unknown>) =>
     request<LinkItem>("/me/links", { method: "POST", body: JSON.stringify(body) }, token),
   update: (token: string, id: string, body: Record<string, unknown>) =>

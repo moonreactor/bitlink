@@ -1,6 +1,15 @@
+import {
+  SocialBrandIcon,
+  brandColor,
+  brandFromPlatform,
+  detectSocialBrand,
+} from "@/lib/socialBrands";
+
 type Props = {
   icon?: string | null;
   thumbnailUrl?: string | null;
+  url?: string | null;
+  platform?: string | null;
   featured?: boolean;
   size?: "sm" | "md" | "lg";
 };
@@ -11,8 +20,22 @@ const SIZE = {
   lg: "h-14 w-14 text-2xl",
 };
 
-export function LinkVisual({ icon, thumbnailUrl, featured, size = "md" }: Props) {
+const ICON_SIZE = {
+  sm: "text-[15px]",
+  md: "text-[18px]",
+  lg: "text-[26px]",
+};
+
+export function LinkVisual({
+  icon,
+  thumbnailUrl,
+  url,
+  platform,
+  featured,
+  size = "md",
+}: Props) {
   const box = SIZE[size];
+  const brand = detectSocialBrand(url) || brandFromPlatform(platform);
 
   if (thumbnailUrl) {
     return (
@@ -22,6 +45,20 @@ export function LinkVisual({ icon, thumbnailUrl, featured, size = "md" }: Props)
         alt=""
         className={`${box} shrink-0 rounded-xl object-cover ${featured ? "ring-2 ring-white/50" : ""}`}
       />
+    );
+  }
+
+  if (brand) {
+    const color = brandColor(brand.id);
+    return (
+      <span
+        className={`${box} inline-flex shrink-0 items-center justify-center rounded-xl ${ICON_SIZE[size]}`}
+        style={{ background: `${color}18`, color }}
+        aria-hidden
+        title={brand.label}
+      >
+        <SocialBrandIcon brandId={brand.id} />
+      </span>
     );
   }
 
@@ -36,5 +73,12 @@ export function LinkVisual({ icon, thumbnailUrl, featured, size = "md" }: Props)
     );
   }
 
-  return null;
+  return (
+    <span
+      className={`${box} inline-flex shrink-0 items-center justify-center rounded-xl bg-black/5 text-sm opacity-50`}
+      aria-hidden
+    >
+      🔗
+    </span>
+  );
 }

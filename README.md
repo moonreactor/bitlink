@@ -62,5 +62,6 @@ UPDATE users SET is_superuser = true WHERE email = 'you@example.com';
 - Unlimited links with reorder, featured, scheduling, thumbnails
 - Themes & appearance
 - Analytics (views, clicks, device, referrer)
-- QR code, email capture, profile/link locks, remove branding
+- QR code, email capture, profile/link locks
+- Always-visible “Create your Bitlink” CTA on public pages
 - Superuser admin area (`/admin`)
