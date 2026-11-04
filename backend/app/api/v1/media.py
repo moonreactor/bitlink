@@ -1,7 +1,7 @@
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
+from app.services.urls import public_api_base
 
 router = APIRouter(prefix="/me", tags=["media"])
 
@@ -29,6 +30,7 @@ class MediaUploadOut(BaseModel):
 
 @router.post("/media", response_model=MediaUploadOut)
 async def upload_media(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -54,6 +56,6 @@ async def upload_media(
     dest = user_dir / filename
     dest.write_bytes(data)
 
-    base = settings.PUBLIC_API_URL.rstrip("/")
+    base = public_api_base(request)
     url = f"{base}/media/{current_user.id}/{filename}"
     return MediaUploadOut(url=url, content_type=content_type, size=len(data))

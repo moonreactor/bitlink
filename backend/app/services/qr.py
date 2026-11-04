@@ -27,10 +27,10 @@ def _load_logo(logo_url: str | None) -> Image.Image | None:
             local = Path(settings.MEDIA_ROOT) / parsed.path[len("/media/") :]
             if local.is_file():
                 return Image.open(local).convert("RGBA")
-        # Absolute URL pointing at our media mount
-        api = settings.PUBLIC_API_URL.rstrip("/")
-        if logo_url.startswith(f"{api}/media/"):
-            rel = logo_url[len(f"{api}/media/") :]
+        # Absolute URL pointing at our media mount (any known API host)
+        parsed_path = parsed.path or ""
+        if "/media/" in parsed_path:
+            rel = parsed_path.split("/media/", 1)[1]
             local = Path(settings.MEDIA_ROOT) / rel
             if local.is_file():
                 return Image.open(local).convert("RGBA")

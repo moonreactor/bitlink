@@ -39,6 +39,14 @@ class Settings(BaseSettings):
         base = (self.PUBLIC_SHORT_BASE_URL or self.PUBLIC_WEB_URL or "").strip().rstrip("/")
         return base or "https://bitlink.click"
 
+    @property
+    def public_api_base(self) -> str:
+        return (self.PUBLIC_API_URL or "").strip().rstrip("/")
+
+    def is_local_api_base(self, base: str | None = None) -> bool:
+        value = (base if base is not None else self.public_api_base).lower()
+        return (not value) or ("localhost" in value) or ("127.0.0.1" in value)
+
 
 @lru_cache
 def get_settings() -> Settings:
