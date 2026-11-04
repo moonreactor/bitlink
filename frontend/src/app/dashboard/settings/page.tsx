@@ -3,9 +3,9 @@
 import { FormEvent, useEffect, useState } from "react";
 import { MediaUploadField } from "@/components/MediaUploadField";
 import { useToast } from "@/components/Toast";
-import { authApi, linksApi, profileApi, socialApi } from "@/lib/api";
+import { authApi, domainApi, linksApi, profileApi, socialApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
-import type { LinkItem, Profile, SocialLink } from "@/lib/types";
+import type { DomainInfo, LinkItem, Profile, SocialLink } from "@/lib/types";
 
 const PLATFORMS = ["instagram", "twitter", "tiktok", "youtube", "linkedin", "github", "website"];
 
@@ -18,21 +18,30 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+  const [domain, setDomain] = useState<DomainInfo | null>(null);
+  const [domainInput, setDomainInput] = useState("");
+  const [domainBusy, setDomainBusy] = useState(false);
+  const [domainMsg, setDomainMsg] = useState("");
 
   useEffect(() => {
     const token = getAccessToken();
     if (!token) return;
-    Promise.all([profileApi.get(token), linksApi.list(token), socialApi.list(token)]).then(
-      ([p, l, s]) => {
-        setProfile(p);
-        setLinks(l);
-        setSocials(
-          s.length
-            ? s
-            : PLATFORMS.slice(0, 3).map((platform, position) => ({ platform, url: "", position })),
-        );
-      },
-    );
+    Promise.all([
+      profileApi.get(token),
+      linksApi.list(token),
+      socialApi.list(token),
+      domainApi.get(token),
+    ]).then(([p, l, s, d]) => {
+      setProfile(p);
+      setLinks(l);
+      setSocials(
+        s.length
+          ? s
+          : PLATFORMS.slice(0, 3).map((platform, position) => ({ platform, url: "", position })),
+      );
+      setDomain(d);
+      setDomainInput(d.custom_domain || "");
+    });
   }, []);
 
   async function saveProfile(e: FormEvent) {
@@ -122,6 +131,58 @@ export default function SettingsPage() {
       toastError(err instanceof Error ? err.message : "Failed to change password");
     } finally {
       setChangingPassword(false);
+    }
+  }
+
+  async function saveDomain(e: FormEvent) {
+    e.preventDefault();
+    const token = getAccessToken();
+    if (!token) return;
+    setDomainBusy(true);
+    setDomainMsg("");
+    try {
+      const d = await domainApi.set(token, domainInput.trim());
+      setDomain(d);
+      setDomainInput(d.custom_domain || "");
+      success("Domain saved — add the TXT record, then verify");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Failed to save domain");
+    } finally {
+      setDomainBusy(false);
+    }
+  }
+
+  async function verifyDomain() {
+    const token = getAccessToken();
+    if (!token) return;
+    setDomainBusy(true);
+    try {
+      const d = await domainApi.verify(token);
+      setDomain(d);
+      setDomainMsg(d.message);
+      if (d.verified) success("Domain verified");
+      else toastError(d.message);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Verification failed");
+    } finally {
+      setDomainBusy(false);
+    }
+  }
+
+  async function clearDomain() {
+    const token = getAccessToken();
+    if (!token) return;
+    setDomainBusy(true);
+    try {
+      const d = await domainApi.clear(token);
+      setDomain(d);
+      setDomainInput("");
+      setDomainMsg("");
+      success("Custom domain removed");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Failed to remove domain");
+    } finally {
+      setDomainBusy(false);
     }
   }
 
@@ -312,6 +373,66 @@ export default function SettingsPage() {
         <button type="submit" className="mu-btn-primary">
           Save settings
         </button>
+      </form>
+
+      <form onSubmit={saveDomain} className="space-y-3 mu-card p-5 md:p-6">
+        <h2 className="font-display text-lg font-semibold">Custom domain</h2>
+        <p className="text-xs text-meetup-muted">
+          Serve your profile on your own domain (e.g. links.yourbrand.com). Add a TXT record to
+          verify ownership, then CNAME the host to{" "}
+          <code className="rounded bg-meetup-bg px-1">
+            {domain?.cname_target || "your Bitlink web host"}
+          </code>
+          . SSL/cert for the custom host is configured on your DNS / hosting provider.
+        </p>
+        <Field label="Domain" value={domainInput} onChange={setDomainInput} />
+        {domain?.custom_domain && domain.custom_domain_verify_token && (
+          <div className="space-y-1 rounded-lg bg-meetup-bg p-3 text-xs text-meetup-muted">
+            <p>
+              Status:{" "}
+              <span
+                className={
+                  domain.custom_domain_verified ? "font-medium text-green-700" : "font-medium"
+                }
+              >
+                {domain.custom_domain_verified ? "Verified" : "Pending verification"}
+              </span>
+            </p>
+            <p>Add a TXT record on one of these hosts with value:</p>
+            <code className="block break-all rounded bg-white px-2 py-1 text-ink">
+              {domain.custom_domain_verify_token}
+            </code>
+            <ul className="list-disc pl-4">
+              {(domain.txt_hostnames || []).map((h) => (
+                <li key={h}>
+                  <code>{h}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {domainMsg && <p className="text-xs text-meetup-muted">{domainMsg}</p>}
+        <div className="flex flex-wrap gap-2">
+          <button type="submit" disabled={domainBusy} className="mu-btn-primary disabled:opacity-60">
+            Save domain
+          </button>
+          <button
+            type="button"
+            disabled={domainBusy || !domain?.custom_domain}
+            onClick={verifyDomain}
+            className="mu-btn-secondary disabled:opacity-60"
+          >
+            Verify DNS
+          </button>
+          <button
+            type="button"
+            disabled={domainBusy || !domain?.custom_domain}
+            onClick={clearDomain}
+            className="mu-btn-secondary text-red-600 disabled:opacity-60"
+          >
+            Remove
+          </button>
+        </div>
       </form>
 
       <form onSubmit={saveSocials} className="space-y-3 mu-card p-5 md:p-6">

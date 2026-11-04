@@ -5,7 +5,9 @@ import type {
   AdminUserListResponse,
   AnalyticsSummary,
   AuthUser,
+  DomainInfo,
   LinkItem,
+  ProductItem,
   Profile,
   PublicProfile,
   ShortLinkItem,
@@ -283,6 +285,34 @@ export const shortLinksApi = {
     request<void>(`/me/short-links/${id}`, { method: "DELETE" }, token),
   qrUrl: (id: string, fmt: "png" | "svg" = "png") =>
     `${BROWSER_API}/api/v1/me/short-links/${id}/qr?fmt=${fmt}`,
+};
+
+export const domainApi = {
+  get: (token: string) => request<DomainInfo>("/me/domain", {}, token),
+  set: (token: string, domain: string) =>
+    request<DomainInfo>("/me/domain", { method: "PUT", body: JSON.stringify({ domain }) }, token),
+  clear: (token: string) => request<DomainInfo>("/me/domain", { method: "DELETE" }, token),
+  verify: (token: string) =>
+    request<DomainInfo & { verified: boolean; message: string }>(
+      "/me/domain/verify",
+      { method: "POST" },
+      token,
+    ),
+};
+
+export const productsApi = {
+  list: (token: string) => request<ProductItem[]>("/me/products", {}, token),
+  create: (token: string, body: Record<string, unknown>) =>
+    request<ProductItem>("/me/products", { method: "POST", body: JSON.stringify(body) }, token),
+  update: (token: string, id: string, body: Record<string, unknown>) =>
+    request<ProductItem>(`/me/products/${id}`, { method: "PATCH", body: JSON.stringify(body) }, token),
+  remove: (token: string, id: string) =>
+    request<void>(`/me/products/${id}`, { method: "DELETE" }, token),
+  reorder: (token: string, items: { id: string; position: number }[]) =>
+    request<ProductItem[]>("/me/products/reorder", {
+      method: "PUT",
+      body: JSON.stringify({ items }),
+    }, token),
 };
 
 export const publicApi = {

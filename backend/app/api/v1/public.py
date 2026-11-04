@@ -12,9 +12,11 @@ from app.models.profile import Profile
 from app.models.subscriber import Subscriber
 from app.schemas.analytics import ClickRequest, ClickResponse, SubscribeRequest, TrackMeta, UnlockProfileRequest
 from app.schemas.link import PublicLinkOut
-from app.schemas.public import PublicProfileOut
+from app.schemas.product import PublicProductOut
+from app.schemas.public import PublicDomainResolveOut, PublicProfileOut
 from app.schemas.social import SocialLinkOut
 from app.services.analytics import detect_device, hash_visitor, normalize_referrer
+from app.services.domain import normalize_domain
 from app.services.embeds import public_embed_payload
 from app.services.scheduling import is_link_visible
 from app.services.youtube import extract_youtube_video_id
@@ -25,13 +27,37 @@ router = APIRouter(prefix="/public", tags=["public"])
 def _get_profile(db: Session, username: str) -> Profile:
     profile = (
         db.query(Profile)
-        .options(joinedload(Profile.links), joinedload(Profile.social_links))
+        .options(
+            joinedload(Profile.links),
+            joinedload(Profile.social_links),
+            joinedload(Profile.products),
+        )
         .filter(Profile.username == username.lower())
         .first()
     )
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
     return profile
+
+
+def _public_products(profile: Profile) -> list[PublicProductOut]:
+    items = [
+        p
+        for p in (profile.products or [])
+        if p.is_active
+    ]
+    items.sort(key=lambda p: (p.position, p.created_at))
+    return [
+        PublicProductOut(
+            id=p.id,
+            title=p.title,
+            description=p.description,
+            price_label=p.price_label,
+            checkout_url=p.checkout_url,
+            thumbnail_url=p.thumbnail_url,
+        )
+        for p in items
+    ]
 
 
 def _client_meta(request: Request, referrer: str | None, visitor_id: str | None) -> dict:
@@ -64,6 +90,36 @@ def _public_link(link: Link) -> PublicLinkOut:
         has_lock=bool(link.lock_code_hash),
         embed=None if link.lock_code_hash else public_embed_payload(link_type, link.url),
     )
+
+
+@router.get("/by-domain/{host}", response_model=PublicDomainResolveOut)
+def resolve_by_domain(host: str, db: Session = Depends(get_db)) -> PublicDomainResolveOut:
+    try:
+        domain = normalize_domain(host)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Domain not found") from exc
+
+    profile = (
+        db.query(Profile)
+        .filter(
+            Profile.custom_domain == domain,
+            Profile.custom_domain_verified.is_(True),
+        )
+        .first()
+    )
+    if profile is None:
+        # Also try with www stripped already handled; accept exact stored host
+        profile = (
+            db.query(Profile)
+            .filter(
+                Profile.custom_domain == host.strip().lower().split(":")[0],
+                Profile.custom_domain_verified.is_(True),
+            )
+            .first()
+        )
+    if profile is None or not profile.custom_domain:
+        raise HTTPException(status_code=404, detail="Domain not found")
+    return PublicDomainResolveOut(username=profile.username, custom_domain=profile.custom_domain)
 
 
 @router.get("/{username}", response_model=PublicProfileOut)
@@ -102,6 +158,7 @@ def get_public_profile(
             background_music_video_id=None,
             links=[],
             social_links=[],
+            products=[],
         )
 
     visible_links = [l for l in profile.links if is_link_visible(l)]
@@ -152,6 +209,7 @@ def get_public_profile(
         social_links=[
             SocialLinkOut.model_validate(s) for s in sorted(profile.social_links, key=lambda x: x.position)
         ],
+        products=_public_products(profile),
     )
 
 

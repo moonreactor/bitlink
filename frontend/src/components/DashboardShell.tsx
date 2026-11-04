@@ -11,6 +11,7 @@ import { authApi, profileApi } from "@/lib/api";
 const NAV = [
   { href: "/dashboard", label: "Overview", icon: OverviewIcon },
   { href: "/dashboard/links", label: "Links", icon: LinksIcon },
+  { href: "/dashboard/products", label: "Products", icon: ProductsIcon },
   { href: "/dashboard/short-links", label: "Short links", icon: ShortIcon },
   { href: "/dashboard/appearance", label: "Appearance", icon: AppearIcon },
   { href: "/dashboard/settings", label: "Settings", icon: SettingsIcon },
@@ -263,6 +264,15 @@ function ShortIcon() {
       <path d="M7 7h6a5 5 0 0 1 0 10H9" strokeLinecap="round" />
       <path d="M11 12H4m0 0 2.5-2.5M4 12l2.5 2.5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M13 12h7m0 0-2.5-2.5M20 12l-2.5 2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ProductsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M4 7h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7z" strokeLinejoin="round" />
+      <path d="M8 7V5a4 4 0 0 1 8 0v2" strokeLinecap="round" />
     </svg>
   );
 }

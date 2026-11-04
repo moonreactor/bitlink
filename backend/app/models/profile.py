@@ -52,6 +52,9 @@ class Profile(Base):
     qr_fg_color: Mapped[str] = mapped_column(String(7), default="#000000", nullable=False)
     qr_bg_color: Mapped[str] = mapped_column(String(7), default="#ffffff", nullable=False)
     qr_logo_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    custom_domain: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    custom_domain_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    custom_domain_verify_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
     background_music_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     background_music_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -76,3 +79,9 @@ class Profile(Base):
         order_by="SocialLink.position",
     )
     subscribers = relationship("Subscriber", back_populates="profile", cascade="all, delete-orphan")
+    products = relationship(
+        "Product",
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        order_by="Product.position",
+    )
