@@ -3,17 +3,13 @@
 @tailwind utilities;
 
 :root {
-  --bg: #f4f7fb;
-  --ink: #0b1220;
-  --accent: #1d9e75;
-  --lt-chartreuse: #d2e823;
-  --lt-hydrangea: #2665d6;
-  --lt-currant: #780016;
-  --lt-light-green: #e8efd6;
-  --lt-marble: #f3f3f1;
-  --lt-shade: #1e2330;
-  --lt-forest: #254f1a;
-  --lt-lavender: #e9c0e9;
+  --bg: #f6f7f8;
+  --ink: #212121;
+  --accent: #7050d1;
+  --accent-soft: #f1f0ff;
+  --brand: #f64060;
+  --border: #e6e6e6;
+  --muted: #707070;
 }
 
 html,
@@ -23,10 +19,7 @@ body {
 
 body {
   color: var(--ink);
-  background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(29, 158, 117, 0.18), transparent 55%),
-    radial-gradient(900px 500px at 100% 0%, rgba(14, 116, 144, 0.12), transparent 50%),
-    linear-gradient(180deg, #eef3f9 0%, #f7f9fc 40%, #f4f7fb 100%);
+  background: var(--bg);
   font-family: var(--font-dm-sans), system-ui, sans-serif;
 }
 
@@ -34,10 +27,45 @@ body {
   font-family: var(--font-syne), system-ui, sans-serif;
 }
 
-/* Landing — Linktree-inspired motion & root reset */
+/* Meetup-inspired UI primitives */
+@layer components {
+  .mu-card {
+    @apply rounded-meetup border border-meetup-border bg-white shadow-meetup;
+  }
+
+  .mu-btn-primary {
+    @apply inline-flex items-center justify-center rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-ink disabled:opacity-60;
+  }
+
+  .mu-btn-secondary {
+    @apply inline-flex items-center justify-center rounded-full bg-meetup-lavender px-5 py-2.5 text-sm font-semibold text-meetup-purple transition hover:bg-accentMuted;
+  }
+
+  .mu-btn-ghost {
+    @apply inline-flex items-center justify-center rounded-full border border-meetup-border bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:bg-mist;
+  }
+
+  .mu-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-meetup-border bg-white px-3.5 py-1.5 text-sm font-medium text-ink transition hover:border-meetup-purple/40 hover:bg-meetup-lavender;
+  }
+
+  .mu-chip-active {
+    @apply border-transparent bg-meetup-purple text-white hover:bg-meetup-purple hover:text-white;
+  }
+
+  .mu-input {
+    @apply w-full rounded-xl border border-meetup-border bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-meetup-muted focus:border-meetup-purple focus:ring-2 focus:ring-meetup-purple/20;
+  }
+
+  .mu-section-title {
+    @apply font-display text-2xl font-bold tracking-tight text-ink md:text-3xl;
+  }
+}
+
+/* Landing motion */
 .landing-root {
-  color: var(--lt-shade);
-  background: var(--lt-marble);
+  color: var(--ink);
+  background: #ffffff;
 }
 
 .landing-rise {
@@ -45,7 +73,7 @@ body {
 }
 
 .landing-rise-delayed {
-  animation: landing-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+  animation: landing-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
 }
 
 .landing-float {
@@ -56,14 +84,6 @@ body {
   animation: landing-float 5.2s ease-in-out 0.6s infinite;
 }
 
-.landing-blob {
-  animation: landing-blob 10s ease-in-out infinite;
-}
-
-.landing-blob-delayed {
-  animation: landing-blob 12s ease-in-out 1.5s infinite;
-}
-
 .landing-link-in {
   animation: landing-link-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -71,7 +91,7 @@ body {
 @keyframes landing-rise {
   from {
     opacity: 0;
-    transform: translateY(28px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -85,17 +105,7 @@ body {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes landing-blob {
-  0%,
-  100% {
-    transform: scale(1) translate(0, 0);
-  }
-  50% {
-    transform: scale(1.12) translate(12px, -8px);
+    transform: translateY(-8px);
   }
 }
 
@@ -107,18 +117,6 @@ body {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .landing-rise,
-  .landing-rise-delayed,
-  .landing-float,
-  .landing-float-delayed,
-  .landing-blob,
-  .landing-blob-delayed,
-  .landing-link-in {
-    animation: none !important;
   }
 }
 
@@ -234,7 +232,7 @@ body {
     filter: brightness(1);
   }
   50% {
-    box-shadow: 0 12px 32px rgba(255, 255, 255, 0.35), 0 0 24px rgba(29, 158, 117, 0.35);
+    box-shadow: 0 12px 32px rgba(255, 255, 255, 0.35), 0 0 24px rgba(112, 80, 209, 0.35);
     filter: brightness(1.08);
   }
 }
@@ -286,6 +284,11 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .landing-rise,
+  .landing-rise-delayed,
+  .landing-float,
+  .landing-float-delayed,
+  .landing-link-in,
   .link-anim,
   .link-anim--rainbow::before {
     animation: none !important;

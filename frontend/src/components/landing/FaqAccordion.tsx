@@ -33,7 +33,7 @@ export function FaqAccordion() {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <div className="mx-auto w-full max-w-3xl divide-y divide-[#1E2330]/10">
+    <div className="mx-auto w-full max-w-3xl divide-y divide-meetup-border">
       {FAQS.map((item, i) => {
         const isOpen = open === i;
         return (
@@ -44,14 +44,14 @@ export function FaqAccordion() {
               onClick={() => setOpen(isOpen ? null : i)}
               className="flex w-full items-center justify-between gap-4 py-5 text-left"
             >
-              <span className="text-lg font-bold text-[#1E2330] md:text-xl">{item.q}</span>
+              <span className="text-lg font-bold text-ink md:text-xl">{item.q}</span>
               <span
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1E2330] text-white transition-transform duration-300 ${
-                  isOpen ? "rotate-45" : ""
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition ${
+                  isOpen ? "bg-meetup-purple text-white" : "bg-mist text-ink"
                 }`}
                 aria-hidden
               >
-                +
+                {isOpen ? "−" : "+"}
               </span>
             </button>
             <div
@@ -60,7 +60,7 @@ export function FaqAccordion() {
               }`}
             >
               <div className="overflow-hidden">
-                <p className="pb-5 pr-12 text-base leading-relaxed text-[#1E2330]/70">{item.a}</p>
+                <p className="pb-5 pr-12 text-base leading-relaxed text-meetup-muted">{item.a}</p>
               </div>
             </div>
           </div>

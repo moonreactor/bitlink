@@ -45,14 +45,14 @@ export default function AppearancePage() {
     save(t);
   }
 
-  if (!profile) return <p className="text-sm text-ink/50">Loading…</p>;
+  if (!profile) return <p className="text-sm text-meetup-muted">Loading…</p>;
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-2">
+    <div className="grid gap-8 lg:grid-cols-2">
       <div className="space-y-6">
         <div>
-          <h1 className="font-display text-3xl font-bold text-ink">Appearance</h1>
-          <p className="mt-1 text-sm text-ink/55">Themes, colors, and button style.</p>
+          <h1 className="font-display text-3xl font-bold tracking-tight text-ink">Appearance</h1>
+          <p className="mt-1 text-sm text-meetup-muted">Themes, colors, and button style.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -62,7 +62,7 @@ export default function AppearancePage() {
               type="button"
               onClick={() => applyPreset(key)}
               className={`rounded-xl border px-3 py-3 text-left text-sm capitalize ${
-                theme.preset === key ? "border-accent bg-accent/10" : "border-ink/10 bg-white/70"
+                theme.preset === key ? "border-meetup-purple bg-meetup-lavender" : "border-meetup-border bg-white hover:border-meetup-purple/40"
               }`}
             >
               <span
@@ -74,7 +74,7 @@ export default function AppearancePage() {
           ))}
         </div>
 
-        <div className="space-y-3 rounded-2xl border border-ink/10 bg-white/70 p-4">
+        <div className="space-y-3 mu-card p-4 md:p-5">
           {(
             [
               ["background_color", "Background"],
@@ -96,7 +96,7 @@ export default function AppearancePage() {
           <label className="block text-sm">
             Button style
             <select
-              className="mt-1 w-full rounded-xl border border-ink/10 px-3 py-2"
+              className="mt-1 w-full rounded-xl border border-meetup-border px-3 py-2"
               value={theme.button_style}
               onChange={(e) => setTheme({ ...theme, button_style: e.target.value, preset: "custom" })}
             >
@@ -109,7 +109,7 @@ export default function AppearancePage() {
           <label className="block text-sm">
             Background image URL
             <input
-              className="mt-1 w-full rounded-xl border border-ink/10 px-3 py-2"
+              className="mt-1 w-full rounded-xl border border-meetup-border px-3 py-2"
               value={theme.background_image || ""}
               onChange={(e) =>
                 setTheme({
@@ -126,7 +126,7 @@ export default function AppearancePage() {
             type="button"
             onClick={() => save()}
             disabled={saving}
-            className="w-full rounded-xl bg-ink py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="mu-btn-primary w-full py-2.5 disabled:opacity-60"
           >
             {saving ? "Saving…" : "Save appearance"}
           </button>

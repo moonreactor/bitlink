@@ -71,60 +71,76 @@ export function AuthForm({ mode }: { mode: Mode }) {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
-      <Link href="/" className="font-display mb-8 text-2xl font-bold text-ink">
-        Bitlink
-      </Link>
-      <h1 className="font-display text-3xl font-bold text-ink">
-        {mode === "login" ? "Welcome back" : "Create your page"}
-      </h1>
-      <p className="mt-2 text-sm text-ink/60">
-        {mode === "login" ? "Log in to edit your links." : "Free forever. No credit card."}
-      </p>
+    <div className="min-h-screen bg-meetup-bg">
+      <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-12">
+        <Link href="/" className="mb-8 flex items-center gap-1.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-meetup-pink text-sm font-extrabold text-white">
+            B
+          </span>
+          <span className="font-display text-xl font-bold text-ink">bitlink</span>
+        </Link>
 
-      <form onSubmit={onSubmit} className="mt-8 space-y-4">
-        {mode === "register" && (
-          <>
-            <Field label="Username" value={username} onChange={setUsername} placeholder="yourname" required />
+        <div className="mu-card p-6 md:p-8">
+          <h1 className="font-display text-2xl font-bold text-ink md:text-3xl">
+            {mode === "login" ? "Welcome back" : "Create your page"}
+          </h1>
+          <p className="mt-2 text-sm text-meetup-muted">
+            {mode === "login" ? "Log in to edit your links." : "Free forever. No credit card."}
+          </p>
+
+          <form onSubmit={onSubmit} className="mt-7 space-y-4">
+            {mode === "register" && (
+              <>
+                <Field
+                  label="Username"
+                  value={username}
+                  onChange={setUsername}
+                  placeholder="yourname"
+                  required
+                />
+                <Field
+                  label="Display name"
+                  value={displayName}
+                  onChange={setDisplayName}
+                  placeholder="Your Name"
+                />
+              </>
+            )}
+            <Field label="Email" type="email" value={email} onChange={setEmail} required />
             <Field
-              label="Display name"
-              value={displayName}
-              onChange={setDisplayName}
-              placeholder="Your Name"
+              label="Password"
+              type="password"
+              value={password}
+              onChange={setPassword}
+              required
             />
-          </>
-        )}
-        <Field label="Email" type="email" value={email} onChange={setEmail} required />
-        <Field label="Password" type="password" value={password} onChange={setPassword} required />
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-xl bg-ink py-3 text-sm font-semibold text-white transition hover:bg-ink/90 disabled:opacity-60"
-        >
-          {loading ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}
-        </button>
-      </form>
+            <button type="submit" disabled={loading} className="mu-btn-primary w-full py-3">
+              {loading ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}
+            </button>
+          </form>
+        </div>
 
-      <p className="mt-6 text-center text-sm text-ink/60">
-        {mode === "login" ? (
-          <>
-            No account?{" "}
-            <Link href="/register" className="font-semibold text-accent">
-              Sign up
-            </Link>
-          </>
-        ) : (
-          <>
-            Already have one?{" "}
-            <Link href="/login" className="font-semibold text-accent">
-              Log in
-            </Link>
-          </>
-        )}
-      </p>
+        <p className="mt-6 text-center text-sm text-meetup-muted">
+          {mode === "login" ? (
+            <>
+              No account?{" "}
+              <Link href="/register" className="font-semibold text-meetup-purple hover:underline">
+                Sign up
+              </Link>
+            </>
+          ) : (
+            <>
+              Already have one?{" "}
+              <Link href="/login" className="font-semibold text-meetup-purple hover:underline">
+                Log in
+              </Link>
+            </>
+          )}
+        </p>
+      </div>
     </div>
   );
 }
@@ -146,14 +162,14 @@ function Field({
 }) {
   return (
     <label className="block text-sm">
-      <span className="mb-1.5 block font-medium text-ink/80">{label}</span>
+      <span className="mb-1.5 block font-semibold text-ink">{label}</span>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
-        className="w-full rounded-xl border border-ink/10 bg-white/80 px-3 py-2.5 outline-none ring-accent/30 focus:ring-2"
+        className="mu-input"
       />
     </label>
   );

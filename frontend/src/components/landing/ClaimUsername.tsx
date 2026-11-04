@@ -75,37 +75,33 @@ export function ClaimUsername({
 
   return (
     <form onSubmit={onSubmit} className="w-full max-w-xl">
-      <div
-        className={`flex flex-col gap-3 sm:flex-row sm:items-stretch ${
-          isDark ? "" : ""
-        }`}
-      >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
         <label
-          className={`flex min-h-[52px] flex-1 items-center gap-0 overflow-hidden rounded-full bg-white px-4 text-[15px] shadow-sm ring-1 ${
+          className={`flex min-h-[52px] flex-1 items-center overflow-hidden rounded-full bg-white px-4 text-[15px] shadow-meetup ring-1 ${
             status === "taken"
               ? "ring-red-400"
               : status === "available"
                 ? "ring-emerald-500"
-                : "ring-black/5"
+                : "ring-meetup-border"
           }`}
         >
-          <span className="shrink-0 font-medium text-[#1E2330]/70">bitlink.app/</span>
+          <span className="shrink-0 font-medium text-meetup-muted">bitlink.app/</span>
           <input
             value={username}
             onChange={(e) => setUsername(sanitize(e.target.value))}
             placeholder="yourname"
             aria-label="Claim your Bitlink username"
-            className="w-full min-w-0 bg-transparent py-3 text-[#1E2330] outline-none placeholder:text-[#1E2330]/35"
+            className="w-full min-w-0 bg-transparent py-3 text-ink outline-none placeholder:text-meetup-muted/60"
             autoComplete="username"
             spellCheck={false}
           />
         </label>
         <button
           type="submit"
-          className={`min-h-[52px] shrink-0 rounded-full px-6 text-[15px] font-bold transition hover:scale-[1.02] active:scale-[0.98] ${
+          className={`min-h-[52px] shrink-0 rounded-full px-6 text-[15px] font-semibold transition hover:scale-[1.02] active:scale-[0.98] ${
             isDark
-              ? "bg-[#D2E823] text-[#1E2330] hover:bg-[#c5db1a]"
-              : "bg-[#254F1A] text-white hover:bg-[#1c3d14]"
+              ? "bg-white text-ink hover:bg-meetup-lavender"
+              : "bg-black text-white hover:bg-ink"
           }`}
         >
           {buttonLabel}
@@ -116,14 +112,14 @@ export function ClaimUsername({
           status === "taken"
             ? isDark
               ? "text-red-300"
-              : "text-red-700"
+              : "text-red-600"
             : status === "available"
               ? isDark
-                ? "text-[#D2E823]"
-                : "text-[#254F1A]"
+                ? "text-emerald-300"
+                : "text-emerald-700"
               : isDark
                 ? "text-white/70"
-                : "text-[#254F1A]/70"
+                : "text-meetup-muted"
         }`}
         aria-live="polite"
       >

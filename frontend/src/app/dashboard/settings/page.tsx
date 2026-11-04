@@ -90,18 +90,18 @@ export default function SettingsPage() {
     }
   }
 
-  if (!profile) return <p className="text-sm text-ink/50">Loading…</p>;
+  if (!profile) return <p className="text-sm text-meetup-muted">Loading…</p>;
 
   const qrSrc = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/me/qr`;
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div>
-        <h1 className="font-display text-3xl font-bold text-ink">Settings</h1>
-        <p className="mt-1 text-sm text-ink/55">Profile, SEO, music, locks, branding, QR.</p>
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink">Settings</h1>
+        <p className="mt-1 text-sm text-meetup-muted">Profile, SEO, music, locks, branding, QR.</p>
       </div>
 
-      <form onSubmit={saveProfile} className="space-y-4 rounded-2xl border border-ink/10 bg-white/70 p-5">
+      <form onSubmit={saveProfile} className="space-y-4 mu-card p-5 md:p-6">
         <h2 className="font-display text-lg font-semibold">Profile</h2>
         <Field
           label="Username"
@@ -116,7 +116,7 @@ export default function SettingsPage() {
         <label className="block text-sm">
           <span className="mb-1 block font-medium">Bio</span>
           <textarea
-            className="w-full rounded-xl border border-ink/10 px-3 py-2"
+            className="w-full rounded-xl border border-meetup-border px-3 py-2"
             rows={3}
             value={profile.bio || ""}
             onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
@@ -155,13 +155,13 @@ export default function SettingsPage() {
           Show email capture on public page
         </label>
 
-        <div className="space-y-3 rounded-xl border border-ink/10 p-3">
+        <div className="space-y-3 rounded-xl border border-meetup-border p-3">
           <p className="text-sm font-medium">Background music (YouTube)</p>
-          <p className="text-xs text-ink/50">
+          <p className="text-xs text-meetup-muted">
             Paste a YouTube link. Visitors can pause or mute from your public page.
           </p>
           <input
-            className="w-full rounded-xl border border-ink/10 px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-meetup-border px-3 py-2 text-sm"
             placeholder="https://www.youtube.com/watch?v=…"
             value={profile.background_music_url || ""}
             onChange={(e) =>
@@ -195,7 +195,7 @@ export default function SettingsPage() {
         <label className="block text-sm">
           <span className="mb-1 block font-medium">Redirect entire page to link</span>
           <select
-            className="w-full rounded-xl border border-ink/10 px-3 py-2"
+            className="w-full rounded-xl border border-meetup-border px-3 py-2"
             value={profile.redirect_link_id || ""}
             onChange={(e) =>
               setProfile({ ...profile, redirect_link_id: e.target.value || null })
@@ -210,7 +210,7 @@ export default function SettingsPage() {
           </select>
         </label>
 
-        <div className="rounded-xl border border-ink/10 p-3">
+        <div className="rounded-xl border border-meetup-border p-3">
           <p className="text-sm font-medium">
             Profile lock {profile.has_profile_lock ? "(active)" : "(off)"}
           </p>
@@ -220,27 +220,27 @@ export default function SettingsPage() {
               placeholder="Set password"
               value={profilePassword}
               onChange={(e) => setProfilePassword(e.target.value)}
-              className="flex-1 rounded-xl border border-ink/10 px-3 py-2 text-sm"
+              className="flex-1 rounded-xl border border-meetup-border px-3 py-2 text-sm"
             />
             {profile.has_profile_lock && (
-              <button type="button" onClick={clearLock} className="rounded-xl bg-ink/5 px-3 text-sm">
+              <button type="button" onClick={clearLock} className="mu-btn-ghost px-3 text-sm">
                 Clear
               </button>
             )}
           </div>
         </div>
 
-        <button type="submit" className="rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white">
+        <button type="submit" className="mu-btn-primary">
           Save settings
         </button>
       </form>
 
-      <form onSubmit={saveSocials} className="space-y-3 rounded-2xl border border-ink/10 bg-white/70 p-5">
+      <form onSubmit={saveSocials} className="space-y-3 mu-card p-5 md:p-6">
         <h2 className="font-display text-lg font-semibold">Social icons</h2>
         {socials.map((s, idx) => (
           <div key={idx} className="grid grid-cols-[140px_1fr] gap-2">
             <select
-              className="rounded-xl border border-ink/10 px-2 py-2 text-sm"
+              className="rounded-xl border border-meetup-border px-2 py-2 text-sm"
               value={s.platform}
               onChange={(e) => {
                 const next = [...socials];
@@ -255,7 +255,7 @@ export default function SettingsPage() {
               ))}
             </select>
             <input
-              className="rounded-xl border border-ink/10 px-3 py-2 text-sm"
+              className="rounded-xl border border-meetup-border px-3 py-2 text-sm"
               placeholder="https://…"
               value={s.url}
               onChange={(e) => {
@@ -268,26 +268,26 @@ export default function SettingsPage() {
         ))}
         <button
           type="button"
-          className="text-sm text-accent"
+          className="text-sm font-semibold text-meetup-purple"
           onClick={() => setSocials([...socials, { platform: "instagram", url: "", position: socials.length }])}
         >
           + Add social
         </button>
         <div>
-          <button type="submit" className="rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white">
+          <button type="submit" className="mu-btn-primary">
             Save socials
           </button>
         </div>
       </form>
 
-      <section className="rounded-2xl border border-ink/10 bg-white/70 p-5">
+      <section className="mu-card p-5 md:p-6">
         <h2 className="font-display text-lg font-semibold">QR code</h2>
-        <p className="mt-1 text-sm text-ink/55">Points to your public Bitlink page.</p>
+        <p className="mt-1 text-sm text-meetup-muted">Points to your public Bitlink page.</p>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={qrSrc}
           alt="QR code"
-          className="mt-4 h-48 w-48 rounded-xl border border-ink/10 bg-white p-2"
+          className="mt-4 h-48 w-48 rounded-xl border border-meetup-border bg-white p-2"
           onError={(e) => {
             const token = getAccessToken();
             if (!token) return;
@@ -335,7 +335,7 @@ function Field({
     <label className="block text-sm">
       <span className="mb-1 block font-medium">{label}</span>
       <input
-        className="w-full rounded-xl border border-ink/10 px-3 py-2"
+        className="w-full rounded-xl border border-meetup-border px-3 py-2"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />

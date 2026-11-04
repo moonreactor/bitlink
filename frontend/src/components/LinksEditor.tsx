@@ -182,31 +182,31 @@ export function LinksEditor() {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div>
-        <h1 className="font-display text-3xl font-bold text-ink">Links</h1>
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink">Links</h1>
         <p className="mt-1 text-sm text-ink/55">
           Icons, images, featured style, and animations. Drag to reorder.
         </p>
       </div>
 
-      <form onSubmit={onCreate} className="space-y-3 rounded-2xl border border-ink/10 bg-white/70 p-4 backdrop-blur">
+      <form onSubmit={onCreate} className="space-y-3 mu-card p-4 md:p-5">
         <div className="grid gap-3 sm:grid-cols-[1fr_1.4fr_auto]">
           <input
             value={draft.title}
             onChange={(e) => setDraft({ ...draft, title: e.target.value })}
             placeholder="Title"
             required
-            className="rounded-xl border border-ink/10 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30"
+            className="rounded-xl border border-meetup-border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30"
           />
           <input
             value={draft.url}
             onChange={(e) => setDraft({ ...draft, url: e.target.value })}
             placeholder="https://…"
             required
-            className="rounded-xl border border-ink/10 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30"
+            className="rounded-xl border border-meetup-border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30"
           />
           <button
             type="submit"
-            className="rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:bg-ink/90"
+            className="mu-btn-primary"
           >
             Add
           </button>
@@ -224,14 +224,14 @@ export function LinksEditor() {
           <button
             type="button"
             onClick={() => setShowExtras((v) => !v)}
-            className="text-sm font-medium text-accent hover:underline"
+            className="text-sm font-medium text-meetup-purple hover:underline"
           >
             {showExtras ? "Hide extras" : "Add icon, image & animation"}
           </button>
         </div>
 
         {showExtras && (
-          <div className="space-y-4 rounded-xl border border-ink/10 bg-white/80 p-3">
+          <div className="space-y-4 rounded-xl border border-meetup-border bg-white/80 p-3">
             <LinkIconPicker value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
             <ImageUrlField
               value={draft.thumbnail_url}
@@ -249,7 +249,7 @@ export function LinksEditor() {
         <SortableContext items={links.map((l) => l.id)} strategy={verticalListSortingStrategy}>
           <ul className="space-y-3">
             {links.length === 0 && (
-              <li className="rounded-2xl border border-dashed border-ink/15 p-8 text-center text-sm text-ink/45">
+              <li className="rounded-2xl border border-dashed border-meetup-border p-8 text-center text-sm text-meetup-muted">
                 No links yet. Add your first one above.
               </li>
             )}
@@ -275,12 +275,12 @@ export function LinksEditor() {
           >
             <h3 className="font-display text-xl font-semibold">Edit link</h3>
             <input
-              className="w-full rounded-xl border border-ink/10 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-meetup-border px-3 py-2 text-sm"
               value={editing.title}
               onChange={(e) => setEditing({ ...editing, title: e.target.value })}
             />
             <input
-              className="w-full rounded-xl border border-ink/10 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-meetup-border px-3 py-2 text-sm"
               value={editing.url}
               onChange={(e) => setEditing({ ...editing, url: e.target.value })}
             />
@@ -316,7 +316,7 @@ export function LinksEditor() {
                 Visible from
                 <input
                   type="datetime-local"
-                  className="mt-1 w-full rounded-xl border border-ink/10 px-2 py-2 text-sm"
+                  className="mt-1 w-full rounded-xl border border-meetup-border px-2 py-2 text-sm"
                   value={toLocalInput(editing.visible_from)}
                   onChange={(e) =>
                     setEditing({
@@ -330,7 +330,7 @@ export function LinksEditor() {
                 Visible until
                 <input
                   type="datetime-local"
-                  className="mt-1 w-full rounded-xl border border-ink/10 px-2 py-2 text-sm"
+                  className="mt-1 w-full rounded-xl border border-meetup-border px-2 py-2 text-sm"
                   value={toLocalInput(editing.visible_until)}
                   onChange={(e) =>
                     setEditing({
@@ -345,7 +345,7 @@ export function LinksEditor() {
               <button type="button" onClick={() => setEditing(null)} className="rounded-xl px-4 py-2 text-sm">
                 Cancel
               </button>
-              <button type="submit" className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white">
+              <button type="submit" className="mu-btn-primary">
                 Save
               </button>
             </div>
@@ -365,13 +365,13 @@ function ImageUrlField({ value, onChange }: { value: string; onChange: (v: strin
           // eslint-disable-next-line @next/next/no-img-element
           <img src={value} alt="" className="h-14 w-14 rounded-xl object-cover ring-1 ring-ink/10" />
         ) : (
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-ink/15 text-[10px] text-ink/35">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-meetup-border text-[10px] text-meetup-muted">
             Preview
           </div>
         )}
         <div className="min-w-0 flex-1 space-y-1">
           <input
-            className="w-full rounded-xl border border-ink/10 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/30"
+            className="w-full rounded-xl border border-meetup-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/30"
             placeholder="https://…/image.jpg"
             value={value}
             onChange={(e) => onChange(e.target.value)}
@@ -383,7 +383,7 @@ function ImageUrlField({ value, onChange }: { value: string; onChange: (v: strin
             <button
               type="button"
               onClick={() => onChange("")}
-              className="text-[11px] font-medium text-ink/45 hover:text-ink"
+              className="text-[11px] font-medium text-meetup-muted hover:text-ink"
             >
               Remove image
             </button>
@@ -428,7 +428,7 @@ function SortableLink({
       ref={setNodeRef}
       style={style}
       className={`rounded-2xl border bg-white/80 p-4 backdrop-blur ${
-        link.is_featured ? "border-accent/30 ring-1 ring-accent/20" : "border-ink/10"
+        link.is_featured ? "border-meetup-purple/40 ring-1 ring-meetup-purple/20" : "border-meetup-border"
       } ${link.is_active ? "" : "opacity-60"}`}
     >
       <div className="flex items-start gap-3">
@@ -458,12 +458,12 @@ function SortableLink({
             )}
             <p className="truncate font-semibold text-ink">{link.title}</p>
             {link.is_featured && (
-              <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold uppercase text-accent">
+              <span className="rounded-full bg-meetup-lavender px-2 py-0.5 text-[10px] font-bold uppercase text-meetup-purple">
                 Featured
               </span>
             )}
             {link.animation && link.animation !== "none" && (
-              <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[10px] font-bold uppercase text-ink/50">
+              <span className="rounded-full bg-mist px-2 py-0.5 text-[10px] font-bold uppercase text-meetup-muted">
                 {link.animation}
               </span>
             )}
@@ -473,7 +473,7 @@ function SortableLink({
               </span>
             )}
           </div>
-          <p className="truncate text-xs text-ink/45">{link.url}</p>
+          <p className="truncate text-xs text-meetup-muted">{link.url}</p>
           {(link.visible_from || link.visible_until) && (
             <p className="mt-1 text-[11px] text-ink/40">
               Schedule: {link.visible_from ? new Date(link.visible_from).toLocaleString() : "…"} →{" "}
@@ -523,7 +523,7 @@ function MiniBtn({
       type="button"
       onClick={onClick}
       className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
-        danger ? "bg-red-50 text-red-600" : "bg-ink/5 text-ink/70 hover:bg-ink/10"
+        danger ? "bg-red-50 text-red-600" : "bg-mist text-meetup-muted hover:bg-meetup-lavender hover:text-meetup-purple"
       }`}
     >
       {children}
