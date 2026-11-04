@@ -50,6 +50,57 @@ export default function AdminMetricsPage() {
         <StatCard label="Superusers" value={metrics.superusers} />
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Create CTA clicks"
+          value={metrics.cta_clicks_total}
+          hint={`${metrics.cta_clicks_7d} last 7d`}
+        />
+        <StatCard
+          label="Referred signups"
+          value={metrics.referred_signups_total}
+          hint={`${metrics.referred_signups_7d} last 7d`}
+        />
+      </div>
+
+      {(metrics.top_referral_sources || []).length > 0 && (
+        <section className="rounded-2xl border border-ink/10 bg-white/70 p-5 backdrop-blur">
+          <h2 className="font-display text-lg font-semibold">Growth sources</h2>
+          <p className="mt-1 text-sm text-ink/55">
+            Profiles whose “Create your Bitlink” CTA drove clicks and signups.
+          </p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[420px] text-left text-sm">
+              <thead className="border-b border-ink/10 text-xs uppercase tracking-wide text-ink/45">
+                <tr>
+                  <th className="py-2 pr-3 font-medium">Profile</th>
+                  <th className="py-2 pr-3 font-medium">CTA clicks</th>
+                  <th className="py-2 font-medium">Signups</th>
+                </tr>
+              </thead>
+              <tbody>
+                {metrics.top_referral_sources.map((row) => (
+                  <tr key={row.username} className="border-t border-ink/5">
+                    <td className="py-2.5 pr-3">
+                      <a
+                        href={`/${row.username}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-medium text-meetup-purple hover:underline"
+                      >
+                        @{row.username}
+                      </a>
+                    </td>
+                    <td className="py-2.5 pr-3 tabular-nums">{row.cta_clicks}</td>
+                    <td className="py-2.5 tabular-nums font-semibold">{row.signups}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       <section className="rounded-2xl border border-ink/10 bg-white/70 p-5 backdrop-blur">
         <h2 className="font-display text-lg font-semibold">Last 30 days</h2>
         <div className="mt-5 flex h-40 items-end gap-1">

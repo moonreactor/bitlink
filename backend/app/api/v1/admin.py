@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_superuser
 from app.db.session import get_db
 from app.models.analytics import LinkClick, PageView
+from app.models.growth import GrowthCtaClick
 from app.models.link import Link
 from app.models.profile import Profile
 from app.models.subscriber import Subscriber
@@ -17,6 +18,7 @@ from app.schemas.admin import (
     AdminLinkItem,
     AdminLinkListResponse,
     AdminMetrics,
+    AdminReferralSource,
     AdminTopProfile,
     AdminUserDetail,
     AdminUserListItem,
@@ -91,6 +93,7 @@ def _build_user_detail(db: Session, user: User) -> AdminUserDetail:
         bio=profile.bio if profile else None,
         avatar_url=profile.avatar_url if profile else None,
         is_verified=bool(getattr(profile, "is_verified", False)) if profile else False,
+        referred_by_username=getattr(user, "referred_by_username", None),
         profile_id=profile.id if profile else None,
         links_count=links_count,
         views_count=views_count,
@@ -218,6 +221,54 @@ def platform_metrics(
         for r in top_rows
     ]
 
+    cta_clicks_total = db.query(func.count(GrowthCtaClick.id)).scalar() or 0
+    cta_clicks_7d = (
+        db.query(func.count(GrowthCtaClick.id))
+        .filter(GrowthCtaClick.created_at >= week_ago)
+        .scalar()
+        or 0
+    )
+    referred_signups_total = (
+        db.query(func.count(User.id)).filter(User.referred_by_username.isnot(None)).scalar() or 0
+    )
+    referred_signups_7d = (
+        db.query(func.count(User.id))
+        .filter(User.referred_by_username.isnot(None), User.created_at >= week_ago)
+        .scalar()
+        or 0
+    )
+
+    cta_by_source = {
+        r[0]: r[1]
+        for r in (
+            db.query(GrowthCtaClick.source_username, func.count(GrowthCtaClick.id))
+            .group_by(GrowthCtaClick.source_username)
+            .all()
+        )
+    }
+    signups_by_source = {
+        r[0]: r[1]
+        for r in (
+            db.query(User.referred_by_username, func.count(User.id))
+            .filter(User.referred_by_username.isnot(None))
+            .group_by(User.referred_by_username)
+            .all()
+        )
+    }
+    source_keys = set(cta_by_source) | set(signups_by_source)
+    top_referral_sources = sorted(
+        [
+            AdminReferralSource(
+                username=username,
+                cta_clicks=cta_by_source.get(username, 0),
+                signups=signups_by_source.get(username, 0),
+            )
+            for username in source_keys
+        ],
+        key=lambda s: (s.signups, s.cta_clicks),
+        reverse=True,
+    )[:15]
+
     return AdminMetrics(
         total_users=total_users,
         active_users=active_users,
@@ -232,8 +283,13 @@ def platform_metrics(
         new_users_30d=new_users_30d,
         views_7d=views_7d,
         clicks_7d=clicks_7d,
+        cta_clicks_total=cta_clicks_total,
+        cta_clicks_7d=cta_clicks_7d,
+        referred_signups_total=referred_signups_total,
+        referred_signups_7d=referred_signups_7d,
         daily=daily,
         top_profiles=top_profiles,
+        top_referral_sources=top_referral_sources,
     )
 
 
@@ -311,6 +367,7 @@ def list_users(
             created_at=user.created_at,
             username=username,
             display_name=display_name,
+            referred_by_username=getattr(user, "referred_by_username", None),
             links_count=links_count,
             views_count=views_count,
             clicks_count=clicks_count,

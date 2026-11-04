@@ -155,6 +155,7 @@ export const authApi = {
     password: string;
     username: string;
     display_name: string;
+    referred_by_username?: string | null;
   }) => request<TokenResponse>("/auth/register", { method: "POST", body: JSON.stringify(body) }),
   login: (body: { email: string; password: string }) =>
     request<TokenResponse>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
@@ -322,6 +323,11 @@ export const publicApi = {
     }),
   trackView: (username: string, body?: { referrer?: string; visitor_id?: string }) =>
     request<void>(`/public/${username}/view`, {
+      method: "POST",
+      body: JSON.stringify(body || {}),
+    }),
+  trackCtaClick: (username: string, body?: { referrer?: string; visitor_id?: string }) =>
+    request<void>(`/public/${username}/cta-click`, {
       method: "POST",
       body: JSON.stringify(body || {}),
     }),

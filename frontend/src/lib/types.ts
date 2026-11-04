@@ -224,6 +224,12 @@ export type AdminTopProfile = {
   links_count: number;
 };
 
+export type AdminReferralSource = {
+  username: string;
+  cta_clicks: number;
+  signups: number;
+};
+
 export type AdminMetrics = {
   total_users: number;
   active_users: number;
@@ -238,8 +244,13 @@ export type AdminMetrics = {
   new_users_30d: number;
   views_7d: number;
   clicks_7d: number;
+  cta_clicks_total: number;
+  cta_clicks_7d: number;
+  referred_signups_total: number;
+  referred_signups_7d: number;
   daily: AdminDailyStat[];
   top_profiles: AdminTopProfile[];
+  top_referral_sources: AdminReferralSource[];
 };
 
 export type AdminUserListItem = {
@@ -250,6 +261,7 @@ export type AdminUserListItem = {
   created_at: string;
   username: string | null;
   display_name: string | null;
+  referred_by_username: string | null;
   links_count: number;
   views_count: number;
   clicks_count: number;
@@ -288,6 +300,7 @@ export type AdminUserDetail = {
   bio: string | null;
   avatar_url: string | null;
   is_verified: boolean;
+  referred_by_username: string | null;
   profile_id: string | null;
   links_count: number;
   views_count: number;

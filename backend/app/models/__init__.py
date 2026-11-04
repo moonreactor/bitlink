@@ -1,4 +1,5 @@
 from app.models.analytics import LinkClick, PageView
+from app.models.growth import GrowthCtaClick
 from app.models.link import Link
 from app.models.product import Product
 from app.models.profile import Profile
@@ -18,4 +19,5 @@ __all__ = [
     "ShortLink",
     "ShortLinkClick",
     "Product",
+    "GrowthCtaClick",
 ]

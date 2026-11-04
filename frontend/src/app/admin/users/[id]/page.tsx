@@ -80,6 +80,10 @@ export default function AdminUserDetailPage() {
           <Row label="Email" value={user.email} />
           <Row label="Joined" value={new Date(user.created_at).toLocaleString()} />
           <Row label="Username" value={user.username ? `@${user.username}` : "—"} />
+          <Row
+            label="Referred from"
+            value={user.referred_by_username ? `@${user.referred_by_username}` : "—"}
+          />
           <Row label="Bio" value={user.bio || "—"} />
         </dl>
         <div className="mt-5 flex flex-wrap gap-2">

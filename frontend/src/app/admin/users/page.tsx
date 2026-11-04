@@ -77,6 +77,7 @@ export default function AdminUsersPage() {
             <thead className="border-b border-ink/10 bg-ink/[0.03] text-xs uppercase tracking-wide text-ink/45">
               <tr>
                 <th className="px-4 py-3 font-medium">User</th>
+                <th className="px-4 py-3 font-medium">From</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Links</th>
                 <th className="px-4 py-3 font-medium">Views</th>
@@ -87,14 +88,14 @@ export default function AdminUsersPage() {
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-ink/50">
+                  <td colSpan={7} className="px-4 py-8 text-ink/50">
                     Loading…
                   </td>
                 </tr>
               )}
               {!loading && items.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-ink/50">
+                  <td colSpan={7} className="px-4 py-8 text-ink/50">
                     No users found.
                   </td>
                 </tr>
@@ -110,6 +111,15 @@ export default function AdminUsersPage() {
                         {user.display_name || "—"} · {user.email}
                         {user.is_superuser ? " · superuser" : ""}
                       </p>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-ink/55">
+                      {user.referred_by_username ? (
+                        <a href={`/${user.referred_by_username}`} target="_blank" rel="noreferrer" className="font-medium text-meetup-purple hover:underline">
+                          @{user.referred_by_username}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <StatusPill active={user.is_active} />

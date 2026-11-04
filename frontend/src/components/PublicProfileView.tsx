@@ -396,7 +396,20 @@ export function PublicProfileView({
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
         <div className="pointer-events-auto mx-auto w-full max-w-md">
           <a
-            href="/register"
+            href={`/register?ref=${encodeURIComponent(username)}`}
+            onClick={() => {
+              try {
+                localStorage.setItem("bitlink_ref", username);
+              } catch {
+                /* ignore */
+              }
+              publicApi
+                .trackCtaClick(username, {
+                  referrer: typeof document !== "undefined" ? document.referrer : undefined,
+                  visitor_id: visitorId(),
+                })
+                .catch(() => {});
+            }}
             className="inline-flex w-full items-center justify-center gap-2.5 rounded-full bg-white px-5 py-3 text-sm font-bold text-ink shadow-[0_-4px_24px_rgba(0,0,0,0.18)] ring-1 ring-black/5 transition hover:scale-[1.01] hover:bg-white"
           >
             <BitlinkLogo mark href={null} height={22} className="shrink-0" />
