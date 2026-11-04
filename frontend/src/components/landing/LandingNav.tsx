@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const LINKS = [
-  { href: "#features", label: "Features" },
-  { href: "#share", label: "Share" },
-  { href: "#analytics", label: "Analytics" },
+  { href: "#how", label: "How it works" },
+  { href: "#product", label: "Product" },
   { href: "#faq", label: "FAQ" },
 ];
 
@@ -15,7 +14,7 @@ export function LandingNav() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
+    const onScroll = () => setScrolled(window.scrollY > 4);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -30,14 +29,12 @@ export function LandingNav() {
 
   return (
     <header
-      className={`sticky top-0 z-50 border-b transition-shadow ${
-        scrolled
-          ? "border-meetup-border bg-white/95 shadow-meetup backdrop-blur-md"
-          : "border-transparent bg-white"
+      className={`sticky top-0 z-50 border-b bg-white/95 backdrop-blur-md transition-shadow ${
+        scrolled ? "border-meetup-border shadow-meetup" : "border-meetup-border/60"
       }`}
     >
       <nav
-        className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3 md:px-8"
+        className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 md:px-8"
         aria-label="Main navigation"
       >
         <Link href="/" className="flex items-center gap-1.5">
@@ -67,42 +64,47 @@ export function LandingNav() {
             Log in
           </Link>
           <Link href="/register" className="mu-btn-primary">
-            Sign up free
+            Get your link
           </Link>
         </div>
 
-        <button
-          type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-mist md:hidden"
-          aria-label={open ? "Close menu" : "Open menu"}
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-        >
-          <span className="sr-only">Menu</span>
-          <span className="relative block h-3.5 w-4">
-            <span
-              className={`absolute left-0 top-0 h-0.5 w-full bg-ink transition ${
-                open ? "translate-y-1.5 rotate-45" : ""
-              }`}
-            />
-            <span
-              className={`absolute left-0 top-1.5 h-0.5 w-full bg-ink transition ${
-                open ? "opacity-0" : ""
-              }`}
-            />
-            <span
-              className={`absolute left-0 top-3 h-0.5 w-full bg-ink transition ${
-                open ? "-translate-y-1.5 -rotate-45" : ""
-              }`}
-            />
-          </span>
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <Link href="/register" className="mu-btn-primary px-4 py-2 text-xs">
+            Get link
+          </Link>
+          <button
+            type="button"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-mist"
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+          >
+            <span className="sr-only">Menu</span>
+            <span className="relative block h-3.5 w-4">
+              <span
+                className={`absolute left-0 top-0 h-0.5 w-full bg-ink transition ${
+                  open ? "translate-y-1.5 rotate-45" : ""
+                }`}
+              />
+              <span
+                className={`absolute left-0 top-1.5 h-0.5 w-full bg-ink transition ${
+                  open ? "opacity-0" : ""
+                }`}
+              />
+              <span
+                className={`absolute left-0 top-3 h-0.5 w-full bg-ink transition ${
+                  open ? "-translate-y-1.5 -rotate-45" : ""
+                }`}
+              />
+            </span>
+          </button>
+        </div>
       </nav>
 
       {open && (
         <div className="fixed inset-0 z-40 bg-ink/30 md:hidden" onClick={() => setOpen(false)}>
           <div
-            className="absolute inset-x-3 top-[4.25rem] rounded-meetup-lg bg-white p-5 shadow-meetup-lg"
+            className="absolute inset-x-3 top-[4.5rem] rounded-meetup-lg bg-white p-5 shadow-meetup-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col gap-1">
@@ -122,7 +124,7 @@ export function LandingNav() {
                 Log in
               </Link>
               <Link href="/register" className="mu-btn-primary w-full">
-                Sign up free
+                Get your link
               </Link>
             </div>
           </div>

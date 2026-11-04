@@ -148,16 +148,17 @@ export function PublicProfileView({
         )}
 
         {!profile.is_locked && profile.social_links.length > 0 && (
-          <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <div className="mt-4 flex flex-wrap justify-center gap-2.5">
             {profile.social_links.map((s) => (
               <a
                 key={`${s.platform}-${s.url}`}
                 href={s.url}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold capitalize backdrop-blur hover:bg-white/25"
+                title={s.platform}
+                className="transition hover:scale-110"
               >
-                {s.platform}
+                <LinkVisual url={s.url} platform={s.platform} size="sm" />
               </a>
             ))}
           </div>
@@ -206,6 +207,7 @@ export function PublicProfileView({
                 }}
               >
                 <LinkVisual
+                  url={link.url}
                   icon={link.icon}
                   thumbnailUrl={link.thumbnail_url}
                   featured={link.is_featured}
@@ -242,11 +244,17 @@ export function PublicProfileView({
           </div>
         )}
 
-        {!profile.remove_branding && (
-          <a href="/" className="mt-12 text-xs opacity-50 hover:opacity-80">
+        <div className="mt-12 flex w-full flex-col items-center gap-3">
+          <a
+            href="/register"
+            className="inline-flex w-full items-center justify-center rounded-full bg-white/95 px-5 py-3 text-sm font-bold text-ink shadow-lg shadow-black/15 transition hover:scale-[1.02] hover:bg-white"
+          >
+            Create your Bitlink — free
+          </a>
+          <a href="/" className="text-xs opacity-55 hover:opacity-90">
             Made with Bitlink
           </a>
-        )}
+        </div>
       </div>
 
       {lockPrompt && (

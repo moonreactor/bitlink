@@ -1,6 +1,7 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.v1.profile import get_user_profile
@@ -10,8 +11,16 @@ from app.db.session import get_db
 from app.models.link import Link
 from app.models.user import User
 from app.schemas.link import LinkCreate, LinkOut, LinkReorderRequest, LinkUpdate
+from app.services.link_meta import fetch_link_meta
 
 router = APIRouter(prefix="/me/links", tags=["links"])
+
+
+class LinkMetaOut(BaseModel):
+    url: str
+    title: str
+    favicon_url: str | None = None
+    domain: str | None = None
 
 
 def _link_out(link: Link) -> LinkOut:
@@ -31,6 +40,19 @@ def _link_out(link: Link) -> LinkOut:
         created_at=link.created_at,
         updated_at=link.updated_at,
     )
+
+
+@router.get("/meta", response_model=LinkMetaOut)
+def preview_link_meta(
+    url: str = Query(..., min_length=3, max_length=2048),
+    current_user: User = Depends(get_current_user),
+) -> LinkMetaOut:
+    _ = current_user
+    try:
+        meta = fetch_link_meta(url)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return LinkMetaOut(**meta)
 
 
 @router.get("", response_model=list[LinkOut])

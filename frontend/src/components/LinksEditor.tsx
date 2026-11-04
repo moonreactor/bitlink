@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { LinkAnimationPicker } from "@/components/LinkAnimationPicker";
 import { LinkIconPicker } from "@/components/LinkIconPicker";
 import { LinkVisual } from "@/components/LinkVisual";
@@ -23,6 +23,7 @@ import { useToast } from "@/components/Toast";
 import { linksApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { animationClass } from "@/lib/linkAnimations";
+import { detectSocialBrand } from "@/lib/socialBrands";
 import type { LinkItem } from "@/lib/types";
 
 type Draft = {
@@ -47,12 +48,22 @@ const emptyDraft = (): Draft => ({
   visible_until: null,
 });
 
+function looksLikeUrl(value: string) {
+  const v = value.trim();
+  if (v.length < 4) return false;
+  if (/\s/.test(v)) return false;
+  return /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}([/:?#].*)?$/i.test(v) || v.includes(".");
+}
+
 export function LinksEditor() {
   const { success, error: toastError } = useToast();
   const [links, setLinks] = useState<LinkItem[]>([]);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
-  const [showExtras, setShowExtras] = useState(false);
-  const [editing, setEditing] = useState<LinkItem | null>(null);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [fetchingMeta, setFetchingMeta] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const metaReq = useRef(0);
+  const titleTouched = useRef(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -66,27 +77,95 @@ export function LinksEditor() {
     load();
   }, []);
 
+  async function hydrateFromUrl(rawUrl: string) {
+    const token = getAccessToken();
+    if (!token || !looksLikeUrl(rawUrl)) return;
+
+    const reqId = ++metaReq.current;
+    setFetchingMeta(true);
+    setComposerOpen(true);
+
+    try {
+      const meta = await linksApi.meta(token, rawUrl.trim());
+      if (reqId !== metaReq.current) return;
+
+      const brand = detectSocialBrand(meta.url);
+      setDraft((prev) => ({
+        ...prev,
+        url: meta.url,
+        title: titleTouched.current && prev.title.trim() ? prev.title : meta.title,
+        // Prefer brand SVG for known socials; otherwise use favicon as thumbnail
+        thumbnail_url: brand ? "" : meta.favicon_url || "",
+        icon: prev.icon,
+      }));
+    } catch {
+      if (reqId !== metaReq.current) return;
+      const normalized = rawUrl.trim().startsWith("http") ? rawUrl.trim() : `https://${rawUrl.trim()}`;
+      let fallbackTitle = rawUrl.trim();
+      try {
+        fallbackTitle = new URL(normalized).hostname.replace(/^www\./, "");
+      } catch {
+        /* ignore */
+      }
+      setDraft((prev) => ({
+        ...prev,
+        url: normalized,
+        title: titleTouched.current && prev.title.trim() ? prev.title : fallbackTitle,
+      }));
+    } finally {
+      if (reqId === metaReq.current) setFetchingMeta(false);
+    }
+  }
+
+  function onUrlChange(value: string) {
+    setDraft((prev) => ({ ...prev, url: value }));
+    if (looksLikeUrl(value)) {
+      setComposerOpen(true);
+    }
+  }
+
+  function onUrlCommit() {
+    if (looksLikeUrl(draft.url)) {
+      void hydrateFromUrl(draft.url);
+    }
+  }
+
   async function onCreate(e: FormEvent) {
     e.preventDefault();
     const token = getAccessToken();
     if (!token) return;
+    if (!draft.url.trim()) {
+      toastError("Paste a link first");
+      return;
+    }
     try {
       const normalized = draft.url.startsWith("http") ? draft.url : `https://${draft.url}`;
+      const title = draft.title.trim() || normalized;
       await linksApi.create(token, {
-        title: draft.title,
+        title,
         url: normalized,
         thumbnail_url: draft.thumbnail_url.trim() || null,
         icon: draft.icon,
         animation: draft.animation,
         is_featured: draft.is_featured,
+        visible_from: draft.visible_from,
+        visible_until: draft.visible_until,
       });
       setDraft(emptyDraft());
-      setShowExtras(false);
+      setComposerOpen(false);
+      titleTouched.current = false;
       await load();
       success("Link created");
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Failed to create link");
     }
+  }
+
+  function resetComposer() {
+    setDraft(emptyDraft());
+    setComposerOpen(false);
+    titleTouched.current = false;
+    metaReq.current += 1;
   }
 
   async function onDragEnd(event: DragEndEvent) {
@@ -128,6 +207,7 @@ export function LinksEditor() {
     if (!confirm("Delete this link?")) return;
     try {
       await linksApi.remove(token, id);
+      if (expandedId === id) setExpandedId(null);
       await load();
       success("Link deleted");
     } catch (err) {
@@ -135,26 +215,14 @@ export function LinksEditor() {
     }
   }
 
-  async function saveEdit(e: FormEvent) {
-    e.preventDefault();
-    if (!editing) return;
+  async function saveInline(link: LinkItem, patch: Partial<LinkItem> & { clear_thumbnail?: boolean; clear_icon?: boolean }) {
     const token = getAccessToken();
     if (!token) return;
-    const body: Record<string, unknown> = {
-      title: editing.title,
-      url: editing.url,
-      thumbnail_url: editing.thumbnail_url || null,
-      icon: editing.icon,
-      animation: editing.animation || "none",
-      is_featured: editing.is_featured,
-      visible_from: editing.visible_from || null,
-      visible_until: editing.visible_until || null,
-    };
-    if (!editing.thumbnail_url) body.clear_thumbnail = true;
-    if (!editing.icon) body.clear_icon = true;
+    const body: Record<string, unknown> = { ...patch };
+    if (patch.thumbnail_url === null || patch.thumbnail_url === "") body.clear_thumbnail = true;
+    if (patch.icon === null || patch.icon === "") body.clear_icon = true;
     try {
-      await linksApi.update(token, editing.id, body);
-      setEditing(null);
+      await linksApi.update(token, link.id, body);
       await load();
       success("Link updated");
     } catch (err) {
@@ -183,64 +251,142 @@ export function LinksEditor() {
     <div className="mx-auto max-w-3xl space-y-8">
       <div>
         <h1 className="font-display text-3xl font-bold tracking-tight text-ink">Links</h1>
-        <p className="mt-1 text-sm text-ink/55">
-          Icons, images, featured style, and animations. Drag to reorder.
+        <p className="mt-1 text-sm text-meetup-muted">
+          Paste a URL — we fill title and icon. Then tweak and save.
         </p>
       </div>
 
-      <form onSubmit={onCreate} className="space-y-3 mu-card p-4 md:p-5">
-        <div className="grid gap-3 sm:grid-cols-[1fr_1.4fr_auto]">
-          <input
-            value={draft.title}
-            onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-            placeholder="Title"
-            required
-            className="rounded-xl border border-meetup-border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30"
-          />
-          <input
-            value={draft.url}
-            onChange={(e) => setDraft({ ...draft, url: e.target.value })}
-            placeholder="https://…"
-            required
-            className="rounded-xl border border-meetup-border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/30"
-          />
-          <button
-            type="submit"
-            className="mu-btn-primary"
-          >
-            Add
-          </button>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="inline-flex items-center gap-2 text-sm text-ink/70">
+      <form onSubmit={onCreate} className="mu-card space-y-4 p-4 md:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
             <input
-              type="checkbox"
-              checked={draft.is_featured}
-              onChange={(e) => setDraft({ ...draft, is_featured: e.target.checked })}
+              value={draft.url}
+              onChange={(e) => onUrlChange(e.target.value)}
+              onBlur={onUrlCommit}
+              onPaste={(e) => {
+                const pasted = e.clipboardData.getData("text");
+                if (looksLikeUrl(pasted)) {
+                  // Let paste apply, then hydrate
+                  window.setTimeout(() => void hydrateFromUrl(pasted), 0);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !composerOpen) {
+                  e.preventDefault();
+                  onUrlCommit();
+                }
+              }}
+              placeholder="Paste or type a link (https://…)"
+              autoComplete="url"
+              className="mu-input w-full pr-24"
             />
-            Featured
-          </label>
-          <button
-            type="button"
-            onClick={() => setShowExtras((v) => !v)}
-            className="text-sm font-medium text-meetup-purple hover:underline"
-          >
-            {showExtras ? "Hide extras" : "Add icon, image & animation"}
-          </button>
+            {fetchingMeta && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-meetup-purple">
+                Fetching…
+              </span>
+            )}
+          </div>
+          {!composerOpen && (
+            <button
+              type="button"
+              onClick={onUrlCommit}
+              disabled={!looksLikeUrl(draft.url)}
+              className="mu-btn-primary shrink-0 disabled:opacity-50"
+            >
+              Continue
+            </button>
+          )}
         </div>
 
-        {showExtras && (
-          <div className="space-y-4 rounded-xl border border-meetup-border bg-white/80 p-3">
+        {composerOpen && (
+          <div className="space-y-4 rounded-meetup border border-meetup-border bg-meetup-bg/60 p-4">
+            <div className="flex items-start gap-3">
+              <LinkVisual
+                url={draft.url}
+                icon={draft.icon}
+                thumbnailUrl={draft.thumbnail_url || null}
+                featured={draft.is_featured}
+                size="md"
+              />
+              <div className="min-w-0 flex-1 space-y-3">
+                <label className="block text-sm">
+                  <span className="mb-1 block font-semibold text-ink">Title</span>
+                  <input
+                    value={draft.title}
+                    onChange={(e) => {
+                      titleTouched.current = true;
+                      setDraft({ ...draft, title: e.target.value });
+                    }}
+                    placeholder="Link title"
+                    required
+                    className="mu-input"
+                  />
+                </label>
+                <p className="truncate text-xs text-meetup-muted">{draft.url || "—"}</p>
+              </div>
+            </div>
+
+            <label className="inline-flex items-center gap-2 text-sm text-meetup-muted">
+              <input
+                type="checkbox"
+                checked={draft.is_featured}
+                onChange={(e) => setDraft({ ...draft, is_featured: e.target.checked })}
+              />
+              Featured link
+            </label>
+
             <LinkIconPicker value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
+
             <ImageUrlField
               value={draft.thumbnail_url}
               onChange={(thumbnail_url) => setDraft({ ...draft, thumbnail_url })}
+              hint="Favicon is filled automatically. You can replace it with any image URL."
             />
+
             <LinkAnimationPicker
               value={draft.animation}
               onChange={(animation) => setDraft({ ...draft, animation })}
             />
+
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-xs text-meetup-muted">
+                Visible from
+                <input
+                  type="datetime-local"
+                  className="mu-input mt-1"
+                  value={toLocalInput(draft.visible_from)}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      visible_from: e.target.value ? new Date(e.target.value).toISOString() : null,
+                    })
+                  }
+                />
+              </label>
+              <label className="text-xs text-meetup-muted">
+                Visible until
+                <input
+                  type="datetime-local"
+                  className="mu-input mt-1"
+                  value={toLocalInput(draft.visible_until)}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      visible_until: e.target.value ? new Date(e.target.value).toISOString() : null,
+                    })
+                  }
+                />
+              </label>
+            </div>
+
+            <div className="flex flex-wrap justify-end gap-2 pt-1">
+              <button type="button" onClick={resetComposer} className="mu-btn-ghost">
+                Cancel
+              </button>
+              <button type="submit" className="mu-btn-primary" disabled={fetchingMeta}>
+                Add link
+              </button>
+            </div>
           </div>
         )}
       </form>
@@ -250,116 +396,42 @@ export function LinksEditor() {
           <ul className="space-y-3">
             {links.length === 0 && (
               <li className="rounded-2xl border border-dashed border-meetup-border p-8 text-center text-sm text-meetup-muted">
-                No links yet. Add your first one above.
+                No links yet. Paste a URL above to get started.
               </li>
             )}
             {links.map((link) => (
               <SortableLink
                 key={link.id}
                 link={link}
+                expanded={expandedId === link.id}
+                onToggleExpand={() =>
+                  setExpandedId((id) => (id === link.id ? null : link.id))
+                }
                 onToggle={toggle}
                 onRemove={remove}
-                onEdit={() => setEditing(link)}
+                onSave={saveInline}
                 onSetLock={setLock}
               />
             ))}
           </ul>
         </SortableContext>
       </DndContext>
-
-      {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
-          <form
-            onSubmit={saveEdit}
-            className="max-h-[90vh] w-full max-w-lg space-y-3 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
-          >
-            <h3 className="font-display text-xl font-semibold">Edit link</h3>
-            <input
-              className="w-full rounded-xl border border-meetup-border px-3 py-2 text-sm"
-              value={editing.title}
-              onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-            />
-            <input
-              className="w-full rounded-xl border border-meetup-border px-3 py-2 text-sm"
-              value={editing.url}
-              onChange={(e) => setEditing({ ...editing, url: e.target.value })}
-            />
-
-            <label className="inline-flex items-center gap-2 text-sm text-ink/70">
-              <input
-                type="checkbox"
-                checked={editing.is_featured}
-                onChange={(e) => setEditing({ ...editing, is_featured: e.target.checked })}
-              />
-              Featured link
-            </label>
-
-            <LinkIconPicker
-              value={editing.icon}
-              onChange={(icon) => setEditing({ ...editing, icon })}
-            />
-
-            <ImageUrlField
-              value={editing.thumbnail_url || ""}
-              onChange={(thumbnail_url) =>
-                setEditing({ ...editing, thumbnail_url: thumbnail_url || null })
-              }
-            />
-
-            <LinkAnimationPicker
-              value={editing.animation || "none"}
-              onChange={(animation) => setEditing({ ...editing, animation })}
-            />
-
-            <div className="grid grid-cols-2 gap-2">
-              <label className="text-xs text-ink/60">
-                Visible from
-                <input
-                  type="datetime-local"
-                  className="mt-1 w-full rounded-xl border border-meetup-border px-2 py-2 text-sm"
-                  value={toLocalInput(editing.visible_from)}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      visible_from: e.target.value ? new Date(e.target.value).toISOString() : null,
-                    })
-                  }
-                />
-              </label>
-              <label className="text-xs text-ink/60">
-                Visible until
-                <input
-                  type="datetime-local"
-                  className="mt-1 w-full rounded-xl border border-meetup-border px-2 py-2 text-sm"
-                  value={toLocalInput(editing.visible_until)}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      visible_until: e.target.value ? new Date(e.target.value).toISOString() : null,
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setEditing(null)} className="rounded-xl px-4 py-2 text-sm">
-                Cancel
-              </button>
-              <button type="submit" className="mu-btn-primary">
-                Save
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
     </div>
   );
 }
 
-function ImageUrlField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function ImageUrlField({
+  value,
+  onChange,
+  hint,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  hint?: string;
+}) {
   return (
     <div className="space-y-2">
-      <span className="text-xs font-medium text-ink/70">Image URL</span>
+      <span className="text-xs font-medium text-ink/70">Image / favicon</span>
       <div className="flex items-start gap-3">
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -371,13 +443,13 @@ function ImageUrlField({ value, onChange }: { value: string; onChange: (v: strin
         )}
         <div className="min-w-0 flex-1 space-y-1">
           <input
-            className="w-full rounded-xl border border-meetup-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/30"
+            className="mu-input"
             placeholder="https://…/image.jpg"
             value={value}
             onChange={(e) => onChange(e.target.value)}
           />
           <p className="text-[11px] text-ink/40">
-            Paste a direct image URL. Thumbnail overrides the icon on the public page.
+            {hint || "Paste a direct image URL. Thumbnail overrides the icon on the public page."}
           </p>
           {value && (
             <button
@@ -394,7 +466,7 @@ function ImageUrlField({ value, onChange }: { value: string; onChange: (v: strin
   );
 }
 
-function toLocalInput(iso: string | null) {
+function toLocalInput(iso: string | null | undefined) {
   if (!iso) return "";
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -403,15 +475,22 @@ function toLocalInput(iso: string | null) {
 
 function SortableLink({
   link,
+  expanded,
+  onToggleExpand,
   onToggle,
   onRemove,
-  onEdit,
+  onSave,
   onSetLock,
 }: {
   link: LinkItem;
+  expanded: boolean;
+  onToggleExpand: () => void;
   onToggle: (link: LinkItem, field: "is_active" | "is_featured") => void;
   onRemove: (id: string) => void;
-  onEdit: () => void;
+  onSave: (
+    link: LinkItem,
+    patch: Partial<LinkItem> & { clear_thumbnail?: boolean; clear_icon?: boolean },
+  ) => Promise<void>;
   onSetLock: (link: LinkItem, code: string | null) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -423,11 +502,32 @@ function SortableLink({
     opacity: isDragging ? 0.7 : 1,
   };
 
+  const [title, setTitle] = useState(link.title);
+  const [url, setUrl] = useState(link.url);
+  const [icon, setIcon] = useState<string | null>(link.icon);
+  const [thumbnail, setThumbnail] = useState(link.thumbnail_url || "");
+  const [animation, setAnimation] = useState(link.animation || "none");
+  const [featured, setFeatured] = useState(link.is_featured);
+  const [visibleFrom, setVisibleFrom] = useState(link.visible_from);
+  const [visibleUntil, setVisibleUntil] = useState(link.visible_until);
+
+  useEffect(() => {
+    if (!expanded) return;
+    setTitle(link.title);
+    setUrl(link.url);
+    setIcon(link.icon);
+    setThumbnail(link.thumbnail_url || "");
+    setAnimation(link.animation || "none");
+    setFeatured(link.is_featured);
+    setVisibleFrom(link.visible_from);
+    setVisibleUntil(link.visible_until);
+  }, [expanded, link]);
+
   return (
     <li
       ref={setNodeRef}
       style={style}
-      className={`rounded-2xl border bg-white/80 p-4 backdrop-blur ${
+      className={`rounded-2xl border bg-white p-4 shadow-meetup ${
         link.is_featured ? "border-meetup-purple/40 ring-1 ring-meetup-purple/20" : "border-meetup-border"
       } ${link.is_active ? "" : "opacity-60"}`}
     >
@@ -441,70 +541,161 @@ function SortableLink({
         >
           ⠿
         </button>
-        <div className={animationClass(link.animation)}>
+        <button type="button" onClick={onToggleExpand} className={animationClass(link.animation)}>
           <LinkVisual
+            url={link.url}
             icon={link.icon}
             thumbnailUrl={link.thumbnail_url}
             featured={link.is_featured}
             size="md"
           />
-        </div>
+        </button>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {!link.thumbnail_url && !link.icon && (
-              <span className="text-base" aria-hidden>
-                🔗
-              </span>
-            )}
-            <p className="truncate font-semibold text-ink">{link.title}</p>
-            {link.is_featured && (
-              <span className="rounded-full bg-meetup-lavender px-2 py-0.5 text-[10px] font-bold uppercase text-meetup-purple">
-                Featured
-              </span>
-            )}
-            {link.animation && link.animation !== "none" && (
-              <span className="rounded-full bg-mist px-2 py-0.5 text-[10px] font-bold uppercase text-meetup-muted">
-                {link.animation}
-              </span>
-            )}
-            {link.has_lock && (
-              <span className="rounded-full bg-warn/15 px-2 py-0.5 text-[10px] font-bold uppercase text-warn">
-                Locked
-              </span>
-            )}
-          </div>
-          <p className="truncate text-xs text-meetup-muted">{link.url}</p>
-          {(link.visible_from || link.visible_until) && (
-            <p className="mt-1 text-[11px] text-ink/40">
-              Schedule: {link.visible_from ? new Date(link.visible_from).toLocaleString() : "…"} →{" "}
-              {link.visible_until ? new Date(link.visible_until).toLocaleString() : "…"}
-            </p>
+          <button type="button" onClick={onToggleExpand} className="w-full text-left">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="truncate font-semibold text-ink">{link.title}</p>
+              {link.is_featured && (
+                <span className="rounded-full bg-meetup-lavender px-2 py-0.5 text-[10px] font-bold uppercase text-meetup-purple">
+                  Featured
+                </span>
+              )}
+              {link.animation && link.animation !== "none" && (
+                <span className="rounded-full bg-mist px-2 py-0.5 text-[10px] font-bold uppercase text-meetup-muted">
+                  {link.animation}
+                </span>
+              )}
+              {link.has_lock && (
+                <span className="rounded-full bg-warn/15 px-2 py-0.5 text-[10px] font-bold uppercase text-warn">
+                  Locked
+                </span>
+              )}
+            </div>
+            <p className="truncate text-xs text-meetup-muted">{link.url}</p>
+          </button>
+
+          {!expanded && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <MiniBtn onClick={onToggleExpand}>Customize</MiniBtn>
+              <MiniBtn onClick={() => onToggle(link, "is_active")}>
+                {link.is_active ? "Disable" : "Enable"}
+              </MiniBtn>
+              <MiniBtn onClick={() => onToggle(link, "is_featured")}>
+                {link.is_featured ? "Unfeature" : "Feature"}
+              </MiniBtn>
+              <MiniBtn
+                onClick={() => {
+                  if (link.has_lock) onSetLock(link, null);
+                  else {
+                    const code = prompt("Lock code for this link:");
+                    if (code) onSetLock(link, code);
+                  }
+                }}
+              >
+                {link.has_lock ? "Remove lock" : "Add lock"}
+              </MiniBtn>
+              <MiniBtn onClick={() => onRemove(link.id)} danger>
+                Delete
+              </MiniBtn>
+            </div>
           )}
-          <div className="mt-3 flex flex-wrap gap-2">
-            <MiniBtn onClick={() => onToggle(link, "is_active")}>
-              {link.is_active ? "Disable" : "Enable"}
-            </MiniBtn>
-            <MiniBtn onClick={() => onToggle(link, "is_featured")}>
-              {link.is_featured ? "Unfeature" : "Feature"}
-            </MiniBtn>
-            <MiniBtn onClick={onEdit}>Edit</MiniBtn>
-            <MiniBtn
-              onClick={() => {
-                if (link.has_lock) onSetLock(link, null);
-                else {
-                  const code = prompt("Lock code for this link:");
-                  if (code) onSetLock(link, code);
-                }
-              }}
-            >
-              {link.has_lock ? "Remove lock" : "Add lock"}
-            </MiniBtn>
-            <MiniBtn onClick={() => onRemove(link.id)} danger>
-              Delete
-            </MiniBtn>
-          </div>
         </div>
       </div>
+
+      {expanded && (
+        <div className="mt-4 space-y-4 border-t border-meetup-border pt-4">
+          <label className="block text-sm">
+            <span className="mb-1 block font-semibold">Title</span>
+            <input className="mu-input" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block font-semibold">URL</span>
+            <input className="mu-input" value={url} onChange={(e) => setUrl(e.target.value)} />
+          </label>
+
+          <label className="inline-flex items-center gap-2 text-sm text-meetup-muted">
+            <input
+              type="checkbox"
+              checked={featured}
+              onChange={(e) => setFeatured(e.target.checked)}
+            />
+            Featured link
+          </label>
+
+          <LinkIconPicker value={icon} onChange={setIcon} />
+          <ImageUrlField value={thumbnail} onChange={setThumbnail} />
+          <LinkAnimationPicker value={animation} onChange={setAnimation} />
+
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-xs text-meetup-muted">
+              Visible from
+              <input
+                type="datetime-local"
+                className="mu-input mt-1"
+                value={toLocalInput(visibleFrom)}
+                onChange={(e) =>
+                  setVisibleFrom(e.target.value ? new Date(e.target.value).toISOString() : null)
+                }
+              />
+            </label>
+            <label className="text-xs text-meetup-muted">
+              Visible until
+              <input
+                type="datetime-local"
+                className="mu-input mt-1"
+                value={toLocalInput(visibleUntil)}
+                onChange={(e) =>
+                  setVisibleUntil(e.target.value ? new Date(e.target.value).toISOString() : null)
+                }
+              />
+            </label>
+          </div>
+
+          <div className="flex flex-wrap justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              <MiniBtn onClick={() => onToggle(link, "is_active")}>
+                {link.is_active ? "Disable" : "Enable"}
+              </MiniBtn>
+              <MiniBtn
+                onClick={() => {
+                  if (link.has_lock) onSetLock(link, null);
+                  else {
+                    const code = prompt("Lock code for this link:");
+                    if (code) onSetLock(link, code);
+                  }
+                }}
+              >
+                {link.has_lock ? "Remove lock" : "Add lock"}
+              </MiniBtn>
+              <MiniBtn onClick={() => onRemove(link.id)} danger>
+                Delete
+              </MiniBtn>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={onToggleExpand} className="mu-btn-ghost">
+                Close
+              </button>
+              <button
+                type="button"
+                className="mu-btn-primary"
+                onClick={() =>
+                  onSave(link, {
+                    title,
+                    url,
+                    icon,
+                    thumbnail_url: thumbnail || null,
+                    animation,
+                    is_featured: featured,
+                    visible_from: visibleFrom,
+                    visible_until: visibleUntil,
+                  })
+                }
+              >
+                Save changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </li>
   );
 }
@@ -523,7 +714,9 @@ function MiniBtn({
       type="button"
       onClick={onClick}
       className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
-        danger ? "bg-red-50 text-red-600" : "bg-mist text-meetup-muted hover:bg-meetup-lavender hover:text-meetup-purple"
+        danger
+          ? "bg-red-50 text-red-600"
+          : "bg-mist text-meetup-muted hover:bg-meetup-lavender hover:text-meetup-purple"
       }`}
     >
       {children}
