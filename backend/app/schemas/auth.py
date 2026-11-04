@@ -44,6 +44,10 @@ class RegisterRequest(BaseModel):
             "reset-password",
             "appearance",
             "links",
+            "short-links",
+            "short",
+            "r",
+            "u",
         }
         if v in reserved:
             raise ValueError("This username is reserved. Please choose another.")

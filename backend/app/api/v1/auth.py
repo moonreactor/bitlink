@@ -48,6 +48,14 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> TokenRe
             detail="This username is already taken. Please choose another.",
         )
 
+    from app.models.short_link import ShortLink
+
+    if db.query(ShortLink).filter(ShortLink.code == payload.username).first():
+        raise HTTPException(
+            status_code=400,
+            detail="This username is already taken. Please choose another.",
+        )
+
     user = User(email=payload.email.lower(), password_hash=hash_password(payload.password))
     db.add(user)
     db.flush()

@@ -8,6 +8,7 @@ import type {
   LinkItem,
   Profile,
   PublicProfile,
+  ShortLinkItem,
   SocialLink,
   Subscriber,
   TokenResponse,
@@ -256,6 +257,28 @@ export const analyticsApi = {
     return request<AnalyticsSummary>(`/me/analytics/summary${qs ? `?${qs}` : ""}`, {}, token);
   },
   subscribers: (token: string) => request<Subscriber[]>("/me/subscribers", {}, token),
+};
+
+export const shortLinksApi = {
+  list: (token: string) => request<ShortLinkItem[]>("/me/short-links", {}, token),
+  check: (token: string, code: string) =>
+    request<{ code: string; available: boolean }>(
+      `/me/short-links/check?code=${encodeURIComponent(code)}`,
+      {},
+      token,
+    ),
+  create: (token: string, body: Record<string, unknown>) =>
+    request<ShortLinkItem>("/me/short-links", { method: "POST", body: JSON.stringify(body) }, token),
+  update: (token: string, id: string, body: Record<string, unknown>) =>
+    request<ShortLinkItem>(
+      `/me/short-links/${id}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+      token,
+    ),
+  remove: (token: string, id: string) =>
+    request<void>(`/me/short-links/${id}`, { method: "DELETE" }, token),
+  qrUrl: (id: string, fmt: "png" | "svg" = "png") =>
+    `${BROWSER_API}/api/v1/me/short-links/${id}/qr?fmt=${fmt}`,
 };
 
 export const publicApi = {

@@ -131,6 +131,24 @@ export type Subscriber = {
   created_at: string;
 };
 
+export type ShortLinkItem = {
+  id: string;
+  code: string;
+  title: string | null;
+  destination_url: string;
+  final_url: string;
+  short_url: string;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_term: string | null;
+  utm_content: string | null;
+  is_active: boolean;
+  clicks: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type TokenResponse = {
   access_token: string;
   refresh_token: string;

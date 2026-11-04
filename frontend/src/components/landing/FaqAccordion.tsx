@@ -5,7 +5,11 @@ import { useState } from "react";
 const FAQS = [
   {
     q: "Is it free?",
-    a: "Yes. Links, themes, analytics, QR, email capture, scheduling, and locks — all included. No plans.",
+    a: "Yes. Link-in-bio, short links, themes, analytics, QR, email/phone capture, scheduling, and locks — all included. No plans.",
+  },
+  {
+    q: "Short links too?",
+    a: "Yes. Unlimited shorts with custom back-halves, UTMs, editable destinations, click stats, and QR — unlike Bitly’s free cap.",
   },
   {
     q: "Do I need a website?",
