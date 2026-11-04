@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
 import { authApi } from "@/lib/api";
 import { setTokens } from "@/lib/auth";
 
@@ -10,12 +10,24 @@ type Mode = "login" | "register";
 
 export function AuthForm({ mode }: { mode: Mode }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (mode !== "register") return;
+    const fromQuery = searchParams.get("username");
+    if (!fromQuery) return;
+    const clean = fromQuery
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, "")
+      .slice(0, 30);
+    if (clean) setUsername(clean);
+  }, [mode, searchParams]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();

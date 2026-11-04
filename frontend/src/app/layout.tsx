@@ -15,8 +15,9 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Bitlink",
-  description: "Your links, one page. Free forever.",
+  title: "Bitlink — Everything you are, in one simple link",
+  description:
+    "One link for every link you share. Themes, analytics, QR, locks, scheduling, and email capture — free forever on the core.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

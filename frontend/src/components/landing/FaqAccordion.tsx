@@ -1,0 +1,71 @@
+"use client";
+
+import { useState } from "react";
+
+const FAQS = [
+  {
+    q: "Is Bitlink really free forever?",
+    a: "Yes. Auth, unlimited links, themes, analytics, QR codes, email capture, scheduling, locks, and remove branding are all included — no plans or paywalls on the core.",
+  },
+  {
+    q: "Do I need a website to use Bitlink?",
+    a: "No. Bitlink is your page. Share one URL on Instagram, TikTok, YouTube, email signatures, or print a QR for offline traffic.",
+  },
+  {
+    q: "Can I schedule links and lock content?",
+    a: "Yes. Schedule drops for a future window, feature important links, password-lock the whole page or individual links, and capture emails from visitors.",
+  },
+  {
+    q: "How do analytics work?",
+    a: "Track page views and link clicks with device and referrer context so you know what actually converts — then reorder or restyle on the fly.",
+  },
+  {
+    q: "Can I remove Bitlink branding?",
+    a: "Yes. In appearance settings you can hide branding so the page feels 100% yours.",
+  },
+  {
+    q: "Is my Bitlink safe to put on every social profile?",
+    a: "Your public page only exposes what you publish. Use profile or link locks when you need gated content.",
+  },
+];
+
+export function FaqAccordion() {
+  const [open, setOpen] = useState<number | null>(0);
+
+  return (
+    <div className="mx-auto w-full max-w-3xl divide-y divide-[#1E2330]/10">
+      {FAQS.map((item, i) => {
+        const isOpen = open === i;
+        return (
+          <div key={item.q}>
+            <button
+              type="button"
+              aria-expanded={isOpen}
+              onClick={() => setOpen(isOpen ? null : i)}
+              className="flex w-full items-center justify-between gap-4 py-5 text-left"
+            >
+              <span className="text-lg font-bold text-[#1E2330] md:text-xl">{item.q}</span>
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1E2330] text-white transition-transform duration-300 ${
+                  isOpen ? "rotate-45" : ""
+                }`}
+                aria-hidden
+              >
+                +
+              </span>
+            </button>
+            <div
+              className={`grid transition-[grid-template-rows] duration-300 ease-out ${
+                isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+              }`}
+            >
+              <div className="overflow-hidden">
+                <p className="pb-5 pr-12 text-base leading-relaxed text-[#1E2330]/70">{item.a}</p>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
