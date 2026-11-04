@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, Syne } from "next/font/google";
+import { absoluteAsset, OG_IMAGE_PATH, siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const syne = Syne({
@@ -14,25 +15,30 @@ const dmSans = DM_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
-const WEB =
-  process.env.NEXT_PUBLIC_WEB_URL ||
-  process.env.NEXT_PUBLIC_API_URL?.replace(":8000", ":3000") ||
-  "http://localhost:3000";
-
-const OG_IMAGE = `${WEB.replace(/\/$/, "")}/bitlink-og.webp`;
+const WEB = siteUrl();
+const OG_IMAGE = absoluteAsset(OG_IMAGE_PATH);
 
 export const metadata: Metadata = {
+  metadataBase: new URL(WEB),
   title: "Bitlink — Link-in-bio + short links, free forever",
   description:
     "Unlimited link-in-bio and short links with analytics, QR, UTMs, embeds, and themes — free forever. No monthly caps.",
-  metadataBase: new URL(WEB),
   openGraph: {
     title: "Bitlink — Link-in-bio + short links, free forever",
     description:
       "Unlimited link-in-bio and short links with analytics, QR, UTMs, embeds, and themes — free forever. No monthly caps.",
+    url: WEB,
     siteName: "Bitlink",
     type: "website",
-    images: [{ url: "/bitlink-og.webp", alt: "Bitlink" }],
+    images: [
+      {
+        url: OG_IMAGE,
+        width: 1731,
+        height: 908,
+        alt: "Bitlink",
+        type: "image/webp",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",

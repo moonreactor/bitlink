@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { PublicProfileView } from "@/components/PublicProfileView";
+import { absoluteAsset, OG_IMAGE_PATH, siteUrl } from "@/lib/site";
 import type { PublicProfile } from "@/lib/types";
 
 const API = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const WEB = process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_API_URL?.replace(":8000", ":3000") || "http://localhost:3000";
+const WEB = siteUrl();
 
 const RESERVED = new Set([
   "dashboard",
@@ -71,8 +72,7 @@ export async function generateMetadata({
   const title = profile.seo_title || `${profile.display_name} | Bitlink`;
   const description = profile.seo_description || profile.bio || `${profile.display_name} on Bitlink`;
   const url = `${WEB.replace(/\/$/, "")}/${profile.username}`;
-  const image =
-    absoluteUrl(profile.avatar_url) || absoluteUrl("/bitlink-og.webp") || `${WEB.replace(/\/$/, "")}/bitlink-og.webp`;
+  const image = absoluteUrl(profile.avatar_url) || absoluteAsset(OG_IMAGE_PATH);
 
   return {
     title,
