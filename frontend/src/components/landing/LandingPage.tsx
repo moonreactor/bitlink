@@ -42,7 +42,7 @@ const COUNTRIES = [
 ];
 
 const STEPS = [
-  { n: "1", title: "Claim your name", body: "Pick bitlink.app/yourname — it takes seconds." },
+  { n: "1", title: "Claim your name", body: "Pick bitlink.click/yourname — it takes seconds." },
   { n: "2", title: "Add what you share", body: "Links, videos, songs, products, a tip jar, a sign-up form." },
   { n: "3", title: "Put it everywhere", body: "Bio, video descriptions, a printed QR. Then watch the clicks." },
 ];

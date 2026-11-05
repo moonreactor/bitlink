@@ -1,9 +1,12 @@
 import type { SocialBrandId } from "@/lib/socialBrands";
 
-/** Unsplash image helper — crops server-side so we never ship oversized photos. */
-export function photo(id: string, w: number, h?: number) {
-  const size = h ? `&h=${h}&fit=crop&crop=faces,center` : "";
-  return `https://images.unsplash.com/photo-${id}?auto=format&q=70&w=${w}${size}`;
+/**
+ * Self-hosted Unsplash crops in /public/landing, named `{unsplashId}-{w}x{h}.webp`.
+ * Adding a new size? Download it with the same name, e.g.
+ * images.unsplash.com/photo-{id}?fm=webp&q=70&w={w}&h={h}&fit=crop&crop=faces,center&dpr=2
+ */
+export function photo(id: string, w: number, h: number) {
+  return `/landing/${id}-${w}x${h}.webp`;
 }
 
 /** Blocks mirror real link types a Bitlink profile can render. */
