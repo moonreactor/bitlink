@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { BitlinkLogo } from "@/components/BitlinkLogo";
-import { authApi } from "@/lib/api";
+import { authApi, shortLinksApi } from "@/lib/api";
 import { setTokens } from "@/lib/auth";
+import { clearClaimTokens, getClaimTokens } from "@/lib/claims";
 
 type Mode = "login" | "register";
 
@@ -19,9 +20,18 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [referredBy, setReferredBy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasPendingLinks, setHasPendingLinks] = useState(false);
+
+  useEffect(() => {
+    setHasPendingLinks(getClaimTokens().length > 0);
+  }, []);
 
   useEffect(() => {
     if (mode !== "register") return;
+    const emailFromQuery = searchParams.get("email");
+    if (emailFromQuery && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailFromQuery)) {
+      setEmail(emailFromQuery);
+    }
     const fromQuery = searchParams.get("username");
     if (fromQuery) {
       const clean = fromQuery
@@ -90,7 +100,17 @@ export function AuthForm({ mode }: { mode: Mode }) {
       } catch {
         /* ignore */
       }
-      router.push("/dashboard");
+      let claimed = 0;
+      const pending = getClaimTokens();
+      if (pending.length) {
+        try {
+          claimed = (await shortLinksApi.claim(tokens.access_token, pending)).claimed;
+          clearClaimTokens();
+        } catch {
+          /* keep tokens; they can be claimed on the next login */
+        }
+      }
+      router.push(claimed > 0 ? "/dashboard/short-links" : "/dashboard");
     } catch (err) {
       setError(
         err instanceof Error
@@ -120,6 +140,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
                 ? `Free forever. Invited from @${referredBy}.`
                 : "Free forever. No credit card."}
           </p>
+
+          {hasPendingLinks && (
+            <p className="mt-4 rounded-xl bg-meetup-lavender px-3 py-2 text-sm font-semibold text-meetup-purple">
+              {mode === "register"
+                ? "Your short link is waiting — create your account to see its clicks."
+                : "Log in to add your short link to your account and see its clicks."}
+            </p>
+          )}
 
           <form onSubmit={onSubmit} className="mt-7 space-y-4">
             {mode === "register" && (

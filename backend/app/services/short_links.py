@@ -11,6 +11,8 @@ from app.models.short_link import ShortLink
 CODE_RE = re.compile(r"^[a-z0-9_-]{2,40}$")
 
 RESERVED_CODES = {
+    "acortador-de-links",
+    "url-shortener",
     "admin",
     "api",
     "appearance",

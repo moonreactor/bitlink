@@ -12,6 +12,7 @@ import { LandingNav } from "./LandingNav";
 import { Reveal } from "./motion";
 import { RotatingWord } from "./RotatingWord";
 import { ShareFan } from "./ShareFan";
+import { PublicShortener } from "@/components/shortener/PublicShortener";
 import { TiltShowcase } from "./TiltShowcase";
 
 const music = EXAMPLES.find((e) => e.id === "music")!;
@@ -93,6 +94,12 @@ export function LandingPage({ latestPosts }: { latestPosts?: React.ReactNode }) 
               <div className="mt-8 max-w-lg">
                 <ClaimUsername buttonLabel="Claim free" />
               </div>
+              <p className="mt-4 text-sm text-meetup-muted">
+                Just need a short link?{" "}
+                <a href="#acortador" className="font-semibold text-meetup-purple hover:underline">
+                  Shorten a URL free, no sign-up →
+                </a>
+              </p>
               <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-ink/75">
                 {INCLUDED.map((item) => (
                   <li key={item} className="flex items-center gap-1.5">
@@ -107,6 +114,23 @@ export function LandingPage({ latestPosts }: { latestPosts?: React.ReactNode }) 
 
             <div className="landing-rise-delayed">
               <HeroShowcase />
+            </div>
+          </div>
+        </section>
+
+        {/* Public shortener */}
+        <section id="acortador" className="scroll-mt-20 px-5 pb-20 md:px-8 md:pb-28">
+          <div className="mx-auto max-w-3xl text-center">
+            <Eyebrow>Free URL shortener</Eyebrow>
+            <BigTitle>Shorten a link right now.</BigTitle>
+            <p className="mt-3 text-meetup-muted">
+              No account needed, no limits, links never expire. Sign up free only if you want click stats.{" "}
+              <Link href="/url-shortener" className="font-semibold text-meetup-purple hover:underline">
+                Learn more
+              </Link>
+            </p>
+            <div className="mt-8 flex justify-center text-left">
+              <PublicShortener lang="en" source="landing" />
             </div>
           </div>
         </section>

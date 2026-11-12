@@ -20,6 +20,15 @@ class Settings(BaseSettings):
     # When true, forgot-password responses include reset_url (local/dev only).
     EXPOSE_RESET_URL: bool = True
     ALGORITHM: str = "HS256"
+    # Anonymous short link abuse limits.
+    ANON_LINKS_PER_IP_HOUR: int = 10
+    ANON_LINKS_GLOBAL_HOUR: int = 300
+    # Number of trusted reverse proxies in front of the API (Railway = 1). The client IP
+    # is taken from X-Forwarded-For counting from the right, so spoofed entries are ignored.
+    TRUSTED_PROXY_HOPS: int = 1
+    # Google Safe Browsing Lookup API key. Empty = check disabled.
+    SAFE_BROWSING_API_KEY: str = ""
+    SAFE_BROWSING_TIMEOUT: float = 3.0
 
     def model_post_init(self, __context: object) -> None:
         # Railway/Postgres often provides postgresql://; SQLAlchemy+psycopg needs +psycopg

@@ -3,6 +3,7 @@ from app.models.growth import GrowthCtaClick
 from app.models.link import Link
 from app.models.product import Product
 from app.models.profile import Profile
+from app.models.shortener_event import ShortenerEvent
 from app.models.short_link import ShortLink, ShortLinkClick
 from app.models.social_link import SocialLink
 from app.models.subscriber import Subscriber
@@ -20,4 +21,5 @@ __all__ = [
     "ShortLinkClick",
     "Product",
     "GrowthCtaClick",
+    "ShortenerEvent",
 ]

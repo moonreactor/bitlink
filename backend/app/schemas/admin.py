@@ -116,3 +116,15 @@ class AdminLinkListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ShortenerFunnelStep(BaseModel):
+    event: str
+    events: int
+    visitors: int
+
+
+class ShortenerFunnel(BaseModel):
+    days: int
+    steps: list[ShortenerFunnelStep]
+    by_source: dict[str, list[ShortenerFunnelStep]]
