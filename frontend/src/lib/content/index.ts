@@ -1,7 +1,8 @@
 import { slugify } from "@/lib/slugify";
 import { ARTICLES_EN } from "./articles/en";
 import { ARTICLES_ES } from "./articles/es";
-import { LOCALE } from "./i18n";
+import { ARTICLES_PT } from "./articles/pt";
+import { LANGS, LOCALE } from "./i18n";
 import type { Article, Block, Category, CategoryId, Lang } from "./types";
 
 export * from "./types";
@@ -68,9 +69,39 @@ export const CATEGORIES: Record<Lang, Category[]> = {
       description: "Ideas concretas para músicos, restaurantes, creadores, emprendedores y marcas.",
     },
   ],
+  pt: [
+    {
+      id: "novedades",
+      slug: "novidades",
+      name: "Novidades",
+      title: "Novidades do Bitlink",
+      description: "Lançamentos, funcionalidades novas e mudanças no Bitlink, explicados em linguagem simples.",
+    },
+    {
+      id: "guias",
+      slug: "guias",
+      name: "Guias",
+      title: "Guias passo a passo",
+      description: "Tutoriais práticos sobre link na bio, links curtos, QR codes, UTMs e análise de dados.",
+    },
+    {
+      id: "comparativas",
+      slug: "comparativos",
+      name: "Comparativos",
+      title: "Comparativos e alternativas",
+      description: "O que avaliar antes de escolher uma ferramenta de link na bio ou um encurtador de links.",
+    },
+    {
+      id: "casos-de-uso",
+      slug: "casos-de-uso",
+      name: "Casos de uso",
+      title: "Casos de uso",
+      description: "Ideias concretas para músicos, restaurantes, criadores, pequenos negócios e marcas.",
+    },
+  ],
 };
 
-const ALL: Record<Lang, Article[]> = { en: ARTICLES_EN, es: ARTICLES_ES };
+const ALL: Record<Lang, Article[]> = { en: ARTICLES_EN, es: ARTICLES_ES, pt: ARTICLES_PT };
 
 /** Newest first; articles dated in the future stay hidden until their day. */
 export function getArticles(lang: Lang, now: Date = new Date()): Article[] {
@@ -88,7 +119,7 @@ export function getArticle(lang: Lang, slug: string): Article | undefined {
 
 /** The same article in the other language(s), for hreflang and the language switch. */
 export function getTranslations(article: Article): Article[] {
-  return (["en", "es"] as Lang[])
+  return LANGS
     .filter((l) => l !== article.lang)
     .map((l) => getArticles(l).find((a) => a.key === article.key))
     .filter((a): a is Article => Boolean(a));

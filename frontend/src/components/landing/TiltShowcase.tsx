@@ -1,17 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { EXAMPLES, photo, type ExampleProfile } from "./examples";
+import { LANDING } from "@/lib/i18n/landing-copy";
+import type { SiteLang } from "@/lib/i18n/site";
+import { EXAMPLES, getExamples, photo, type ExampleProfile } from "./examples";
 import { useScrollProgress } from "./motion";
 import { PhoneFrame, ProfilePreview } from "./ProfilePreview";
 
-const BASE = EXAMPLES.find((e) => e.id === "photo")!;
+const BASE_THEME = EXAMPLES.find((e) => e.id === "photo")!.theme;
+const DOMAIN = EXAMPLES.find((e) => e.id === "photo")!.domain!;
 
-const VARIANTS: { id: string; label: string; swatch: string; theme: ExampleProfile["theme"] }[] = [
-  { id: "paper", label: "Paper", swatch: "#f3f1ec", theme: BASE.theme },
+type VariantId = "paper" | "photo" | "midnight" | "blush";
+const VARIANTS: { id: VariantId; swatch: string; theme: ExampleProfile["theme"] }[] = [
+  { id: "paper", swatch: "#f3f1ec", theme: BASE_THEME },
   {
     id: "photo",
-    label: "Photo background",
     swatch: `url(${photo("1542038784456-1ea8e935640e", 80, 80)}) center/cover`,
     theme: {
       bg: "#111",
@@ -24,27 +27,23 @@ const VARIANTS: { id: string; label: string; swatch: string; theme: ExampleProfi
   },
   {
     id: "midnight",
-    label: "Midnight",
     swatch: "#0f172a",
     theme: { bg: "#0f172a", text: "#f8fafc", button: "#ffffff", buttonText: "#0f172a", style: "rounded" },
   },
   {
     id: "blush",
-    label: "Blush",
     swatch: "#ffd6e0",
     theme: { bg: "#ffd6e0", text: "#5b1030", button: "#5b1030", buttonText: "#ffd6e0", style: "pill" },
   },
 ];
 
-const CHIPS = [
-  { text: "Background photo", pos: "left-0 top-[14%]" },
-  { text: "Pill · rounded · square", pos: "right-0 top-[30%]" },
-  { text: "Link animations ✨", pos: "left-[2%] bottom-[22%]" },
-  { text: BASE.domain!, pos: "right-[4%] bottom-[8%]" },
-];
+const CHIP_POS = ["left-0 top-[14%]", "right-0 top-[30%]", "left-[2%] bottom-[22%]", "right-[4%] bottom-[8%]"];
 
 /** Phone straightens up as you scroll in; swatches re-theme the same page live. */
-export function TiltShowcase() {
+export function TiltShowcase({ lang = "en" }: { lang?: SiteLang }) {
+  const t = LANDING[lang].design;
+  const BASE = getExamples(lang).find((e) => e.id === "photo")!;
+  const CHIPS = [...t.chips, DOMAIN].map((text, i) => ({ text, pos: CHIP_POS[i] }));
   const [ref, p] = useScrollProgress<HTMLDivElement>();
   const [variant, setVariant] = useState(VARIANTS[1]);
   const inv = 1 - p;
@@ -74,11 +73,10 @@ export function TiltShowcase() {
       </div>
 
       <div>
-        <p className="text-sm font-bold uppercase tracking-wider text-meetup-purple">Design</p>
-        <h2 className="mt-2 font-display text-3xl font-extrabold tracking-tight md:text-5xl">Make it look like you.</h2>
+        <p className="text-sm font-bold uppercase tracking-wider text-meetup-purple">{t.eyebrow}</p>
+        <h2 className="mt-2 font-display text-3xl font-extrabold tracking-tight md:text-5xl">{t.title}</h2>
         <p className="mt-4 max-w-md text-lg text-meetup-muted">
-          Upload your own background, pick fonts and button shapes, add motion to the links that matter — and
-          serve it on your own domain.
+          {t.body}
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
           {VARIANTS.map((v) => (
@@ -92,7 +90,7 @@ export function TiltShowcase() {
               }`}
             >
               <span className="h-7 w-7 rounded-full ring-1 ring-black/10" style={{ background: v.swatch }} />
-              {v.label}
+              {t.variants[v.id]}
             </button>
           ))}
         </div>

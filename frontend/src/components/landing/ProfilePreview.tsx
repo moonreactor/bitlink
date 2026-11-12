@@ -6,9 +6,9 @@ import type { ExampleBlock, ExampleProfile } from "./examples";
 
 type Theme = ExampleProfile["theme"];
 
-function Verified() {
+function Verified({ label }: { label: string }) {
   return (
-    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-500 text-white" aria-label="Verified">
+    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-500 text-white" aria-label={label}>
       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" aria-hidden>
         <path d="M20 6 9 17l-5-5" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -119,9 +119,9 @@ function Block({ block, theme, index }: { block: ExampleBlock; theme: Theme; ind
         <div className="landing-link-in space-y-1 p-2 shadow-sm" style={{ ...btn, ...delay }}>
           <p className="text-[10px] font-bold">{block.prompt}</p>
           <div className="flex gap-1">
-            <span className="flex-1 rounded-md bg-black/5 px-1.5 py-1 text-[9px] opacity-60">you@email.com</span>
+            <span className="flex-1 rounded-md bg-black/5 px-1.5 py-1 text-[9px] opacity-60">{block.placeholder ?? "you@email.com"}</span>
             <span className="rounded-md px-2 py-1 text-[9px] font-bold" style={{ background: theme.text, color: theme.bg }}>
-              Join
+              {block.cta ?? "Join"}
             </span>
           </div>
         </div>
@@ -151,7 +151,7 @@ export function ProfilePreview({ profile }: { profile: ExampleProfile }) {
         />
         <p className="mt-2 flex items-center gap-1 text-sm font-bold tracking-tight">
           {profile.name}
-          {profile.verified && <Verified />}
+          {profile.verified && <Verified label={profile.verifiedLabel ?? "Verified"} />}
         </p>
         <p className="mt-0.5 max-w-[210px] text-center text-[10px] leading-snug opacity-80">{profile.bio}</p>
         <div className="mt-2 flex gap-2.5 opacity-90">

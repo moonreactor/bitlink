@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { DEFAULT_LANG, detectLang, homePath, isSiteLang, LANG_COOKIE } from "@/lib/i18n/site";
 
 const PLATFORM_HOSTS = new Set([
   "localhost",
@@ -23,11 +24,54 @@ function apiBase(): string {
   );
 }
 
+const BOT_RE =
+  /bot|crawl|spider|slurp|mediapartners|facebookexternalhit|embedly|preview|whatsapp|telegram|discord|linkedin|pinterest|lighthouse|headless|curl|wget|python-requests/i;
+
+/** Country of the visitor as reported by the hosting edge / CDN, if any. */
+function visitorCountry(request: NextRequest): string | null {
+  const h = request.headers;
+  return (
+    h.get("x-vercel-ip-country") ||
+    h.get("cf-ipcountry") ||
+    h.get("cloudfront-viewer-country") ||
+    h.get("x-appengine-country") ||
+    h.get("x-country-code")
+  );
+}
+
+/**
+ * First visit to the English home page: send Portuguese/Spanish speakers to their language.
+ * An explicit choice (cookie set by the language switcher) always wins, and crawlers are never
+ * redirected so every language version stays indexable on its own URL.
+ */
+function redirectToLocalizedHome(request: NextRequest): NextResponse | null {
+  if (request.nextUrl.pathname !== "/") return null;
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+
+  const saved = request.cookies.get(LANG_COOKIE)?.value;
+  let target = DEFAULT_LANG;
+  if (isSiteLang(saved)) {
+    target = saved;
+  } else {
+    if (BOT_RE.test(request.headers.get("user-agent") || "")) return null;
+    target = detectLang(request.headers.get("accept-language"), visitorCountry(request));
+  }
+  if (target === DEFAULT_LANG) return null;
+
+  const url = request.nextUrl.clone();
+  url.pathname = homePath(target);
+  const res = NextResponse.redirect(url, 307);
+  // The answer depends on request headers: never let a shared cache serve it to someone else.
+  res.headers.set("Vary", "Accept-Language, Cookie");
+  res.headers.set("Cache-Control", "private, no-store");
+  return res;
+}
+
 export async function middleware(request: NextRequest) {
   const rawHost = request.headers.get("host") || "";
   const host = rawHost.split(":")[0].toLowerCase();
   if (!host || isPlatformHost(host)) {
-    return NextResponse.next();
+    return redirectToLocalizedHome(request) ?? NextResponse.next();
   }
 
   // Only rewrite document navigations for the profile root (and keep assets intact).

@@ -1,5 +1,6 @@
 import { plain } from "@/components/blog/RichText";
-import { articlePath, blogBase, categoryPath, getCategory, getTranslations, readingMinutes, UI, type Article, type Faq } from "@/lib/content";
+import { articlePath, blogBase, categoryPath, getCategory, getTranslations, LOCALE, readingMinutes, UI, type Article, type Faq } from "@/lib/content";
+import { LANG_LABEL, shortenerPath, type SiteLang } from "@/lib/i18n/site";
 import { absoluteAsset, OG_IMAGE_PATH, siteUrl } from "@/lib/site";
 
 const WEB = siteUrl();
@@ -34,7 +35,7 @@ export function websiteLd() {
     "@id": SITE_ID,
     url: WEB,
     name: "Bitlink",
-    inLanguage: ["en", "es"],
+    inLanguage: ["en", "es", "pt-BR"],
     publisher: { "@id": ORG_ID },
   };
 }
@@ -63,6 +64,32 @@ export function softwareLd() {
       "Email and phone capture, Google Analytics and Meta Pixel",
       "Scheduled and password-locked links",
     ],
+    publisher: { "@id": ORG_ID },
+  };
+}
+
+export function shortenerLd(lang: SiteLang) {
+  const path = shortenerPath(lang);
+  return {
+    "@type": "WebApplication",
+    "@id": `${WEB}${path}#app`,
+    name: { en: "Bitlink free URL shortener", es: "Acortador de links gratis de Bitlink", pt: "Encurtador de links grátis do Bitlink" }[lang],
+    url: `${WEB}${path}`,
+    inLanguage: LANG_LABEL[lang].html,
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "Web",
+    isAccessibleForFree: true,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    description: {
+      en: "Shorten links for free: no sign-up and no limits. A free account shows clicks by day, country, device and source and keeps your links forever (anonymous links are kept for 60 days).",
+      es: "Acortá links gratis, sin registro y sin límites. Con una cuenta gratis ves clics por día, país, dispositivo y origen y conservás tus links para siempre (los anónimos se conservan 60 días).",
+      pt: "Encurte links de graça: sem cadastro e sem limites. Com uma conta grátis você vê cliques por dia, país, dispositivo e origem e mantém seus links para sempre (os anônimos ficam guardados por 60 dias).",
+    }[lang],
+    featureList: {
+      en: ["No sign-up", "Unlimited links", "Links never expire with a free account", "Clicks by country, device and source with a free account", "QR codes", "UTMs and device/country rules"],
+      es: ["Sin registro", "Links ilimitados", "Sin vencimiento con cuenta gratis", "Clics por país, dispositivo y origen con cuenta gratis", "Códigos QR", "UTMs y reglas por dispositivo y país"],
+      pt: ["Sem cadastro", "Links ilimitados", "Sem expiração com conta grátis", "Cliques por país, dispositivo e origem com conta grátis", "QR codes", "UTMs e regras por dispositivo e país"],
+    }[lang],
     publisher: { "@id": ORG_ID },
   };
 }
@@ -111,7 +138,7 @@ export function articleLd(article: Article) {
       image: [`${url}/opengraph-image`, absoluteAsset(article.cover.src)],
       datePublished: article.published,
       dateModified: article.updated || article.published,
-      inLanguage: article.lang,
+      inLanguage: LOCALE[article.lang].hreflang,
       workTranslation: getTranslations(article).map((tr) => ({ "@id": `${articleUrl(tr)}#article` })),
       articleSection: category?.name,
       keywords: article.keywords.join(", "),
@@ -136,7 +163,7 @@ export function articleLd(article: Article) {
     ld.push({
       "@type": "HowTo",
       name: block.name,
-      inLanguage: article.lang,
+      inLanguage: LOCALE[article.lang].hreflang,
       totalTime: "PT10M",
       estimatedCost: { "@type": "MonetaryAmount", currency: "USD", value: "0" },
       step: block.items.map((s, i) => ({

@@ -2,17 +2,16 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { SocialBrandIcon, type SocialBrandId } from "@/lib/socialBrands";
-import { EXAMPLES } from "./examples";
+import { LANDING } from "@/lib/i18n/landing-copy";
+import type { SiteLang } from "@/lib/i18n/site";
+import { getExamples } from "./examples";
 import { useInView } from "./motion";
 
-const chef = EXAMPLES.find((e) => e.id === "chef")!;
-const url = `bitlink.click/${chef.handle}`;
-
-const CARDS: { id: string; label: string; bg: string; fg: string; icon?: SocialBrandId }[] = [
-  { id: "qr", label: "Printed on the menu", bg: "#fff4e6", fg: "#3b1d0a" },
-  { id: "youtube", label: "Video description", bg: "#ff0033", fg: "#fff", icon: "youtube" },
-  { id: "tiktok", label: "TikTok bio", bg: "#111", fg: "#fff", icon: "tiktok" },
-  { id: "instagram", label: "Instagram bio", bg: "linear-gradient(135deg,#7b2ff7,#f107a3 55%,#ffb347)", fg: "#fff", icon: "instagram" },
+const CARDS: { id: "qr" | "youtube" | "tiktok" | "instagram"; bg: string; fg: string; icon?: SocialBrandId }[] = [
+  { id: "qr", bg: "#fff4e6", fg: "#3b1d0a" },
+  { id: "youtube", bg: "#ff0033", fg: "#fff", icon: "youtube" },
+  { id: "tiktok", bg: "#111", fg: "#fff", icon: "tiktok" },
+  { id: "instagram", bg: "linear-gradient(135deg,#7b2ff7,#f107a3 55%,#ffb347)", fg: "#fff", icon: "instagram" },
 ];
 
 function QrGlyph() {
@@ -31,7 +30,10 @@ function QrGlyph() {
 }
 
 /** Cards fan out once visible — one link, every place your audience is. */
-export function ShareFan() {
+export function ShareFan({ lang = "en" }: { lang?: SiteLang }) {
+  const t = LANDING[lang].share;
+  const chef = getExamples(lang).find((e) => e.id === "chef")!;
+  const url = `bitlink.click/${chef.handle}`;
   const [ref, open] = useInView<HTMLDivElement>(0.35);
   const mid = (CARDS.length - 1) / 2;
   // Spread as far as the container allows (card is 170px wide).
@@ -53,12 +55,12 @@ export function ShareFan() {
           >
             <div className="flex items-center justify-between">
               {card.icon ? <SocialBrandIcon brandId={card.icon} className="h-5 w-5" /> : <span className="text-lg">🍽️</span>}
-              <span className="text-[10px] font-bold uppercase tracking-wide opacity-75">{card.label}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wide opacity-75">{t.cards[card.id]}</span>
             </div>
             {card.id === "qr" ? (
               <div className="flex flex-col items-center gap-2">
                 <QrGlyph />
-                <p className="text-[10px] font-bold">Scan for recipes & bookings</p>
+                <p className="text-[10px] font-bold">{t.scan}</p>
               </div>
             ) : (
               <div className="flex items-center gap-2">

@@ -1,3 +1,5 @@
+import asyncio
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -6,8 +8,18 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.v1 import api_router
 from app.core.config import settings
+from app.services.cleanup import cleanup_loop
 
-app = FastAPI(title="Bitlink API", version="1.0.0")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    task = asyncio.create_task(cleanup_loop())
+    try:
+        yield
+    finally:
+        task.cancel()
+
+
+app = FastAPI(title="Bitlink API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

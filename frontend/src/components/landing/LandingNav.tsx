@@ -3,17 +3,34 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { BitlinkLogo } from "@/components/BitlinkLogo";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { LANDING } from "@/lib/i18n/landing-copy";
+import { hasBlog, homeAnchor, homePath, LANG_LABEL, rememberLang, type SiteLang } from "@/lib/i18n/site";
 
-const LINKS = [
-  { href: "/#how", label: "How it works" },
-  { href: "/#product", label: "Product" },
-  { href: "/#faq", label: "FAQ" },
-  { href: "/blog", label: "Blog" },
-];
-
-export function LandingNav() {
+export function LandingNav({
+  lang = "en",
+  alternates,
+}: {
+  lang?: SiteLang;
+  /** Equivalent of the current page in each language (for the switcher). */
+  alternates?: Partial<Record<SiteLang, string>>;
+}) {
+  const t = LANDING[lang].nav;
+  const LINKS = [
+    { href: homeAnchor(lang, "acortador"), label: t.shorten },
+    { href: homeAnchor(lang, "how"), label: t.how },
+    { href: homeAnchor(lang, "product"), label: t.product },
+    { href: homeAnchor(lang, "faq"), label: t.faq },
+    ...(hasBlog(lang) ? [{ href: lang === "en" ? "/blog" : `/${lang}/blog`, label: t.blog }] : []),
+  ];
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+
+  // Remember the language of the page the visitor is on, so auto-detection and auth pages follow it.
+  useEffect(() => {
+    rememberLang(lang);
+    document.documentElement.lang = LANG_LABEL[lang].html;
+  }, [lang]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4);
@@ -37,9 +54,9 @@ export function LandingNav() {
     >
       <nav
         className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 md:px-8"
-        aria-label="Main navigation"
+        aria-label={LANDING[lang].common.mainNav}
       >
-        <BitlinkLogo height={30} priority />
+        <BitlinkLogo height={30} priority href={homePath(lang)} />
 
         <div className="hidden items-center gap-1 md:flex">
           {LINKS.map((link) => (
@@ -58,25 +75,26 @@ export function LandingNav() {
             href="/login"
             className="rounded-full px-4 py-2 text-sm font-semibold text-ink transition hover:bg-mist"
           >
-            Log in
+            {t.login}
           </Link>
+          <LanguageSwitcher lang={lang} label={t.language} alternates={alternates} />
           <Link href="/register" className="mu-btn-primary">
-            Get your link
+            {t.cta}
           </Link>
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
           <Link href="/register" className="mu-btn-primary px-4 py-2 text-xs">
-            Get link
+            {t.ctaShort}
           </Link>
           <button
             type="button"
             className="flex h-10 w-10 items-center justify-center rounded-full bg-mist"
-            aria-label={open ? "Close menu" : "Open menu"}
+            aria-label={open ? t.closeMenu : t.openMenu}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
           >
-            <span className="sr-only">Menu</span>
+            <span className="sr-only">{t.menu}</span>
             <span className="relative block h-3.5 w-4">
               <span
                 className={`absolute left-0 top-0 h-0.5 w-full bg-ink transition ${
@@ -118,11 +136,14 @@ export function LandingNav() {
             </div>
             <div className="mt-4 flex flex-col gap-2 border-t border-meetup-border pt-4">
               <Link href="/login" className="rounded-full px-4 py-3 text-center text-sm font-semibold">
-                Log in
+                {t.login}
               </Link>
               <Link href="/register" className="mu-btn-primary w-full">
-                Get your link
+                {t.cta}
               </Link>
+              <div className="flex justify-center pt-1">
+                <LanguageSwitcher lang={lang} label={t.language} alternates={alternates} />
+              </div>
             </div>
           </div>
         </div>

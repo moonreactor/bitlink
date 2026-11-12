@@ -1,5 +1,5 @@
 import { plain } from "@/components/blog/RichText";
-import { articlePath, blogBase, getArticles, getCategory, rssPath, UI, type Lang } from "@/lib/content";
+import { articlePath, blogBase, getArticles, getCategory, LOCALE, rssPath, UI, type Lang } from "@/lib/content";
 import { siteUrl } from "@/lib/site";
 
 function esc(s: string): string {
@@ -31,7 +31,7 @@ export function rssResponse(lang: Lang): Response {
     <link>${WEB}${blogBase(lang)}</link>
     <atom:link href="${WEB}${rssPath(lang)}" rel="self" type="application/rss+xml" />
     <description>${esc(t.rssDescription)}</description>
-    <language>${lang}</language>
+    <language>${LOCALE[lang].hreflang}</language>
     <lastBuildDate>${new Date(`${articles[0]?.published || "2026-11-04"}T12:00:00Z`).toUTCString()}</lastBuildDate>
 ${items}
   </channel>

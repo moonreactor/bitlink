@@ -10,6 +10,8 @@ import type {
   ProductItem,
   Profile,
   PublicProfile,
+  ShortenerFunnel,
+  ShortLinkStats,
   ShortLinkItem,
   SocialLink,
   Subscriber,
@@ -199,6 +201,8 @@ export const adminApi = {
       { method: "PATCH", body: JSON.stringify(body) },
       token,
     ),
+  shortenerFunnel: (token: string, days = 30) =>
+    request<ShortenerFunnel>(`/admin/shortener-funnel?days=${days}`, {}, token),
   links: (token: string, params?: { q?: string; page?: number; page_size?: number }) => {
     const sp = new URLSearchParams();
     if (params?.q) sp.set("q", params.q);
@@ -267,6 +271,14 @@ export const analyticsApi = {
 };
 
 export const shortLinksApi = {
+  stats: (token: string, id: string, days = 30) =>
+    request<ShortLinkStats>(`/me/short-links/${id}/stats?days=${days}`, {}, token),
+  claim: (token: string, tokens: string[]) =>
+    request<{ claimed: number }>(
+      "/me/short-links/claim",
+      { method: "POST", body: JSON.stringify({ tokens }) },
+      token,
+    ),
   list: (token: string) => request<ShortLinkItem[]>("/me/short-links", {}, token),
   check: (token: string, code: string) =>
     request<{ code: string; available: boolean }>(
@@ -317,6 +329,16 @@ export const productsApi = {
 };
 
 export const publicApi = {
+  createShortLink: (destination_url: string, source?: string) =>
+    request<{ code: string; short_url: string; destination_url: string; claim_token: string }>(
+      "/public/short-links",
+      { method: "POST", body: JSON.stringify({ destination_url, source }) },
+    ),
+  trackShortenerEvent: (event: string, source?: string) =>
+    request<void>("/public/shortener-events", {
+      method: "POST",
+      body: JSON.stringify({ event, source }),
+    }).catch(() => undefined),
   getProfile: (username: string, unlockToken?: string) =>
     request<PublicProfile>(`/public/${username}`, {
       headers: unlockToken ? { "X-Profile-Unlock": unlockToken } : {},

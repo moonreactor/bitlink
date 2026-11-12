@@ -21,6 +21,8 @@ const RESERVED = new Set([
   "reset-password",
   "short-links",
   "short",
+  "acortador-de-links",
+  "url-shortener",
   "r",
   "u",
 ]);

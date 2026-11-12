@@ -2,7 +2,7 @@
 import { SHOWCASE } from "./examples";
 
 /** Infinite strip of mixed-shape photo tiles; hover pauses it. */
-export function CreatorMarquee() {
+export function CreatorMarquee({ labels }: { labels: string[] }) {
   const tiles = [...SHOWCASE, ...SHOWCASE];
   return (
     <div className="landing-marquee group relative overflow-hidden py-2">
@@ -19,7 +19,7 @@ export function CreatorMarquee() {
                 className="h-full w-full object-cover transition duration-500 hover:scale-110"
               />
             </div>
-            <figcaption className="mt-2 text-center text-sm font-semibold text-meetup-muted">{tile.label}</figcaption>
+            <figcaption className="mt-2 text-center text-sm font-semibold text-meetup-muted">{labels[i % SHOWCASE.length] ?? tile.label}</figcaption>
           </figure>
         ))}
       </div>

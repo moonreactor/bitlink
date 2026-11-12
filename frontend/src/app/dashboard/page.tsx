@@ -2,9 +2,15 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { analyticsApi, profileApi } from "@/lib/api";
+import { QuickAddLink } from "@/components/dashboard/QuickAddLink";
+import { SetupChecklist, type SetupStep } from "@/components/dashboard/SetupChecklist";
+import { useToast } from "@/components/Toast";
+import { analyticsApi, linksApi, profileApi, socialApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
-import type { AnalyticsSummary, Profile, Subscriber } from "@/lib/types";
+import { displayPageUrl, hasSharedPage, sharePage } from "@/lib/share";
+import type { AnalyticsSummary, LinkItem, Profile, SocialLink, Subscriber } from "@/lib/types";
+
+const SETUP_HIDDEN_KEY = "bitlink_setup_hidden";
 
 type Tab = "overview" | "clicks" | "audience";
 type RangeKey = "7d" | "30d" | "90d" | "all";
@@ -53,6 +59,11 @@ export default function DashboardOverviewPage() {
   const [tab, setTab] = useState<Tab>("overview");
   const [range, setRange] = useState<RangeKey>("30d");
   const [loading, setLoading] = useState(true);
+  const [links, setLinks] = useState<LinkItem[] | null>(null);
+  const [socials, setSocials] = useState<SocialLink[]>([]);
+  const [shared, setShared] = useState(false);
+  const [setupHidden, setSetupHidden] = useState(false);
+  const { success, error: toastError } = useToast();
 
   const load = useCallback(async (rangeKey: RangeKey) => {
     const token = getAccessToken();
@@ -72,9 +83,88 @@ export default function DashboardOverviewPage() {
     }
   }, []);
 
+  const loadSetup = useCallback(async () => {
+    const token = getAccessToken();
+    if (!token) return;
+    const [l, so] = await Promise.all([
+      linksApi.list(token).catch(() => [] as LinkItem[]),
+      socialApi.list(token).catch(() => [] as SocialLink[]),
+    ]);
+    setLinks(l);
+    setSocials(so);
+  }, []);
+
   useEffect(() => {
     load(range);
   }, [load, range]);
+
+  useEffect(() => {
+    loadSetup();
+    setShared(hasSharedPage());
+    try {
+      setSetupHidden(localStorage.getItem(SETUP_HIDDEN_KEY) === "1");
+    } catch {
+      /* ignore */
+    }
+    const onShared = () => setShared(true);
+    window.addEventListener("bitlink:shared", onShared);
+    return () => window.removeEventListener("bitlink:shared", onShared);
+  }, [loadSetup]);
+
+  async function onShare() {
+    if (!profile) return;
+    const res = await sharePage(profile.username, profile.display_name);
+    if (res === "copied") success("Link copied — paste it in your Instagram or TikTok bio");
+    else if (res === "failed") toastError("Couldn’t share — copy the link manually");
+  }
+
+  const realLinks = (links || []).filter((l) => l.link_type !== "header");
+  const hasLinks = realLinks.length > 0;
+  const steps: SetupStep[] = profile
+    ? [
+        {
+          id: "link",
+          title: "Add your first link",
+          hint: "Instagram, WhatsApp, your shop… whatever you want people to tap.",
+          done: hasLinks,
+          // The quick-add box is already on screen when there are no links: point to it.
+          cta: "Add it above ↑",
+          onClick: () => {
+            const el = document.getElementById("quick-add-url");
+            el?.scrollIntoView({ behavior: "smooth", block: "center" });
+            el?.focus({ preventScroll: true });
+          },
+        },
+        {
+          id: "profile",
+          title: "Add a photo and a short bio",
+          hint: "Pages with a photo get noticeably more clicks — people trust a face.",
+          done: Boolean(profile.avatar_url && profile.bio),
+          cta: "Edit profile",
+          href: "/dashboard/settings#profile",
+        },
+        {
+          id: "socials",
+          title: "Add your social icons",
+          hint: "Small icons under your name so people can follow you everywhere.",
+          done: socials.length > 0,
+          cta: "Add socials",
+          href: "/dashboard/settings#socials",
+        },
+        {
+          id: "share",
+          title: "Share your page",
+          hint: "Put it in your Instagram / TikTok bio — that’s where the clicks come from.",
+          done: shared,
+          cta: "Share my page",
+          onClick: onShare,
+        },
+      ]
+    : [];
+  const setupComplete = steps.length > 0 && steps.every((s) => s.done);
+  const showSetup = links !== null && steps.length > 0 && !setupComplete && !(setupHidden && hasLinks);
+  // New, empty page: analytics full of zeros is noise — lead with the action instead.
+  const showAnalytics = links !== null && (hasLinks || (stats?.total_views ?? 0) > 0);
 
   const rangeHint = useMemo(
     () => RANGES.find((r) => r.id === range)?.label || "All time",
@@ -98,26 +188,60 @@ export default function DashboardOverviewPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight text-ink">Your page</h1>
-          <p className="mt-1 text-sm text-meetup-muted">
-            {profile
-              ? `Hi ${profile.display_name} — here’s how bitlink.click/${profile.username} is doing.`
-              : "Loading…"}
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+            {profile ? `Hi, ${profile.display_name.split(" ")[0]}` : "Your page"}
+          </h1>
+          <p className="mt-1 truncate text-sm text-meetup-muted">
+            {profile ? displayPageUrl(profile.username) : "Loading…"}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/dashboard/links" className="mu-btn-primary">
+        <div className="hidden flex-wrap gap-2 sm:flex">
+          <Link href="/dashboard/links?add=1" className="mu-btn-primary">
             + Add link
           </Link>
           <Link href="/dashboard/appearance" className="mu-btn-secondary">
-            Edit appearance
+            Edit design
           </Link>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
+      {links !== null && !hasLinks && (
+        <section className="mu-card overflow-hidden">
+          <div className="bg-gradient-to-br from-meetup-lavender to-white p-5 md:p-6">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-meetup-purple shadow-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden /> Your page is live — but empty
+            </span>
+            <h2 className="mt-3 font-display text-xl font-bold text-ink md:text-2xl">
+              Add your first link
+            </h2>
+            <p className="mt-1 text-sm text-meetup-muted">
+              Tap a platform and type your handle, or paste any link. It shows up on your page instantly.
+            </p>
+            <div className="mt-4">
+              <QuickAddLink onCreated={() => loadSetup()} />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {showSetup && (
+        <SetupChecklist
+          steps={steps}
+          onDismiss={() => {
+            setSetupHidden(true);
+            try {
+              localStorage.setItem(SETUP_HIDDEN_KEY, "1");
+            } catch {
+              /* ignore */
+            }
+          }}
+        />
+      )}
+
+      {showAnalytics && (
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:px-0">
           {(
             [
               ["overview", "Overview"],
@@ -129,28 +253,31 @@ export default function DashboardOverviewPage() {
               key={id}
               type="button"
               onClick={() => setTab(id)}
-              className={`mu-chip ${tab === id ? "mu-chip-active" : ""}`}
+              aria-pressed={tab === id}
+              className={`mu-chip min-h-[40px] shrink-0 ${tab === id ? "mu-chip-active" : ""}`}
             >
               {label}
             </button>
           ))}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:px-0">
           {RANGES.map((r) => (
             <button
               key={r.id}
               type="button"
               onClick={() => setRange(r.id)}
-              className={`mu-chip ${range === r.id ? "mu-chip-active" : ""}`}
+              aria-pressed={range === r.id}
+              className={`mu-chip min-h-[40px] shrink-0 ${range === r.id ? "mu-chip-active" : ""}`}
             >
               {r.label}
             </button>
           ))}
         </div>
       </div>
+      )}
 
-      {(tab === "overview" || tab === "clicks") && (
-        <div className="grid gap-4 sm:grid-cols-2">
+      {showAnalytics && (tab === "overview" || tab === "clicks") && (
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <StatCard
             label="Page views"
             value={loading ? "…" : (stats?.total_views ?? "—")}
@@ -164,11 +291,11 @@ export default function DashboardOverviewPage() {
         </div>
       )}
 
-      {(tab === "overview" || tab === "clicks") && (
+      {showAnalytics && (tab === "overview" || tab === "clicks") && (
         <DailyChart daily={stats?.daily || []} loading={loading} />
       )}
 
-      {(tab === "overview" || tab === "clicks") && (
+      {showAnalytics && (tab === "overview" || tab === "clicks") && (
         <section className="mu-card p-5 md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-display text-lg font-bold text-ink">Clicks by link</h2>
@@ -207,7 +334,7 @@ export default function DashboardOverviewPage() {
         </section>
       )}
 
-      {(tab === "overview" || tab === "audience") && (
+      {showAnalytics && (tab === "overview" || tab === "audience") && (
         <div className="grid gap-4 md:grid-cols-3">
           <Breakdown
             title="Devices"
@@ -224,7 +351,7 @@ export default function DashboardOverviewPage() {
         </div>
       )}
 
-      {(tab === "overview" || tab === "audience") && (
+      {showAnalytics && (tab === "overview" || tab === "audience") && (
         <section className="mu-card p-5 md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-display text-lg font-bold text-ink">Email subscribers</h2>
@@ -268,8 +395,8 @@ function StatCard({
   hint?: string;
 }) {
   return (
-    <div className="mu-card p-5 md:p-6">
-      <div className="flex items-start justify-between">
+    <div className="mu-card p-4 sm:p-5 md:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-1">
         <p className="text-sm font-semibold text-meetup-muted">{label}</p>
         {hint && (
           <span className="rounded-full bg-mist px-2 py-0.5 text-[11px] font-semibold text-meetup-muted">
@@ -277,7 +404,7 @@ function StatCard({
           </span>
         )}
       </div>
-      <p className="mt-3 font-display text-4xl font-bold tabular-nums text-ink">{value}</p>
+      <p className="mt-2 font-display text-3xl font-bold tabular-nums text-ink sm:mt-3 sm:text-4xl">{value}</p>
     </div>
   );
 }

@@ -6,8 +6,13 @@ import { FormEvent, Suspense, useState } from "react";
 import { BitlinkLogo } from "@/components/BitlinkLogo";
 import { authApi } from "@/lib/api";
 import { setTokens } from "@/lib/auth";
+import { AUTH } from "@/lib/i18n/auth-copy";
+import { homePath } from "@/lib/i18n/site";
+import { useSiteLang } from "@/lib/i18n/useSiteLang";
 
 function ResetPasswordForm() {
+  const lang = useSiteLang();
+  const t = AUTH[lang];
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
@@ -20,15 +25,15 @@ function ResetPasswordForm() {
     e.preventDefault();
     setError("");
     if (!token) {
-      setError("Missing reset token. Request a new link.");
+      setError(t.missingToken);
       return;
     }
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError(t.passwordShort);
       return;
     }
     if (password !== confirm) {
-      setError("Passwords do not match.");
+      setError(t.mismatch);
       return;
     }
     setLoading(true);
@@ -37,7 +42,7 @@ function ResetPasswordForm() {
       setTokens(tokens.access_token, tokens.refresh_token);
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not reset password.");
+      setError(err instanceof Error ? err.message : t.resetFailed);
     } finally {
       setLoading(false);
     }
@@ -46,13 +51,13 @@ function ResetPasswordForm() {
   return (
     <div className="min-h-screen bg-meetup-bg">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-12">
-        <BitlinkLogo className="mb-8" height={30} />
+        <BitlinkLogo className="mb-8" height={30} href={homePath(lang)} />
         <div className="mu-card p-6 md:p-8">
-          <h1 className="font-display text-2xl font-bold text-ink">Choose a new password</h1>
-          <p className="mt-2 text-sm text-meetup-muted">Then you’ll be signed in automatically.</p>
+          <h1 className="font-display text-2xl font-bold text-ink">{t.chooseTitle}</h1>
+          <p className="mt-2 text-sm text-meetup-muted">{t.chooseSub}</p>
           <form onSubmit={onSubmit} className="mt-7 space-y-4">
             <label className="block text-sm">
-              <span className="mb-1.5 block font-semibold text-ink">New password</span>
+              <span className="mb-1.5 block font-semibold text-ink">{t.newPassword}</span>
               <input
                 type="password"
                 required
@@ -63,7 +68,7 @@ function ResetPasswordForm() {
               />
             </label>
             <label className="block text-sm">
-              <span className="mb-1.5 block font-semibold text-ink">Confirm password</span>
+              <span className="mb-1.5 block font-semibold text-ink">{t.confirmPassword}</span>
               <input
                 type="password"
                 required
@@ -75,13 +80,13 @@ function ResetPasswordForm() {
             </label>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <button type="submit" disabled={loading || !token} className="mu-btn-primary w-full py-3">
-              {loading ? "Please wait…" : "Update password"}
+              {loading ? t.wait : t.updatePassword}
             </button>
           </form>
         </div>
         <p className="mt-6 text-center text-sm text-meetup-muted">
           <Link href="/forgot-password" className="font-semibold text-meetup-purple hover:underline">
-            Request a new link
+            {t.requestNew}
           </Link>
         </p>
       </div>

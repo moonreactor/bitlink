@@ -11,6 +11,7 @@ from app.models.analytics import LinkClick, PageView
 from app.models.growth import GrowthCtaClick
 from app.models.link import Link
 from app.models.profile import Profile
+from app.models.shortener_event import FUNNEL_EVENTS, SOURCES, ShortenerEvent
 from app.models.subscriber import Subscriber
 from app.models.user import User
 from app.schemas.admin import (
@@ -24,6 +25,8 @@ from app.schemas.admin import (
     AdminUserListItem,
     AdminUserListResponse,
     AdminUserUpdate,
+    ShortenerFunnel,
+    ShortenerFunnelStep,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -485,3 +488,54 @@ def list_links(
     ]
 
     return AdminLinkListResponse(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.get("/shortener-funnel", response_model=ShortenerFunnel)
+def shortener_funnel(
+    days: int = Query(default=30, ge=1, le=365),
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> ShortenerFunnel:
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    rows = (
+        db.query(
+            ShortenerEvent.source,
+            ShortenerEvent.event,
+            func.count(ShortenerEvent.id),
+            func.count(func.distinct(ShortenerEvent.visitor_hash)),
+        )
+        .filter(ShortenerEvent.created_at >= since)
+        .group_by(ShortenerEvent.source, ShortenerEvent.event)
+        .all()
+    )
+    per_source: dict[str, dict[str, tuple[int, int]]] = {}
+    for source, event, events, visitors in rows:
+        per_source.setdefault(source or "unknown", {})[event] = (events, visitors)
+
+    def steps_for(sources: list[str]) -> list[ShortenerFunnelStep]:
+        out = []
+        for ev in FUNNEL_EVENTS:
+            events = sum(per_source.get(s, {}).get(ev, (0, 0))[0] for s in sources)
+            visitors = sum(per_source.get(s, {}).get(ev, (0, 0))[1] for s in sources)
+            out.append(ShortenerFunnelStep(event=ev, events=events, visitors=visitors))
+        return out
+
+    overall_rows = (
+        db.query(
+            ShortenerEvent.event,
+            func.count(ShortenerEvent.id),
+            func.count(func.distinct(ShortenerEvent.visitor_hash)),
+        )
+        .filter(ShortenerEvent.created_at >= since)
+        .group_by(ShortenerEvent.event)
+        .all()
+    )
+    overall = {ev: (n, v) for ev, n, v in overall_rows}
+    return ShortenerFunnel(
+        days=days,
+        steps=[
+            ShortenerFunnelStep(event=ev, events=overall.get(ev, (0, 0))[0], visitors=overall.get(ev, (0, 0))[1])
+            for ev in FUNNEL_EVENTS
+        ],
+        by_source={s: steps_for([s]) for s in sorted(SOURCES)},
+    )

@@ -315,3 +315,20 @@ export type AdminLinkListResponse = {
   page: number;
   page_size: number;
 };
+
+export type ShortenerFunnelStep = { event: string; events: number; visitors: number };
+
+export type ShortenerFunnel = {
+  days: number;
+  steps: ShortenerFunnelStep[];
+  by_source: Record<string, ShortenerFunnelStep[]>;
+};
+
+export type ShortLinkStats = {
+  days: number;
+  total: number;
+  daily: { date: string; clicks: number }[];
+  countries: { label: string; count: number }[];
+  devices: { label: string; count: number }[];
+  referrers: { label: string; count: number }[];
+};

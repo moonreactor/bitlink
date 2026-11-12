@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { BitlinkLogo } from "@/components/BitlinkLogo";
-import { authApi } from "@/lib/api";
+import { authApi, shortLinksApi } from "@/lib/api";
 import { setTokens } from "@/lib/auth";
+import { AUTH } from "@/lib/i18n/auth-copy";
+import { DEFAULT_LANG, homePath, isSiteLang, LANG_LABEL, readLangCookie, type SiteLang } from "@/lib/i18n/site";
+import { clearClaimTokens, getClaimTokens } from "@/lib/claims";
 
 type Mode = "login" | "register";
 
@@ -19,9 +22,28 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [referredBy, setReferredBy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasPendingLinks, setHasPendingLinks] = useState(false);
+  // Language the visitor was browsing in (cookie set by the landing/switcher); `?lang=` overrides it.
+  const [lang, setLang] = useState<SiteLang>(DEFAULT_LANG);
+  const t = AUTH[lang];
+
+  useEffect(() => {
+    const fromQuery = searchParams.get("lang");
+    const l = isSiteLang(fromQuery) ? fromQuery : (readLangCookie() ?? DEFAULT_LANG);
+    setLang(l);
+    document.documentElement.lang = LANG_LABEL[l].html;
+  }, [searchParams]);
+
+  useEffect(() => {
+    setHasPendingLinks(getClaimTokens().length > 0);
+  }, []);
 
   useEffect(() => {
     if (mode !== "register") return;
+    const emailFromQuery = searchParams.get("email");
+    if (emailFromQuery && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailFromQuery)) {
+      setEmail(emailFromQuery);
+    }
     const fromQuery = searchParams.get("username");
     if (fromQuery) {
       const clean = fromQuery
@@ -63,11 +85,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
     if (mode === "register") {
       if (username.trim().length < 3) {
-        setError("Username must be at least 3 characters.");
+        setError(t.usernameShort);
         return;
       }
       if (password.length < 8) {
-        setError("Password must be at least 8 characters.");
+        setError(t.passwordShort);
         return;
       }
     }
@@ -90,14 +112,24 @@ export function AuthForm({ mode }: { mode: Mode }) {
       } catch {
         /* ignore */
       }
-      router.push("/dashboard");
+      let claimed = 0;
+      const pending = getClaimTokens();
+      if (pending.length) {
+        try {
+          claimed = (await shortLinksApi.claim(tokens.access_token, pending)).claimed;
+          clearClaimTokens();
+        } catch {
+          /* keep tokens; they can be claimed on the next login */
+        }
+      }
+      router.push(claimed > 0 ? "/dashboard/short-links" : "/dashboard");
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
           : mode === "login"
-            ? "Could not log in. Please try again."
-            : "Could not create your account. Please try again.",
+            ? t.loginFailed
+            : t.registerFailed,
       );
     } finally {
       setLoading(false);
@@ -107,41 +139,49 @@ export function AuthForm({ mode }: { mode: Mode }) {
   return (
     <div className="min-h-screen bg-meetup-bg">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-12">
-        <BitlinkLogo className="mb-8" height={30} />
+        <BitlinkLogo className="mb-8" height={30} href={homePath(lang)} />
 
         <div className="mu-card p-6 md:p-8">
           <h1 className="font-display text-2xl font-bold text-ink md:text-3xl">
-            {mode === "login" ? "Welcome back" : "Create your page"}
+            {mode === "login" ? t.loginTitle : t.registerTitle}
           </h1>
           <p className="mt-2 text-sm text-meetup-muted">
             {mode === "login"
-              ? "Log in to edit your links."
+              ? t.loginSub
               : referredBy
-                ? `Free forever. Invited from @${referredBy}.`
-                : "Free forever. No credit card."}
+                ? t.invited(referredBy)
+                : t.registerSub}
           </p>
+
+          {hasPendingLinks && (
+            <p className="mt-4 rounded-xl bg-meetup-lavender px-3 py-2 text-sm font-semibold text-meetup-purple">
+              {mode === "register"
+                ? t.pendingRegister
+                : t.pendingLogin}
+            </p>
+          )}
 
           <form onSubmit={onSubmit} className="mt-7 space-y-4">
             {mode === "register" && (
               <>
                 <Field
-                  label="Username"
+                  label={t.username}
                   value={username}
                   onChange={setUsername}
-                  placeholder="yourname"
+                  placeholder={t.usernamePlaceholder}
                   required
                 />
                 <Field
-                  label="Display name"
+                  label={t.displayName}
                   value={displayName}
                   onChange={setDisplayName}
-                  placeholder="Your Name"
+                  placeholder={t.displayNamePlaceholder}
                 />
               </>
             )}
-            <Field label="Email" type="email" value={email} onChange={setEmail} required />
+            <Field label={t.email} type="email" value={email} onChange={setEmail} required />
             <Field
-              label="Password"
+              label={t.password}
               type="password"
               value={password}
               onChange={setPassword}
@@ -154,7 +194,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
                   href="/forgot-password"
                   className="text-sm font-semibold text-meetup-purple hover:underline"
                 >
-                  Forgot password?
+                  {t.forgot}
                 </Link>
               </div>
             )}
@@ -162,7 +202,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             <button type="submit" disabled={loading} className="mu-btn-primary w-full py-3">
-              {loading ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}
+              {loading ? t.wait : mode === "login" ? t.login : t.createAccount}
             </button>
           </form>
         </div>
@@ -170,16 +210,16 @@ export function AuthForm({ mode }: { mode: Mode }) {
         <p className="mt-6 text-center text-sm text-meetup-muted">
           {mode === "login" ? (
             <>
-              No account?{" "}
+              {t.noAccount}{" "}
               <Link href="/register" className="font-semibold text-meetup-purple hover:underline">
-                Sign up
+                {t.signUp}
               </Link>
             </>
           ) : (
             <>
-              Already have one?{" "}
+              {t.haveAccount}{" "}
               <Link href="/login" className="font-semibold text-meetup-purple hover:underline">
-                Log in
+                {t.login}
               </Link>
             </>
           )}

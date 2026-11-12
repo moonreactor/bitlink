@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
-import type { AdminMetrics } from "@/lib/types";
+import type { AdminMetrics, ShortenerFunnel, ShortenerFunnelStep } from "@/lib/types";
 
 export default function AdminMetricsPage() {
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
   const [error, setError] = useState("");
+  const [funnel, setFunnel] = useState<ShortenerFunnel | null>(null);
+  const [funnelSource, setFunnelSource] = useState<string>("all");
 
   useEffect(() => {
     const token = getAccessToken();
@@ -17,6 +19,10 @@ export default function AdminMetricsPage() {
       .metrics(token)
       .then(setMetrics)
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load metrics"));
+    adminApi
+      .shortenerFunnel(token, 30)
+      .then(setFunnel)
+      .catch(() => setFunnel(null));
   }, []);
 
   if (error) {
@@ -101,6 +107,10 @@ export default function AdminMetricsPage() {
         </section>
       )}
 
+      {funnel && (
+        <ShortenerFunnelSection funnel={funnel} source={funnelSource} onSource={setFunnelSource} />
+      )}
+
       <section className="rounded-2xl border border-ink/10 bg-white/70 p-5 backdrop-blur">
         <h2 className="font-display text-lg font-semibold">Last 30 days</h2>
         <div className="mt-5 flex h-40 items-end gap-1">
@@ -181,14 +191,100 @@ function StatCard({
   hint,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   hint?: string;
 }) {
   return (
     <div className="rounded-2xl border border-ink/10 bg-white/70 p-5 backdrop-blur">
       <p className="text-xs font-medium uppercase tracking-wide text-ink/45">{label}</p>
-      <p className="mt-2 font-display text-3xl font-bold tabular-nums">{value.toLocaleString()}</p>
+      <p className="mt-2 font-display text-3xl font-bold tabular-nums">{typeof value === "number" ? value.toLocaleString() : value}</p>
       {hint && <p className="mt-1 text-xs text-ink/45">{hint}</p>}
     </div>
+  );
+}
+
+
+const FUNNEL_LABELS: Record<string, string> = {
+  view: "Saw the shortener",
+  submit: "Clicked Shorten",
+  choose_account: "Chose account + email",
+  choose_anonymous: "Chose anonymous",
+  link_created: "Link created",
+  copy: "Copied the link",
+  claimed: "Signed up & claimed links",
+};
+
+function ShortenerFunnelSection({
+  funnel,
+  source,
+  onSource,
+}: {
+  funnel: ShortenerFunnel;
+  source: string;
+  onSource: (s: string) => void;
+}) {
+  const steps: ShortenerFunnelStep[] = source === "all" ? funnel.steps : funnel.by_source[source] || [];
+  const get = (ev: string) => steps.find((s) => s.event === ev) || { event: ev, events: 0, visitors: 0 };
+  const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` : "—");
+  const views = get("view").visitors;
+  const maxVisitors = Math.max(1, ...steps.map((s) => s.visitors));
+  const choices = get("choose_account").events + get("choose_anonymous").events;
+  const tabs = ["all", ...Object.keys(funnel.by_source)];
+
+  return (
+    <section className="rounded-2xl border border-ink/10 bg-white/70 p-5 backdrop-blur">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display text-lg font-semibold">Public shortener funnel</h2>
+          <p className="mt-1 text-sm text-ink/55">
+            Last {funnel.days} days. Unique visitors per step (approximate: hashed IP, no cookies).
+          </p>
+        </div>
+        <div className="flex gap-1 rounded-full bg-ink/5 p-1 text-xs font-semibold">
+          {tabs.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => onSource(t)}
+              className={`rounded-full px-3 py-1 capitalize ${source === t ? "bg-white shadow-sm" : "text-ink/55"}`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <StatCard label="Submit rate" value={pct(get("submit").visitors, views)} hint="of viewers click Shorten" />
+        <StatCard
+          label="Account choice"
+          value={pct(get("choose_account").events, choices)}
+          hint="choose account + email over anonymous"
+        />
+        <StatCard
+          label="Claim rate"
+          value={pct(get("claimed").events, get("link_created").events)}
+          hint="of created links get claimed"
+        />
+      </div>
+
+      <div className="mt-5 space-y-2">
+        {steps.map((s) => (
+          <div key={s.event} className="grid grid-cols-[170px_1fr_90px] items-center gap-3 text-sm">
+            <span className="text-ink/70">{FUNNEL_LABELS[s.event] || s.event}</span>
+            <div className="h-5 rounded bg-ink/5">
+              <div
+                className="h-5 rounded bg-accent/70"
+                style={{ width: `${(s.visitors / maxVisitors) * 100}%`, minWidth: s.visitors ? 3 : 0 }}
+              />
+            </div>
+            <span className="text-right tabular-nums">
+              {s.visitors.toLocaleString()}{" "}
+              <span className="text-xs text-ink/40">{pct(s.visitors, views)}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

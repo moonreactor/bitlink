@@ -1,14 +1,34 @@
 import type { Lang } from "./types";
 
-export const LANGS: Lang[] = ["en", "es"];
+export const LANGS: Lang[] = ["en", "es", "pt"];
 
 export const LOCALE: Record<Lang, { og: string; date: string; hreflang: string }> = {
   en: { og: "en_US", date: "en-US", hreflang: "en" },
   es: { og: "es_419", date: "es-AR", hreflang: "es" },
+  pt: { og: "pt_BR", date: "pt-BR", hreflang: "pt-BR" },
 };
 
+/** Label of the “read this in …” link pointing at each language. */
+export const READ_IN: Record<Lang, string> = {
+  en: "Read in English",
+  es: "Leer en español",
+  pt: "Ler em português",
+};
+
+/** hreflang map (incl. x-default → English) for a page that exists in several languages. */
+export function hreflangMap(paths: Partial<Record<Lang, string>>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const l of LANGS) {
+    const p = paths[l];
+    if (p) out[LOCALE[l].hreflang] = p;
+  }
+  const def = paths.en || Object.values(paths).find(Boolean);
+  if (def) out["x-default"] = def;
+  return out;
+}
+
 export function blogBase(lang: Lang): string {
-  return lang === "en" ? "/blog" : "/es/blog";
+  return lang === "en" ? "/blog" : `/${lang}/blog`;
 }
 
 export function articlePath(lang: Lang, slug: string): string {
@@ -53,7 +73,6 @@ export const UI = {
     latestEyebrow: "Blog",
     latestTitle: "Guides to get more clicks.",
     latestAll: "See all guides →",
-    otherLang: "Leer en español",
     rssDescription: "Bitlink news and guides on link in bio, short links, QR codes, UTMs and analytics.",
   },
   es: {
@@ -85,8 +104,38 @@ export const UI = {
     latestEyebrow: "Blog",
     latestTitle: "Guías para conseguir más clics.",
     latestAll: "Ver todas las guías →",
-    otherLang: "Read in English",
     rssDescription: "Novedades de Bitlink y guías de link en bio, links cortos, QR, UTMs y analítica.",
+  },
+  pt: {
+    blog: "Blog",
+    blogName: "Blog do Bitlink",
+    all: "Tudo",
+    categoriesNav: "Categorias do blog",
+    categoryEyebrow: "Blog · Categoria",
+    indexEyebrow: "Blog",
+    indexTitle: "Guias, novidades e ideias para o seu link na bio.",
+    indexIntro:
+      "Tudo o que você precisa para o seu link na bio, seus links curtos e seus QR codes terem mais cliques — explicado passo a passo.",
+    metaTitle: "Blog do Bitlink: guias de link na bio, links curtos e QR code",
+    metaDescription:
+      "Novidades do Bitlink e guias práticos para melhorar seu link na bio: Instagram, TikTok, UTMs, QR codes, domínio próprio, vendas e métricas.",
+    minRead: "min de leitura",
+    author: "Equipe Bitlink",
+    updated: "Atualizado",
+    quickAnswer: "Resposta rápida",
+    inThisArticle: "Neste artigo",
+    faq: "Perguntas frequentes",
+    keepReading: "Continue lendo",
+    sideCtaTitle: "Seu link na bio, grátis para sempre.",
+    sideCtaText: "Links ilimitados, links curtos, QR code e estatísticas.",
+    ctaTitle: "Crie seu Bitlink de graça",
+    ctaText: "Link na bio, links curtos, QR code e estatísticas. Sem planos, sem cartão.",
+    ctaLabel: "Criar meu Bitlink",
+    callout: { tip: "Dica", note: "Bom saber", warn: "Atenção" },
+    latestEyebrow: "Blog",
+    latestTitle: "Guias para conseguir mais cliques.",
+    latestAll: "Ver todos os guias →",
+    rssDescription: "Novidades do Bitlink e guias sobre link na bio, links curtos, QR code, UTMs e análise de dados.",
   },
 } as const;
 

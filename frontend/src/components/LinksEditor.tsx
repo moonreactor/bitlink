@@ -24,7 +24,8 @@ import { useToast } from "@/components/Toast";
 import { linksApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { animationClass } from "@/lib/linkAnimations";
-import { detectSocialBrand } from "@/lib/socialBrands";
+import { QUICK_ADD, isPrefixOnly, type QuickAddTemplate } from "@/lib/quickAdd";
+import { SocialBrandIcon, detectSocialBrand } from "@/lib/socialBrands";
 import type { CollectionLayout, LinkItem, LinkType } from "@/lib/types";
 
 const LINK_TYPES: { id: LinkType; label: string }[] = [
@@ -77,8 +78,12 @@ export function LinksEditor() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [fetchingMeta, setFetchingMeta] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [moreOptions, setMoreOptions] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const metaReq = useRef(0);
   const titleTouched = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const urlInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -86,10 +91,39 @@ export function LinksEditor() {
     const token = getAccessToken();
     if (!token) return;
     setLinks(await linksApi.list(token));
+    setLoaded(true);
+  }
+
+  function focusComposer(caretAtEnd = false) {
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    requestAnimationFrame(() => {
+      const el = urlInputRef.current;
+      if (!el) return;
+      el.focus({ preventScroll: true });
+      if (caretAtEnd) el.setSelectionRange(el.value.length, el.value.length);
+    });
+  }
+
+  function applyTemplate(t: QuickAddTemplate) {
+    titleTouched.current = true;
+    metaReq.current += 1;
+    setFetchingMeta(false);
+    setDraft({ ...emptyDraft(), link_type: "url", url: t.prefix, title: t.label });
+    setComposerOpen(true);
+    focusComposer(true);
   }
 
   useEffect(() => {
     load();
+    // Deep link from the bottom-bar "+" / onboarding checklist.
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("add")) {
+      window.history.replaceState(null, "", window.location.pathname);
+      focusComposer();
+    }
+    const onAdd = () => focusComposer();
+    window.addEventListener("bitlink:add-link", onAdd);
+    return () => window.removeEventListener("bitlink:add-link", onAdd);
   }, []);
 
   async function hydrateFromUrl(rawUrl: string) {
@@ -140,7 +174,7 @@ export function LinksEditor() {
   }
 
   function onUrlCommit() {
-    if (looksLikeUrl(draft.url)) {
+    if (looksLikeUrl(draft.url) && !isPrefixOnly(draft.url)) {
       void hydrateFromUrl(draft.url);
     }
   }
@@ -149,6 +183,11 @@ export function LinksEditor() {
     e.preventDefault();
     const token = getAccessToken();
     if (!token) return;
+    if (draft.link_type === "url" && isPrefixOnly(draft.url)) {
+      toastError("Finish the link — add your username after the /");
+      focusComposer(true);
+      return;
+    }
     if (draft.link_type !== "header" && !draft.url.trim()) {
       toastError(draft.link_type === "contact" ? "Add an email or phone" : "Paste a link first");
       return;
@@ -158,6 +197,9 @@ export function LinksEditor() {
       return;
     }
     try {
+      // Don't block the tap on a pending metadata fetch (blur fires it right before submit).
+      metaReq.current += 1;
+      setFetchingMeta(false);
       const title =
         draft.title.trim() ||
         (draft.link_type === "header" ? "Section" : draft.url.trim() || "Link");
@@ -174,11 +216,13 @@ export function LinksEditor() {
         visible_from: draft.visible_from,
         visible_until: draft.visible_until,
       });
+      const wasFirst = links.filter((l) => l.link_type !== "header").length === 0;
       setDraft(emptyDraft());
       setComposerOpen(false);
+      setMoreOptions(false);
       titleTouched.current = false;
       await load();
-      success("Link created");
+      success(wasFirst ? "Your first link is live 🎉 Now share your page" : "Link added");
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Failed to create link");
     }
@@ -187,8 +231,10 @@ export function LinksEditor() {
   function resetComposer() {
     setDraft(emptyDraft());
     setComposerOpen(false);
+    setMoreOptions(false);
     titleTouched.current = false;
     metaReq.current += 1;
+    setFetchingMeta(false);
   }
 
   async function onDragEnd(event: DragEndEvent) {
@@ -282,34 +328,43 @@ export function LinksEditor() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
+    <div className="mx-auto max-w-3xl space-y-6 md:space-y-8">
       <div>
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink">Links</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">Links</h1>
         <p className="mt-1 text-sm text-meetup-muted">
-          Links, embeds, headers, and collections — paste a URL or pick a type.
+          What people can tap on your page. Drag to reorder.
         </p>
       </div>
 
-      <form onSubmit={onCreate} className="mu-card space-y-4 p-4 md:p-5">
-        <div className="flex flex-wrap gap-2">
-          {LINK_TYPES.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => {
-                setDraft((prev) => ({ ...prev, link_type: t.id }));
-                setComposerOpen(true);
-              }}
-              className={`mu-chip ${draft.link_type === t.id ? "mu-chip-active" : ""}`}
-            >
-              {t.label}
-            </button>
-          ))}
+      <form ref={formRef} onSubmit={onCreate} className="mu-card scroll-mt-20 space-y-4 p-4 md:p-5">
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-meetup-muted">
+            Quick add
+          </p>
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:mx-0 md:flex-wrap md:px-0">
+            {QUICK_ADD.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => applyTemplate(t)}
+                className="mu-chip min-h-[40px] shrink-0"
+              >
+                {t.brand && <SocialBrandIcon brandId={t.brand} className="text-base" />}
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative min-w-0 flex-1">
             <input
+              ref={urlInputRef}
+              aria-label="Link URL"
+              inputMode={draft.link_type === "contact" ? "email" : "url"}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               value={draft.url}
               onChange={(e) => onUrlChange(e.target.value)}
               onBlur={onUrlCommit}
@@ -337,7 +392,7 @@ export function LinksEditor() {
                         : "Paste or type a link (https://…)"
               }
               autoComplete="url"
-              className="mu-input w-full pr-24"
+              className="mu-input min-h-[48px] w-full pr-24"
             />
             {fetchingMeta && (
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-meetup-purple">
@@ -353,7 +408,7 @@ export function LinksEditor() {
                 else onUrlCommit();
               }}
               disabled={draft.link_type !== "header" && !looksLikeUrl(draft.url) && draft.link_type !== "contact"}
-              className="mu-btn-primary shrink-0 disabled:opacity-50"
+              className="mu-btn-primary min-h-[48px] shrink-0 disabled:opacity-50"
             >
               Continue
             </button>
@@ -388,91 +443,131 @@ export function LinksEditor() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-sm">
-                <span className="mb-1 block font-semibold text-ink">Collection</span>
-                <input
-                  className="mu-input"
-                  value={draft.collection}
-                  onChange={(e) => setDraft({ ...draft, collection: e.target.value })}
-                  placeholder="e.g. Music, Shop"
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="mb-1 block font-semibold text-ink">Collection layout</span>
-                <select
-                  className="mu-input"
-                  value={draft.collection_layout}
-                  onChange={(e) =>
-                    setDraft({ ...draft, collection_layout: e.target.value as CollectionLayout })
-                  }
-                >
-                  <option value="list">List</option>
-                  <option value="grid">Grid</option>
-                </select>
-              </label>
-            </div>
+            <button
+              type="button"
+              onClick={() => setMoreOptions((v) => !v)}
+              aria-expanded={moreOptions}
+              className="inline-flex min-h-[44px] items-center gap-1 rounded-xl px-1 text-sm font-semibold text-meetup-purple"
+            >
+              <span>{moreOptions ? "Fewer options" : "More options"}</span>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden
+                className={`transition ${moreOptions ? "rotate-180" : ""}`}
+              >
+                <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
 
-            {draft.link_type !== "header" && (
-              <label className="inline-flex items-center gap-2 text-sm text-meetup-muted">
-                <input
-                  type="checkbox"
-                  checked={draft.is_featured}
-                  onChange={(e) => setDraft({ ...draft, is_featured: e.target.checked })}
+            {moreOptions && (
+              <div className="space-y-4 border-t border-meetup-border pt-4">
+                <div>
+                  <p className="mb-2 text-sm font-semibold text-ink">Type</p>
+                  <div className="flex flex-wrap gap-2">
+                    {LINK_TYPES.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setDraft((prev) => ({ ...prev, link_type: t.id }))}
+                        className={`mu-chip ${draft.link_type === t.id ? "mu-chip-active" : ""}`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block text-sm">
+                    <span className="mb-1 block font-semibold text-ink">Collection</span>
+                    <input
+                      className="mu-input"
+                      value={draft.collection}
+                      onChange={(e) => setDraft({ ...draft, collection: e.target.value })}
+                      placeholder="e.g. Music, Shop"
+                    />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="mb-1 block font-semibold text-ink">Collection layout</span>
+                    <select
+                      className="mu-input"
+                      value={draft.collection_layout}
+                      onChange={(e) =>
+                        setDraft({ ...draft, collection_layout: e.target.value as CollectionLayout })
+                      }
+                    >
+                      <option value="list">List</option>
+                      <option value="grid">Grid</option>
+                    </select>
+                  </label>
+                </div>
+
+                {draft.link_type !== "header" && (
+                  <label className="inline-flex items-center gap-2 text-sm text-meetup-muted">
+                    <input
+                      type="checkbox"
+                      checked={draft.is_featured}
+                      onChange={(e) => setDraft({ ...draft, is_featured: e.target.checked })}
+                    />
+                    Featured link
+                  </label>
+                )}
+
+                <LinkIconPicker value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
+
+                <ImageUrlField
+                  value={draft.thumbnail_url}
+                  onChange={(thumbnail_url) => setDraft({ ...draft, thumbnail_url })}
+                  hint="Favicon is filled automatically. You can replace it with any image URL."
                 />
-                Featured link
-              </label>
+
+                <LinkAnimationPicker
+                  value={draft.animation}
+                  onChange={(animation) => setDraft({ ...draft, animation })}
+                />
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-xs text-meetup-muted">
+                    Visible from
+                    <input
+                      type="datetime-local"
+                      className="mu-input mt-1"
+                      value={toLocalInput(draft.visible_from)}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          visible_from: e.target.value ? new Date(e.target.value).toISOString() : null,
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="text-xs text-meetup-muted">
+                    Visible until
+                    <input
+                      type="datetime-local"
+                      className="mu-input mt-1"
+                      value={toLocalInput(draft.visible_until)}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          visible_until: e.target.value ? new Date(e.target.value).toISOString() : null,
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+              </div>
             )}
 
-            <LinkIconPicker value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
-
-            <ImageUrlField
-              value={draft.thumbnail_url}
-              onChange={(thumbnail_url) => setDraft({ ...draft, thumbnail_url })}
-              hint="Favicon is filled automatically. You can replace it with any image URL."
-            />
-
-            <LinkAnimationPicker
-              value={draft.animation}
-              onChange={(animation) => setDraft({ ...draft, animation })}
-            />
-
-            <div className="grid grid-cols-2 gap-2">
-              <label className="text-xs text-meetup-muted">
-                Visible from
-                <input
-                  type="datetime-local"
-                  className="mu-input mt-1"
-                  value={toLocalInput(draft.visible_from)}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      visible_from: e.target.value ? new Date(e.target.value).toISOString() : null,
-                    })
-                  }
-                />
-              </label>
-              <label className="text-xs text-meetup-muted">
-                Visible until
-                <input
-                  type="datetime-local"
-                  className="mu-input mt-1"
-                  value={toLocalInput(draft.visible_until)}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      visible_until: e.target.value ? new Date(e.target.value).toISOString() : null,
-                    })
-                  }
-                />
-              </label>
-            </div>
-
-            <div className="flex flex-wrap justify-end gap-2 pt-1">
-              <button type="button" onClick={resetComposer} className="mu-btn-ghost">
+            <div className="grid grid-cols-2 gap-2 pt-1 sm:flex sm:justify-end">
+              <button type="button" onClick={resetComposer} className="mu-btn-ghost min-h-[48px]">
                 Cancel
               </button>
-              <button type="submit" className="mu-btn-primary" disabled={fetchingMeta}>
+              <button type="submit" className="mu-btn-primary min-h-[48px]">
                 Add link
               </button>
             </div>
@@ -483,9 +578,12 @@ export function LinksEditor() {
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={links.map((l) => l.id)} strategy={verticalListSortingStrategy}>
           <ul className="space-y-3">
-            {links.length === 0 && (
-              <li className="rounded-2xl border border-dashed border-meetup-border p-8 text-center text-sm text-meetup-muted">
-                No links yet. Paste a URL above to get started.
+            {loaded && links.length === 0 && (
+              <li className="rounded-2xl border border-dashed border-meetup-border bg-white/60 p-6 text-center">
+                <p className="font-semibold text-ink">Your page has no links yet</p>
+                <p className="mx-auto mt-1 max-w-xs text-sm text-meetup-muted">
+                  Tap Instagram or WhatsApp above and type your handle — that’s it. You can add more later.
+                </p>
               </li>
             )}
             {links.map((link) => (
@@ -581,6 +679,7 @@ function SortableLink({
   const [featured, setFeatured] = useState(link.is_featured);
   const [visibleFrom, setVisibleFrom] = useState(link.visible_from);
   const [visibleUntil, setVisibleUntil] = useState(link.visible_until);
+  const [showMore, setShowMore] = useState(false);
 
   useEffect(() => {
     if (!expanded) return;
@@ -608,10 +707,10 @@ function SortableLink({
       <div className="flex items-start gap-3">
         <button
           type="button"
-          className="mt-2 cursor-grab touch-none text-ink/30 active:cursor-grabbing"
+          className="-ml-2 -mt-1 flex h-11 w-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-lg text-lg text-ink/30 active:cursor-grabbing active:bg-mist"
           {...attributes}
           {...listeners}
-          aria-label="Drag"
+          aria-label={`Reorder ${link.title}`}
         >
           ⠿
         </button>
@@ -658,28 +757,45 @@ function SortableLink({
           </button>
 
           {!expanded && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <MiniBtn onClick={onToggleExpand}>Customize</MiniBtn>
-              <MiniBtn onClick={() => onToggle(link, "is_active")}>
-                {link.is_active ? "Disable" : "Enable"}
-              </MiniBtn>
-              <MiniBtn onClick={() => onToggle(link, "is_featured")}>
-                {link.is_featured ? "Unfeature" : "Feature"}
-              </MiniBtn>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <VisibleSwitch
+                checked={link.is_active}
+                onChange={() => onToggle(link, "is_active")}
+                label={link.title}
+              />
+              <MiniBtn onClick={onToggleExpand}>Edit</MiniBtn>
               <MiniBtn
-                onClick={() => {
-                  if (link.has_lock) onSetLock(link, null);
-                  else {
-                    const code = prompt("Lock code for this link:");
-                    if (code) onSetLock(link, code);
-                  }
-                }}
+                onClick={() => setShowMore((v) => !v)}
+                ariaExpanded={showMore}
+                ariaLabel="More actions"
               >
-                {link.has_lock ? "Remove lock" : "Add lock"}
+                <span aria-hidden className="text-base leading-none tracking-widest">
+                  ⋯
+                </span>
               </MiniBtn>
-              <MiniBtn onClick={() => onRemove(link.id)} danger>
-                Delete
-              </MiniBtn>
+              {showMore && (
+                <div className="flex w-full flex-wrap gap-2">
+                  {link.link_type !== "header" && (
+                    <MiniBtn onClick={() => onToggle(link, "is_featured")}>
+                      {link.is_featured ? "Unfeature" : "Feature"}
+                    </MiniBtn>
+                  )}
+                  <MiniBtn
+                    onClick={() => {
+                      if (link.has_lock) onSetLock(link, null);
+                      else {
+                        const code = prompt("Lock code for this link:");
+                        if (code) onSetLock(link, code);
+                      }
+                    }}
+                  >
+                    {link.has_lock ? "Remove lock" : "Add lock"}
+                  </MiniBtn>
+                  <MiniBtn onClick={() => onRemove(link.id)} danger>
+                    Delete
+                  </MiniBtn>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -837,22 +953,62 @@ function MiniBtn({
   children,
   onClick,
   danger,
+  ariaExpanded,
+  ariaLabel,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   danger?: boolean;
+  ariaExpanded?: boolean;
+  ariaLabel?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
+      aria-expanded={ariaExpanded}
+      aria-label={ariaLabel}
+      className={`inline-flex min-h-[36px] items-center rounded-full px-3.5 text-[13px] font-semibold ${
         danger
-          ? "bg-red-50 text-red-600"
-          : "bg-mist text-meetup-muted hover:bg-meetup-lavender hover:text-meetup-purple"
+          ? "bg-red-50 text-red-600 active:bg-red-100"
+          : "bg-mist text-ink hover:bg-meetup-lavender hover:text-meetup-purple"
       }`}
     >
       {children}
+    </button>
+  );
+}
+
+function VisibleSwitch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={`Show “${label}” on my page`}
+      onClick={onChange}
+      className="inline-flex min-h-[36px] items-center gap-2 rounded-full pr-1 text-[13px] font-semibold text-meetup-muted"
+    >
+      <span
+        className={`relative inline-block h-6 w-10 rounded-full transition ${
+          checked ? "bg-emerald-500" : "bg-meetup-border"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+            checked ? "left-[18px]" : "left-0.5"
+          }`}
+        />
+      </span>
+      {checked ? "Visible" : "Hidden"}
     </button>
   );
 }

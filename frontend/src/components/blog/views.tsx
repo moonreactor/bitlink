@@ -14,10 +14,14 @@ import {
   getCategoryBySlug,
   getRelated,
   getTranslations,
+  hreflangMap,
+  LANGS,
   LOCALE,
+  READ_IN,
   rssPath,
   toc,
   UI,
+  type CategoryId,
   type Lang,
 } from "@/lib/content";
 import { articleLd, breadcrumbLd, JsonLd, ORG_ID, organizationLd } from "@/lib/jsonld";
@@ -27,12 +31,14 @@ import { ArticleBody, InlineCta } from "./ArticleBody";
 import { BlogHeader } from "./BlogHeader";
 import { plain, RichText } from "./RichText";
 
-const other = (lang: Lang): Lang => (lang === "en" ? "es" : "en");
+const others = (lang: Lang): Lang[] => LANGS.filter((l) => l !== lang);
 
-/** hreflang map for a page that exists in both languages. */
-function languages(en: string, es: string) {
-  return { en, es, "x-default": en };
+/** Same-page links in the other languages, for the language switch. */
+function switchLinks(paths: Partial<Record<Lang, string>>) {
+  return LANGS.flatMap((l) => (paths[l] ? [{ lang: l, href: paths[l] as string }] : []));
 }
+
+const blogPaths = () => Object.fromEntries(LANGS.map((l) => [l, blogBase(l)])) as Record<Lang, string>;
 
 function rssTypes(lang: Lang) {
   return { "application/rss+xml": [{ url: rssPath(lang), title: UI[lang].blogName }] };
@@ -47,7 +53,7 @@ export function blogIndexMetadata(lang: Lang): Metadata {
     description: t.metaDescription,
     alternates: {
       canonical: blogBase(lang),
-      languages: languages(blogBase("en"), blogBase("es")),
+      languages: hreflangMap(blogPaths()),
       types: rssTypes(lang),
     },
     openGraph: {
@@ -56,7 +62,7 @@ export function blogIndexMetadata(lang: Lang): Metadata {
       url: blogBase(lang),
       type: "website",
       locale: LOCALE[lang].og,
-      alternateLocale: LOCALE[other(lang)].og,
+      alternateLocale: others(lang).map((l) => LOCALE[l].og),
       siteName: "Bitlink",
       images: defaultOgImages(),
     },
@@ -83,7 +89,7 @@ export function BlogIndexView({ lang }: { lang: Lang }) {
               url: `${WEB}${blogBase(lang)}`,
               name: t.blogName,
               description: t.metaDescription,
-              inLanguage: lang,
+              inLanguage: LOCALE[lang].hreflang,
               publisher: { "@id": ORG_ID },
               blogPost: articles.map((a) => ({
                 "@type": a.category === "novedades" ? "NewsArticle" : "BlogPosting",
@@ -104,7 +110,7 @@ export function BlogIndexView({ lang }: { lang: Lang }) {
         eyebrow={t.indexEyebrow}
         title={t.indexTitle}
         description={t.indexIntro}
-        otherLangHref={blogBase(other(lang))}
+        switchTo={switchLinks(blogPaths())}
       />
       <div className="mx-auto max-w-6xl px-5 pb-20 md:px-8 md:pb-28">
         {featured && <ArticleCard article={featured} featured />}
@@ -123,6 +129,16 @@ export function BlogIndexView({ lang }: { lang: Lang }) {
 
 /* ─────────────────────────── Category ─────────────────────────── */
 
+/** Path of a category in every language where it exists. */
+function categoryPaths(id: CategoryId): Partial<Record<Lang, string>> {
+  const out: Partial<Record<Lang, string>> = {};
+  for (const l of LANGS) {
+    const c = getCategory(l, id);
+    if (c) out[l] = categoryPath(l, c.slug);
+  }
+  return out;
+}
+
 export function categoryParams(lang: Lang) {
   return CATEGORIES[lang].map((c) => ({ category: c.slug }));
 }
@@ -130,16 +146,15 @@ export function categoryParams(lang: Lang) {
 export function categoryMetadata(lang: Lang, slug: string): Metadata {
   const cat = getCategoryBySlug(lang, slug);
   if (!cat) return {};
-  const twin = getCategory(other(lang), cat.id);
+  const paths = categoryPaths(cat.id);
   const title = `${cat.title} | ${UI[lang].blogName}`;
   const path = categoryPath(lang, cat.slug);
-  const twinPath = twin ? categoryPath(other(lang), twin.slug) : undefined;
   return {
     title,
     description: cat.description,
     alternates: {
       canonical: path,
-      ...(twinPath ? { languages: lang === "en" ? languages(path, twinPath) : languages(twinPath, path) } : {}),
+      languages: hreflangMap(paths),
     },
     openGraph: {
       title,
@@ -158,7 +173,6 @@ export function CategoryView({ lang, slug }: { lang: Lang; slug: string }) {
   const cat = getCategoryBySlug(lang, slug);
   if (!cat) notFound();
   const articles = getArticlesByCategory(lang, cat.id);
-  const twin = getCategory(other(lang), cat.id);
   const WEB = siteUrl();
 
   return (
@@ -172,7 +186,7 @@ export function CategoryView({ lang, slug }: { lang: Lang; slug: string }) {
               url: `${WEB}${categoryPath(lang, cat.slug)}`,
               name: cat.title,
               description: cat.description,
-              inLanguage: lang,
+              inLanguage: LOCALE[lang].hreflang,
               mainEntity: {
                 "@type": "ItemList",
                 itemListElement: articles.map((a, i) => ({
@@ -197,7 +211,7 @@ export function CategoryView({ lang, slug }: { lang: Lang; slug: string }) {
         title={cat.title}
         description={cat.description}
         active={cat.id}
-        otherLangHref={twin ? categoryPath(other(lang), twin.slug) : undefined}
+        switchTo={switchLinks(categoryPaths(cat.id))}
       />
       <div className="mx-auto grid max-w-6xl gap-6 px-5 pb-20 sm:grid-cols-2 md:px-8 md:pb-28 lg:grid-cols-3">
         {articles.map((a) => (
@@ -219,8 +233,9 @@ export function articleMetadata(lang: Lang, slug: string): Metadata {
   if (!article) return {};
   const title = article.seoTitle || article.title;
   const path = articlePath(lang, article.slug);
-  const twin = getTranslations(article)[0];
-  const twinPath = twin ? articlePath(twin.lang, twin.slug) : undefined;
+  const twins = getTranslations(article);
+  const paths: Partial<Record<Lang, string>> = { [lang]: path };
+  for (const t of twins) paths[t.lang] = articlePath(t.lang, t.slug);
   const section = getCategory(lang, article.category)?.name;
   return {
     title,
@@ -230,7 +245,7 @@ export function articleMetadata(lang: Lang, slug: string): Metadata {
     category: section,
     alternates: {
       canonical: path,
-      ...(twinPath ? { languages: lang === "en" ? languages(path, twinPath) : languages(twinPath, path) } : {}),
+      ...(twins.length ? { languages: hreflangMap(paths) } : {}),
       types: rssTypes(lang),
     },
     openGraph: {
@@ -240,7 +255,7 @@ export function articleMetadata(lang: Lang, slug: string): Metadata {
       description: article.description,
       siteName: "Bitlink",
       locale: LOCALE[lang].og,
-      ...(twin ? { alternateLocale: LOCALE[twin.lang].og } : {}),
+      ...(twins.length ? { alternateLocale: twins.map((t) => LOCALE[t.lang].og) } : {}),
       publishedTime: article.published,
       modifiedTime: article.updated || article.published,
       section,
@@ -258,7 +273,7 @@ export function ArticleView({ lang, slug }: { lang: Lang; slug: string }) {
   const headings = toc(article);
   const related = getRelated(article);
   const category = getCategory(lang, article.category);
-  const twin = getTranslations(article)[0];
+  const twins = getTranslations(article);
 
   return (
     <>
@@ -292,14 +307,19 @@ export function ArticleView({ lang, slug }: { lang: Lang; slug: string }) {
                 )}
               </ol>
             </nav>
-            {twin && (
-              <Link
-                href={articlePath(twin.lang, twin.slug)}
-                hrefLang={twin.lang}
-                className="text-sm font-semibold text-meetup-muted hover:text-ink"
-              >
-                {t.otherLang} →
-              </Link>
+            {twins.length > 0 && (
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {twins.map((tw) => (
+                  <Link
+                    key={tw.lang}
+                    href={articlePath(tw.lang, tw.slug)}
+                    hrefLang={LOCALE[tw.lang].hreflang}
+                    className="text-sm font-semibold text-meetup-muted hover:text-ink"
+                  >
+                    {READ_IN[tw.lang]} →
+                  </Link>
+                ))}
+              </div>
             )}
           </div>
 

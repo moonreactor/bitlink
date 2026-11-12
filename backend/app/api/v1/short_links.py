@@ -1,23 +1,37 @@
+import hashlib
+import secrets
+from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse, Response as FastAPIResponse
-from sqlalchemy import func
+from sqlalchemy import Date, cast, func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.short_link import ShortLink, ShortLinkClick
+from app.models.shortener_event import CLIENT_EVENTS, SOURCES, ShortenerEvent
 from app.models.user import User
 from app.schemas.short_link import (
+    PublicShortLinkCreate,
+    PublicShortLinkOut,
+    ShortenerEventIn,
+    ShortLinkDailyClicks,
+    ShortLinkStatCount,
+    ShortLinkStatsOut,
     ShortLinkCheckOut,
+    ShortLinkClaimOut,
+    ShortLinkClaimRequest,
     ShortLinkCreate,
     ShortLinkOut,
     ShortLinkUpdate,
     ShortLinkVisitOut,
 )
 from app.services.analytics import detect_device, hash_visitor, normalize_referrer
+from app.services.safe_browsing import UNSAFE_MESSAGE, find_unsafe_urls
 from app.services.qr import generate_profile_qr
 from app.services.short_links import (
     CODE_RE,
@@ -113,6 +127,153 @@ def _track_click(db: Session, link: ShortLink, request: Request) -> None:
     db.commit()
 
 
+def _reject_unsafe(*urls: str | None) -> None:
+    if find_unsafe_urls([u for u in urls if u]):
+        raise HTTPException(status_code=400, detail=UNSAFE_MESSAGE)
+
+
+def _log_funnel(db: Session, event: str, source: str | None, request: Request) -> None:
+    db.add(
+        ShortenerEvent(
+            event=event,
+            source=source if source in SOURCES else None,
+            visitor_hash=_sha256(_client_ip(request))[:32],
+        )
+    )
+
+
+def _sha256(value: str) -> str:
+    return hashlib.sha256(value.encode()).hexdigest()
+
+
+def _client_ip(request: Request) -> str:
+    hops = settings.TRUSTED_PROXY_HOPS
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded and hops > 0:
+        parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+        # Each trusted proxy appends the address it saw; anything left of that is client-supplied.
+        if len(parts) >= hops:
+            return parts[-hops]
+    return request.client.host if request.client else "unknown"
+
+
+@router.post(
+    "/public/short-links",
+    response_model=PublicShortLinkOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_public_short_link(
+    payload: PublicShortLinkCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> PublicShortLinkOut:
+    """Create a short link without an account.
+
+    The creator receives a one-time claim token. Clicks are recorded from day one,
+    but stats are only visible after signing up and claiming the link.
+    """
+    own_host = urlparse(settings.short_base_url).hostname
+    dest_host = urlparse(payload.destination_url).hostname
+    if own_host and dest_host and dest_host.lower() in {own_host.lower(), f"www.{own_host.lower()}"}:
+        raise HTTPException(status_code=400, detail="You can't shorten a Bitlink URL.")
+
+    if find_unsafe_urls([payload.destination_url]):
+        raise HTTPException(status_code=400, detail=UNSAFE_MESSAGE)
+
+    creator_hash = _sha256(_client_ip(request))
+    since = datetime.now(timezone.utc) - timedelta(hours=1)
+    recent = (
+        db.query(func.count(ShortLink.id))
+        .filter(ShortLink.creator_hash == creator_hash, ShortLink.created_at >= since)
+        .scalar()
+    )
+    if recent >= settings.ANON_LINKS_PER_IP_HOUR:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many links created from your network. Create a free account to keep going.",
+        )
+    total_recent = (
+        db.query(func.count(ShortLink.id))
+        .filter(ShortLink.user_id.is_(None), ShortLink.created_at >= since)
+        .scalar()
+    )
+    if total_recent >= settings.ANON_LINKS_GLOBAL_HOUR:
+        raise HTTPException(
+            status_code=429,
+            detail="Free link creation is busy right now. Please try again later or create a free account.",
+        )
+
+    try:
+        code = allocate_code(db, None)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    token = secrets.token_urlsafe(24)
+    link = ShortLink(
+        user_id=None,
+        code=code,
+        destination_url=payload.destination_url,
+        claim_token_hash=_sha256(token),
+        creator_hash=creator_hash,
+        is_active=True,
+    )
+    db.add(link)
+    _log_funnel(db, "link_created", payload.source, request)
+    db.commit()
+    return PublicShortLinkOut(
+        code=code,
+        short_url=_short_url(code),
+        destination_url=link.destination_url,
+        claim_token=token,
+    )
+
+
+@router.post("/public/shortener-events", status_code=status.HTTP_204_NO_CONTENT)
+def track_shortener_event(
+    payload: ShortenerEventIn,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> None:
+    """Funnel analytics for the public shortener. Whitelisted events, no personal data."""
+    if payload.event not in CLIENT_EVENTS:
+        raise HTTPException(status_code=400, detail="Unknown event")
+    visitor = _sha256(_client_ip(request))[:32]
+    since = datetime.now(timezone.utc) - timedelta(hours=1)
+    recent = (
+        db.query(func.count(ShortenerEvent.id))
+        .filter(ShortenerEvent.visitor_hash == visitor, ShortenerEvent.created_at >= since)
+        .scalar()
+    )
+    if recent >= 120:
+        return  # silently drop: keeps the funnel from being flooded
+    _log_funnel(db, payload.event, payload.source, request)
+    db.commit()
+
+
+@router.post("/me/short-links/claim", response_model=ShortLinkClaimOut)
+def claim_short_links(
+    payload: ShortLinkClaimRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ShortLinkClaimOut:
+    """Attach anonymously created short links (and their click history) to the account."""
+    hashes = {_sha256(t.strip()) for t in payload.tokens if t.strip()}
+    links = (
+        db.query(ShortLink)
+        .filter(ShortLink.user_id.is_(None), ShortLink.claim_token_hash.in_(hashes))
+        .all()
+    )
+    for link in links:
+        link.user_id = current_user.id
+        link.claim_token_hash = None
+        link.creator_hash = None
+    if links:
+        _log_funnel(db, "claimed", None, request)
+    db.commit()
+    return ShortLinkClaimOut(claimed=len(links))
+
+
 @router.get("/me/short-links", response_model=list[ShortLinkOut])
 def list_short_links(
     current_user: User = Depends(get_current_user),
@@ -147,6 +308,12 @@ def create_short_link(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> ShortLinkOut:
+    _reject_unsafe(
+        payload.destination_url,
+        payload.rule_mobile_url,
+        payload.rule_desktop_url,
+        *(payload.geo_rules or {}).values(),
+    )
     try:
         code = allocate_code(db, payload.code)
     except ValueError as exc:
@@ -189,6 +356,12 @@ def update_short_link(
         raise HTTPException(status_code=404, detail="Short link not found")
 
     data = payload.model_dump(exclude_unset=True)
+    _reject_unsafe(
+        data.get("destination_url"),
+        data.get("rule_mobile_url"),
+        data.get("rule_desktop_url"),
+        *(data.get("geo_rules") or {}).values(),
+    )
 
     if "code" in data and data["code"] and data["code"] != link.code:
         if not code_available(db, data["code"], exclude_id=link.id):
@@ -255,6 +428,59 @@ def delete_short_link(
         raise HTTPException(status_code=404, detail="Short link not found")
     db.delete(link)
     db.commit()
+
+
+@router.get("/me/short-links/{link_id}/stats", response_model=ShortLinkStatsOut)
+def short_link_stats(
+    link_id: UUID,
+    days: int = Query(default=30, ge=1, le=365),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ShortLinkStatsOut:
+    """Click breakdown for one of the user's short links (country, device, referrer, daily)."""
+    link = (
+        db.query(ShortLink)
+        .filter(ShortLink.id == link_id, ShortLink.user_id == current_user.id)
+        .first()
+    )
+    if link is None:
+        raise HTTPException(status_code=404, detail="Short link not found")
+
+    now = datetime.now(timezone.utc)
+    since = (now - timedelta(days=days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    base = [ShortLinkClick.short_link_id == link.id, ShortLinkClick.created_at >= since]
+
+    total = db.query(func.count(ShortLinkClick.id)).filter(*base).scalar() or 0
+
+    day_col = cast(ShortLinkClick.created_at, Date)
+    per_day = {
+        str(d): n
+        for d, n in db.query(day_col, func.count(ShortLinkClick.id)).filter(*base).group_by(day_col).all()
+    }
+    daily = []
+    for i in range(days):
+        d = (since + timedelta(days=i)).date().isoformat()
+        daily.append(ShortLinkDailyClicks(date=d, clicks=per_day.get(d, 0)))
+
+    def top(column, empty_label: str, limit: int = 8) -> list[ShortLinkStatCount]:
+        rows = (
+            db.query(column, func.count(ShortLinkClick.id))
+            .filter(*base)
+            .group_by(column)
+            .order_by(func.count(ShortLinkClick.id).desc())
+            .limit(limit)
+            .all()
+        )
+        return [ShortLinkStatCount(label=(v or empty_label), count=n) for v, n in rows]
+
+    return ShortLinkStatsOut(
+        days=days,
+        total=total,
+        daily=daily,
+        countries=top(ShortLinkClick.country, "Unknown"),
+        devices=top(ShortLinkClick.device, "unknown"),
+        referrers=top(ShortLinkClick.referrer, "Direct"),
+    )
 
 
 @router.get("/me/short-links/{link_id}/qr")
