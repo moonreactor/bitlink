@@ -1,3 +1,5 @@
+import { EXAMPLES_TEXT, LANDING } from "@/lib/i18n/landing-copy";
+import type { SiteLang } from "@/lib/i18n/site";
 import type { SocialBrandId } from "@/lib/socialBrands";
 
 /**
@@ -18,7 +20,7 @@ export type ExampleBlock =
   | { kind: "grid"; title: string; items: { title: string; thumb: string }[] }
   | { kind: "product"; title: string; description: string; price: string; thumb: string }
   | { kind: "tip"; label: string }
-  | { kind: "email"; prompt: string };
+  | { kind: "email"; prompt: string; cta?: string; placeholder?: string };
 
 export type ExampleProfile = {
   id: string;
@@ -29,6 +31,8 @@ export type ExampleProfile = {
   tag: string;
   bio: string;
   verified?: boolean;
+  /** Accessible label for the verified badge (localised). */
+  verifiedLabel?: string;
   avatar: string;
   cover: string;
   /** Optional custom domain to show off that feature */
@@ -166,6 +170,38 @@ export const EXAMPLES: ExampleProfile[] = [
     ],
   },
 ];
+
+const CACHE = new Map<SiteLang, ExampleProfile[]>();
+
+/** Example profiles with their copy translated (images, themes and handles are shared). */
+export function getExamples(lang: SiteLang): ExampleProfile[] {
+  const hit = CACHE.get(lang);
+  if (hit) return hit;
+  const verifiedLabel = LANDING[lang].common.verified;
+  const overlay = lang === "en" ? undefined : EXAMPLES_TEXT[lang];
+  const out = EXAMPLES.map((ex) => {
+    const o = overlay?.[ex.id];
+    if (!o) return { ...ex, verifiedLabel };
+    return {
+      ...ex,
+      verifiedLabel,
+      tag: o.tag,
+      role: o.role,
+      bio: o.bio,
+      stat: o.stat,
+      blocks: ex.blocks.map((block, i) => {
+        const { itemTitles, ...text } = o.blocks[i] ?? {};
+        const merged = { ...block, ...text } as ExampleBlock;
+        if (merged.kind === "grid" && itemTitles) {
+          merged.items = merged.items.map((item, j) => ({ ...item, title: itemTitles[j] ?? item.title }));
+        }
+        return merged;
+      }),
+    } satisfies ExampleProfile;
+  });
+  CACHE.set(lang, out);
+  return out;
+}
 
 /** Smaller tiles for the scrolling showcase strip. */
 export const SHOWCASE = [

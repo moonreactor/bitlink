@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     # Anonymous short link abuse limits.
     ANON_LINKS_PER_IP_HOUR: int = 10
     ANON_LINKS_GLOBAL_HOUR: int = 300
+    # Anonymous links nobody claims (by creating an account) are deleted after this many days.
+    ANON_LINK_TTL_DAYS: int = 60
     # Number of trusted reverse proxies in front of the API (Railway = 1). The client IP
     # is taken from X-Forwarded-For counting from the right, so spoofed entries are ignored.
     TRUSTED_PROXY_HOPS: int = 1

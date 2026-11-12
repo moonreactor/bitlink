@@ -50,6 +50,9 @@ class RegisterRequest(BaseModel):
             "short",
             "r",
             "u",
+            "en",
+            "es",
+            "pt",
         }
         if v in reserved:
             raise ValueError("This username is reserved. Please choose another.")

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { ShortLinkStats } from "@/components/ShortLinkStats";
 import { useToast } from "@/components/Toast";
 import { shortLinksApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
@@ -58,6 +59,7 @@ export default function ShortLinksPage() {
   const [showRules, setShowRules] = useState(false);
   const [saving, setSaving] = useState(false);
   const [codeHint, setCodeHint] = useState("");
+  const [statsId, setStatsId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDest, setEditDest] = useState("");
 
@@ -373,6 +375,9 @@ export default function ShortLinksPage() {
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
+                <MiniBtn onClick={() => setStatsId(statsId === item.id ? null : item.id)}>
+                  {statsId === item.id ? "Hide stats" : "Stats"}
+                </MiniBtn>
                 <MiniBtn onClick={() => copyText(item.short_url)}>Copy</MiniBtn>
                 <MiniBtn
                   onClick={() => {
@@ -391,6 +396,7 @@ export default function ShortLinksPage() {
                 </MiniBtn>
               </div>
             )}
+            {statsId === item.id && <ShortLinkStats linkId={item.id} />}
           </article>
         ))}
       </section>

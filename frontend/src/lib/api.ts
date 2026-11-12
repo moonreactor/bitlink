@@ -11,6 +11,7 @@ import type {
   Profile,
   PublicProfile,
   ShortenerFunnel,
+  ShortLinkStats,
   ShortLinkItem,
   SocialLink,
   Subscriber,
@@ -270,6 +271,8 @@ export const analyticsApi = {
 };
 
 export const shortLinksApi = {
+  stats: (token: string, id: string, days = 30) =>
+    request<ShortLinkStats>(`/me/short-links/${id}/stats?days=${days}`, {}, token),
   claim: (token: string, tokens: string[]) =>
     request<{ claimed: number }>(
       "/me/short-links/claim",

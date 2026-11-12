@@ -1,5 +1,6 @@
 import { plain } from "@/components/blog/RichText";
 import { articlePath, blogBase, categoryPath, getCategory, getTranslations, readingMinutes, UI, type Article, type Faq } from "@/lib/content";
+import { LANG_LABEL, shortenerPath, type SiteLang } from "@/lib/i18n/site";
 import { absoluteAsset, OG_IMAGE_PATH, siteUrl } from "@/lib/site";
 
 const WEB = siteUrl();
@@ -34,7 +35,7 @@ export function websiteLd() {
     "@id": SITE_ID,
     url: WEB,
     name: "Bitlink",
-    inLanguage: ["en", "es"],
+    inLanguage: ["en", "es", "pt-BR"],
     publisher: { "@id": ORG_ID },
   };
 }
@@ -67,26 +68,28 @@ export function softwareLd() {
   };
 }
 
-export function shortenerLd(lang: "en" | "es") {
-  const path = lang === "es" ? "/acortador-de-links" : "/url-shortener";
+export function shortenerLd(lang: SiteLang) {
+  const path = shortenerPath(lang);
   return {
     "@type": "WebApplication",
     "@id": `${WEB}${path}#app`,
-    name: lang === "es" ? "Acortador de links gratis de Bitlink" : "Bitlink free URL shortener",
+    name: { en: "Bitlink free URL shortener", es: "Acortador de links gratis de Bitlink", pt: "Encurtador de links grátis do Bitlink" }[lang],
     url: `${WEB}${path}`,
-    inLanguage: lang,
+    inLanguage: LANG_LABEL[lang].html,
     applicationCategory: "UtilitiesApplication",
     operatingSystem: "Web",
     isAccessibleForFree: true,
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-    description:
-      lang === "es"
-        ? "Acortá links gratis, sin registro, sin límites y sin vencimiento. Con una cuenta gratis ves clics, países y dispositivos."
-        : "Shorten links for free: no sign-up, no limits, no expiry. A free account adds click, country and device stats.",
-    featureList:
-      lang === "es"
-        ? ["Sin registro", "Links ilimitados", "No vencen", "Métricas con cuenta gratis", "Códigos QR", "UTMs y reglas por dispositivo y país"]
-        : ["No sign-up", "Unlimited links", "Never expire", "Stats with a free account", "QR codes", "UTMs and device/country rules"],
+    description: {
+      en: "Shorten links for free: no sign-up and no limits. A free account shows clicks by day, country, device and source and keeps your links forever (anonymous links are kept for 60 days).",
+      es: "Acortá links gratis, sin registro y sin límites. Con una cuenta gratis ves clics por día, país, dispositivo y origen y conservás tus links para siempre (los anónimos se conservan 60 días).",
+      pt: "Encurte links de graça: sem cadastro e sem limites. Com uma conta grátis você vê cliques por dia, país, dispositivo e origem e mantém seus links para sempre (os anônimos ficam guardados por 60 dias).",
+    }[lang],
+    featureList: {
+      en: ["No sign-up", "Unlimited links", "Links never expire with a free account", "Clicks by country, device and source with a free account", "QR codes", "UTMs and device/country rules"],
+      es: ["Sin registro", "Links ilimitados", "Sin vencimiento con cuenta gratis", "Clics por país, dispositivo y origen con cuenta gratis", "Códigos QR", "UTMs y reglas por dispositivo y país"],
+      pt: ["Sem cadastro", "Links ilimitados", "Sem expiração com conta grátis", "Cliques por país, dispositivo e origem com conta grátis", "QR codes", "UTMs e regras por dispositivo e país"],
+    }[lang],
     publisher: { "@id": ORG_ID },
   };
 }

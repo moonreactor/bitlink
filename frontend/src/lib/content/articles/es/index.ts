@@ -16,6 +16,8 @@ import glosarioLinkEnBio from "./glosario-link-en-bio";
 import linkEnBioParaMusicos from "./link-en-bio-para-musicos";
 import menuQrParaRestaurantes from "./menu-qr-para-restaurantes";
 
+import acortarUnLinkSinRegistrarse from "./acortar-un-link-sin-registrarse";
+import comoVerCuantosClicsTieneUnLinkCorto from "./como-ver-cuantos-clics-tiene-un-link-corto";
 import bitlinkVsLinktree from "./bitlink-vs-linktree";
 import bitlinkVsBitly from "./bitlink-vs-bitly";
 import alternativasGratisABitly from "./alternativas-gratis-a-bitly";
@@ -38,6 +40,8 @@ export const ARTICLES_ES: Article[] = [
   glosarioLinkEnBio,
   linkEnBioParaMusicos,
   menuQrParaRestaurantes,
+  acortarUnLinkSinRegistrarse,
+  comoVerCuantosClicsTieneUnLinkCorto,
   bitlinkVsLinktree,
   bitlinkVsBitly,
   alternativasGratisABitly,

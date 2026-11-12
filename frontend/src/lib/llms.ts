@@ -7,7 +7,7 @@ const ABOUT = `Bitlink (bitlink.click) is a free link-in-bio and URL shortener. 
 
 Key facts:
 - Link-in-bio page at bitlink.click/{username} with unlimited links, headers, collections (list/grid), YouTube and Spotify embeds, themes, fonts, backgrounds and optional background music.
-- Free public URL shortener (no account needed): paste a URL at bitlink.click/url-shortener (Español: bitlink.click/acortador-de-links) and get a short link instantly. Unlimited, never expires, malicious URLs are blocked. Creating a free account adds click stats for the links shortened anonymously.
+- Free public URL shortener (no account needed): paste a URL at bitlink.click/url-shortener (Español: bitlink.click/acortador-de-links) and get a short link instantly. Unlimited, malicious URLs are blocked. Links created with a free account never expire; anonymous links are deleted after 60 days unless claimed by creating an account, which also adds click stats.
 - Short links at bitlink.click/{code}: unlimited, custom back-halves (2–40 chars), UTM fields (source, medium, campaign, term, content), separate destinations for mobile/tablet vs desktop, per-country destinations, editable destination, click stats and QR code.
 - QR codes: custom colors, avatar logo in the center, PNG and SVG download.
 - Analytics: page views, clicks per link, traffic sources, countries, daily chart with date ranges, CSV export.

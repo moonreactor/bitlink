@@ -164,3 +164,22 @@ class ShortLinkClaimRequest(BaseModel):
 
 class ShortLinkClaimOut(BaseModel):
     claimed: int
+
+
+class ShortLinkStatCount(BaseModel):
+    label: str
+    count: int
+
+
+class ShortLinkDailyClicks(BaseModel):
+    date: str
+    clicks: int
+
+
+class ShortLinkStatsOut(BaseModel):
+    days: int
+    total: int
+    daily: list[ShortLinkDailyClicks]
+    countries: list[ShortLinkStatCount]
+    devices: list[ShortLinkStatCount]
+    referrers: list[ShortLinkStatCount]

@@ -323,3 +323,12 @@ export type ShortenerFunnel = {
   steps: ShortenerFunnelStep[];
   by_source: Record<string, ShortenerFunnelStep[]>;
 };
+
+export type ShortLinkStats = {
+  days: number;
+  total: number;
+  daily: { date: string; clicks: number }[];
+  countries: { label: string; count: number }[];
+  devices: { label: string; count: number }[];
+  referrers: { label: string; count: number }[];
+};

@@ -10,6 +10,7 @@ import {
   LANGS,
   type Lang,
 } from "@/lib/content";
+import { homePath, shortenerPath, SITE_LANGS, LANG_LABEL } from "@/lib/i18n/site";
 import { siteUrl } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -18,13 +19,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const pair = (en: string, es: string) => ({ languages: { en: abs(en), es: abs(es), "x-default": abs(en) } });
   const otherLang = (l: Lang): Lang => (l === "en" ? "es" : "en");
 
-  const entries: MetadataRoute.Sitemap = [{ url: abs("/"), changeFrequency: "weekly", priority: 1 }];
+  const siteAlt = (path: (l: (typeof SITE_LANGS)[number]) => string) => ({
+    languages: {
+      ...Object.fromEntries(SITE_LANGS.map((l) => [LANG_LABEL[l].html, abs(path(l))])),
+      "x-default": abs(path("en")),
+    },
+  });
 
-  const shortenerAlt = { languages: { en: abs("/url-shortener"), es: abs("/acortador-de-links"), "x-default": abs("/url-shortener") } };
-  entries.push(
-    { url: abs("/url-shortener"), changeFrequency: "monthly", priority: 0.9, alternates: shortenerAlt },
-    { url: abs("/acortador-de-links"), changeFrequency: "monthly", priority: 0.9, alternates: shortenerAlt },
-  );
+  const entries: MetadataRoute.Sitemap = SITE_LANGS.map((l) => ({
+    url: abs(homePath(l)),
+    changeFrequency: "weekly" as const,
+    priority: l === "en" ? 1 : 0.9,
+    alternates: siteAlt(homePath),
+  }));
+
+  for (const l of SITE_LANGS) {
+    entries.push({ url: abs(shortenerPath(l)), changeFrequency: "monthly", priority: 0.9, alternates: siteAlt(shortenerPath) });
+  }
 
   for (const lang of LANGS) {
     const articles = getArticles(lang);

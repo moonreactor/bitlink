@@ -16,6 +16,8 @@ import linkInBioGlossary from "./link-in-bio-glossary";
 import linkInBioForMusicians from "./link-in-bio-for-musicians";
 import qrCodeMenuForRestaurants from "./qr-code-menu-for-restaurants";
 
+import shortenALinkWithoutSigningUp from "./shorten-a-link-without-signing-up";
+import howToTrackClicksOnAShortLink from "./how-to-track-clicks-on-a-short-link";
 import bitlinkVsLinktree from "./bitlink-vs-linktree";
 import bitlinkVsBitly from "./bitlink-vs-bitly";
 import bitlyFreeAlternatives from "./bitly-free-alternatives";
@@ -38,6 +40,8 @@ export const ARTICLES_EN: Article[] = [
   linkInBioGlossary,
   linkInBioForMusicians,
   qrCodeMenuForRestaurants,
+  shortenALinkWithoutSigningUp,
+  howToTrackClicksOnAShortLink,
   bitlinkVsLinktree,
   bitlinkVsBitly,
   bitlyFreeAlternatives,

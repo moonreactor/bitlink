@@ -2,13 +2,16 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from "react";
-import { EXAMPLES } from "./examples";
+import { LANDING } from "@/lib/i18n/landing-copy";
+import type { SiteLang } from "@/lib/i18n/site";
+import { getExamples } from "./examples";
 import { PhoneFrame, ProfilePreview } from "./ProfilePreview";
 
 const INTERVAL = 5000;
 
 /** Hero: real-life photo card + the phone page that person would build, cross-fading together. */
-export function HeroShowcase() {
+export function HeroShowcase({ lang = "en" }: { lang?: SiteLang }) {
+  const EXAMPLES = getExamples(lang);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const active = EXAMPLES[index];
@@ -59,7 +62,7 @@ export function HeroShowcase() {
         {active.stat}
       </div>
 
-      <div className="mt-12 flex justify-end gap-1.5 pr-1" role="tablist" aria-label="Example pages">
+      <div className="mt-12 flex justify-end gap-1.5 pr-1" role="tablist" aria-label={LANDING[lang].common.examplePages}>
         {EXAMPLES.map((ex, i) => (
           <button
             key={ex.id}

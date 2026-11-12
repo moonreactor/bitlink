@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse, Response as FastAPIResponse
-from sqlalchemy import func
+from sqlalchemy import Date, cast, func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -19,6 +19,9 @@ from app.schemas.short_link import (
     PublicShortLinkCreate,
     PublicShortLinkOut,
     ShortenerEventIn,
+    ShortLinkDailyClicks,
+    ShortLinkStatCount,
+    ShortLinkStatsOut,
     ShortLinkCheckOut,
     ShortLinkClaimOut,
     ShortLinkClaimRequest,
@@ -425,6 +428,59 @@ def delete_short_link(
         raise HTTPException(status_code=404, detail="Short link not found")
     db.delete(link)
     db.commit()
+
+
+@router.get("/me/short-links/{link_id}/stats", response_model=ShortLinkStatsOut)
+def short_link_stats(
+    link_id: UUID,
+    days: int = Query(default=30, ge=1, le=365),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ShortLinkStatsOut:
+    """Click breakdown for one of the user's short links (country, device, referrer, daily)."""
+    link = (
+        db.query(ShortLink)
+        .filter(ShortLink.id == link_id, ShortLink.user_id == current_user.id)
+        .first()
+    )
+    if link is None:
+        raise HTTPException(status_code=404, detail="Short link not found")
+
+    now = datetime.now(timezone.utc)
+    since = (now - timedelta(days=days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    base = [ShortLinkClick.short_link_id == link.id, ShortLinkClick.created_at >= since]
+
+    total = db.query(func.count(ShortLinkClick.id)).filter(*base).scalar() or 0
+
+    day_col = cast(ShortLinkClick.created_at, Date)
+    per_day = {
+        str(d): n
+        for d, n in db.query(day_col, func.count(ShortLinkClick.id)).filter(*base).group_by(day_col).all()
+    }
+    daily = []
+    for i in range(days):
+        d = (since + timedelta(days=i)).date().isoformat()
+        daily.append(ShortLinkDailyClicks(date=d, clicks=per_day.get(d, 0)))
+
+    def top(column, empty_label: str, limit: int = 8) -> list[ShortLinkStatCount]:
+        rows = (
+            db.query(column, func.count(ShortLinkClick.id))
+            .filter(*base)
+            .group_by(column)
+            .order_by(func.count(ShortLinkClick.id).desc())
+            .limit(limit)
+            .all()
+        )
+        return [ShortLinkStatCount(label=(v or empty_label), count=n) for v, n in rows]
+
+    return ShortLinkStatsOut(
+        days=days,
+        total=total,
+        daily=daily,
+        countries=top(ShortLinkClick.country, "Unknown"),
+        devices=top(ShortLinkClick.device, "unknown"),
+        referrers=top(ShortLinkClick.referrer, "Direct"),
+    )
 
 
 @router.get("/me/short-links/{link_id}/qr")
