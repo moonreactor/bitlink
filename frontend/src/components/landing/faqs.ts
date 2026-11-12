@@ -5,6 +5,10 @@ export const FAQS = [
     a: "Yes. Link-in-bio, short links, themes, analytics, QR, email/phone capture, scheduling, locks, products, and custom domains — all included. No plans.",
   },
   {
+    q: "Can I shorten a link without an account?",
+    a: "Yes. Use the free URL shortener on bitlink.click, paste any link and get a short URL instantly, no sign-up. Create a free account afterwards if you want click stats.",
+  },
+  {
     q: "Short links too?",
     a: "Yes. Unlimited shorts with custom back-halves, UTMs, device/geo rules, editable destinations, click stats, and QR — unlike Bitly’s free cap.",
   },

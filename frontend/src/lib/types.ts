@@ -315,3 +315,11 @@ export type AdminLinkListResponse = {
   page: number;
   page_size: number;
 };
+
+export type ShortenerFunnelStep = { event: string; events: number; visitors: number };
+
+export type ShortenerFunnel = {
+  days: number;
+  steps: ShortenerFunnelStep[];
+  by_source: Record<string, ShortenerFunnelStep[]>;
+};

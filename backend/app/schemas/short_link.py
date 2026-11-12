@@ -131,3 +131,36 @@ class ShortLinkVisitOut(BaseModel):
 class ShortLinkCheckOut(BaseModel):
     code: str
     available: bool
+
+
+class PublicShortLinkCreate(BaseModel):
+    """Anonymous creation: destination only (no custom code, UTMs or rules)."""
+
+    destination_url: str = Field(min_length=1, max_length=2000)
+    source: str | None = Field(default=None, max_length=16)
+
+    @field_validator("destination_url")
+    @classmethod
+    def validate_destination(cls, v: str) -> str:
+        return normalize_destination(v)
+
+
+class ShortenerEventIn(BaseModel):
+    event: str = Field(max_length=32)
+    source: str | None = Field(default=None, max_length=16)
+
+
+class PublicShortLinkOut(BaseModel):
+    code: str
+    short_url: str
+    destination_url: str
+    # Shown once; the client keeps it to claim the link after signing up.
+    claim_token: str
+
+
+class ShortLinkClaimRequest(BaseModel):
+    tokens: list[str] = Field(min_length=1, max_length=50)
+
+
+class ShortLinkClaimOut(BaseModel):
+    claimed: int

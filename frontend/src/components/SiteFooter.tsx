@@ -6,6 +6,8 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
     title: "Product",
     links: [
       { href: "/#product", label: "Link in bio" },
+      { href: "/url-shortener", label: "Free URL shortener" },
+      { href: "/acortador-de-links", label: "Acortador de links gratis" },
       { href: "/#how", label: "Short links & QR" },
       { href: "/#faq", label: "FAQ" },
       { href: "/register", label: "Sign up free" },

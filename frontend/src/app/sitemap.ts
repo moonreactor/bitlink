@@ -20,6 +20,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const entries: MetadataRoute.Sitemap = [{ url: abs("/"), changeFrequency: "weekly", priority: 1 }];
 
+  const shortenerAlt = { languages: { en: abs("/url-shortener"), es: abs("/acortador-de-links"), "x-default": abs("/url-shortener") } };
+  entries.push(
+    { url: abs("/url-shortener"), changeFrequency: "monthly", priority: 0.9, alternates: shortenerAlt },
+    { url: abs("/acortador-de-links"), changeFrequency: "monthly", priority: 0.9, alternates: shortenerAlt },
+  );
+
   for (const lang of LANGS) {
     const articles = getArticles(lang);
     entries.push({

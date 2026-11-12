@@ -67,6 +67,30 @@ export function softwareLd() {
   };
 }
 
+export function shortenerLd(lang: "en" | "es") {
+  const path = lang === "es" ? "/acortador-de-links" : "/url-shortener";
+  return {
+    "@type": "WebApplication",
+    "@id": `${WEB}${path}#app`,
+    name: lang === "es" ? "Acortador de links gratis de Bitlink" : "Bitlink free URL shortener",
+    url: `${WEB}${path}`,
+    inLanguage: lang,
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "Web",
+    isAccessibleForFree: true,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    description:
+      lang === "es"
+        ? "Acortá links gratis, sin registro, sin límites y sin vencimiento. Con una cuenta gratis ves clics, países y dispositivos."
+        : "Shorten links for free: no sign-up, no limits, no expiry. A free account adds click, country and device stats.",
+    featureList:
+      lang === "es"
+        ? ["Sin registro", "Links ilimitados", "No vencen", "Métricas con cuenta gratis", "Códigos QR", "UTMs y reglas por dispositivo y país"]
+        : ["No sign-up", "Unlimited links", "Never expire", "Stats with a free account", "QR codes", "UTMs and device/country rules"],
+    publisher: { "@id": ORG_ID },
+  };
+}
+
 export function faqLd(faqs: Faq[], id?: string) {
   return {
     "@type": "FAQPage",

@@ -14,9 +14,14 @@ class ShortLink(Base):
     __tablename__ = "short_links"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    # NULL while the link was created anonymously and has not been claimed yet.
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
     )
+    # sha256 of the claim token handed to the anonymous creator (cleared once claimed).
+    claim_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # sha256 of the creator IP, used only to rate-limit anonymous creation.
+    creator_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     code: Mapped[str] = mapped_column(String(40), unique=True, index=True, nullable=False)
     title: Mapped[str | None] = mapped_column(String(120), nullable=True)
     destination_url: Mapped[str] = mapped_column(Text, nullable=False)
