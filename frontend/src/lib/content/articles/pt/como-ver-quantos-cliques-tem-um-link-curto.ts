@@ -12,7 +12,7 @@ const article: Article = {
   published: "2026-11-12",
   keywords: ["ver cliques de um link curto", "quantos cliques tem meu link", "métricas de link curto", "contador de cliques de links grátis"],
   tldr:
-    "Para **ver quantos cliques tem um link curto**, crie o link em uma conta grátis do Bitlink (ou reivindique um anônimo cadastrando-se pelo mesmo navegador) e abra **Short links** no seu painel: cada link mostra a sua **quantidade de cliques**. Os cliques são contados desde a primeira visita, mesmo antes de você ter conta.",
+    "Para **ver quantos cliques tem um link curto**, crie o link em uma conta grátis do Bitlink (ou reivindique um anônimo cadastrando-se pelo mesmo navegador) e abra **Short links** no seu painel: cada link mostra a sua **quantidade de cliques** e o botão **Stats** abre os cliques por dia, país, dispositivo e origem. Os cliques são contados desde a primeira visita, mesmo antes de você ter conta.",
   takeaways: [
     "Cada clique em um link curto do Bitlink é contado, esteja você logado ou não.",
     "Os links anônimos passam a ser seus ao se cadastrar pelo mesmo navegador, com os cliques.",
@@ -33,6 +33,7 @@ const article: Article = {
         { title: "Crie o link com uma conta", text: "Cadastre-se de graça e crie o link em **Short links**, ou encurte-o primeiro no [encurtador grátis](/encurtador-de-links) e escolha criar uma conta." },
         { title: "Ou reivindique um que você fez sem conta", text: "Cadastre-se ou faça login pelo mesmo navegador: os links anônimos que você criou ali são somados à sua conta sozinhos, junto com os cliques." },
         { title: "Abra Short links", text: "No painel, cada link mostra o total de cliques ao lado da URL curta." },
+        { title: "Clique em Stats", text: "Veja um gráfico diário dos últimos 7, 30 ou 90 dias, além dos principais países, dispositivos e origens de tráfego." },
         { title: "Compartilhe e volte a olhar", text: "Publique, envie por e-mail ou imprima o QR code e veja o número crescer." },
       ],
     },
@@ -58,7 +59,7 @@ const article: Article = {
     {
       type: "callout",
       tone: "note",
-      text: "A contagem pode incluir pessoas que abrem o link mais de uma vez e algumas visitas automáticas. Use-a para comparar links e ver tendências, mais do que como um número exato de pessoas únicas.",
+      text: "Os números podem incluir pessoas que abrem o link mais de uma vez e algumas visitas automáticas. Use-a para comparar links e ver tendências, mais do que como um número exato de pessoas únicas.",
     },
     { type: "h2", text: "Não perca os seus dados: os links anônimos expiram" },
     {
@@ -74,10 +75,11 @@ const article: Article = {
     },
   ],
   faqs: [
-    { q: "Como vejo quantos cliques o meu link curto tem?", a: "Crie o link em uma conta grátis do Bitlink, ou reivindique um anônimo cadastrando-se pelo mesmo navegador, e abra Short links no painel para ver a quantidade de cliques de cada um." },
+    { q: "Como vejo quantos cliques o meu link curto tem?", a: "Crie o link em uma conta grátis do Bitlink, ou reivindique um anônimo cadastrando-se pelo mesmo navegador, e abra Short links no painel: cada link mostra os seus cliques e o Stats acrescenta o detalhamento por dia, país, dispositivo e origem." },
+    { q: "O que posso ver sobre as pessoas que clicam?", a: "Apenas dados agregados: cliques por dia, país, tipo de dispositivo (celular, computador, tablet) e de onde veio o clique. Sem nomes nem dados pessoais." },
     { q: "Os cliques são contados antes de eu criar a conta?", a: "Sim. Os cliques em links anônimos são registrados desde a primeira visita e somados à sua conta quando você reivindica o link." },
     { q: "Posso medir um link que já compartilhei?", a: "Só se for um link curto do Bitlink. A URL de destino sozinha não pode ser contada; crie um link curto e use esse daqui em diante." },
-    { q: "Medir é grátis?", a: "Sim. O Bitlink não tem planos pagos: a contagem de cliques vem com qualquer conta grátis." },
+    { q: "Medir é grátis?", a: "Sim. O Bitlink não tem planos pagos: a contagem de cliques e o seu detalhamento vêm com qualquer conta grátis." },
   ],
   related: ["encurtar-link-sem-cadastro", "metricas-link-na-bio", "o-que-sao-parametros-utm"],
 };
