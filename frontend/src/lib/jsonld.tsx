@@ -1,5 +1,6 @@
 import { plain } from "@/components/blog/RichText";
-import { articlePath, blogBase, categoryPath, getCategory, getTranslations, readingMinutes, UI, type Article, type Faq } from "@/lib/content";
+import { articlePath, blogBase, categoryPath, getCategory, getTranslations, LOCALE, readingMinutes, UI, type Article, type Faq } from "@/lib/content";
+import { LANG_LABEL, shortenerPath, type SiteLang } from "@/lib/i18n/site";
 import { absoluteAsset, OG_IMAGE_PATH, siteUrl } from "@/lib/site";
 
 const WEB = siteUrl();
@@ -34,7 +35,7 @@ export function websiteLd() {
     "@id": SITE_ID,
     url: WEB,
     name: "Bitlink",
-    inLanguage: ["en", "es"],
+    inLanguage: ["en", "es", "pt-BR"],
     publisher: { "@id": ORG_ID },
   };
 }
@@ -67,26 +68,28 @@ export function softwareLd() {
   };
 }
 
-export function shortenerLd(lang: "en" | "es") {
-  const path = lang === "es" ? "/acortador-de-links" : "/url-shortener";
+export function shortenerLd(lang: SiteLang) {
+  const path = shortenerPath(lang);
   return {
     "@type": "WebApplication",
     "@id": `${WEB}${path}#app`,
-    name: lang === "es" ? "Acortador de links gratis de Bitlink" : "Bitlink free URL shortener",
+    name: { en: "Bitlink free URL shortener", es: "Acortador de links gratis de Bitlink", pt: "Encurtador de links grátis do Bitlink" }[lang],
     url: `${WEB}${path}`,
-    inLanguage: lang,
+    inLanguage: LANG_LABEL[lang].html,
     applicationCategory: "UtilitiesApplication",
     operatingSystem: "Web",
     isAccessibleForFree: true,
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-    description:
-      lang === "es"
-        ? "Acortá links gratis, sin registro, sin límites y sin vencimiento. Con una cuenta gratis ves clics, países y dispositivos."
-        : "Shorten links for free: no sign-up, no limits, no expiry. A free account adds click, country and device stats.",
-    featureList:
-      lang === "es"
-        ? ["Sin registro", "Links ilimitados", "No vencen", "Métricas con cuenta gratis", "Códigos QR", "UTMs y reglas por dispositivo y país"]
-        : ["No sign-up", "Unlimited links", "Never expire", "Stats with a free account", "QR codes", "UTMs and device/country rules"],
+    description: {
+      en: "Shorten links for free: no sign-up, no limits, no expiry. A free account adds click, country and device stats.",
+      es: "Acortá links gratis, sin registro, sin límites y sin vencimiento. Con una cuenta gratis ves clics, países y dispositivos.",
+      pt: "Encurte links de graça: sem cadastro, sem limites e sem expiração. Com uma conta grátis você vê cliques, países e dispositivos.",
+    }[lang],
+    featureList: {
+      en: ["No sign-up", "Unlimited links", "Never expire", "Stats with a free account", "QR codes", "UTMs and device/country rules"],
+      es: ["Sin registro", "Links ilimitados", "No vencen", "Métricas con cuenta gratis", "Códigos QR", "UTMs y reglas por dispositivo y país"],
+      pt: ["Sem cadastro", "Links ilimitados", "Nunca expiram", "Estatísticas com conta grátis", "QR codes", "UTMs e regras por dispositivo e país"],
+    }[lang],
     publisher: { "@id": ORG_ID },
   };
 }
@@ -135,7 +138,7 @@ export function articleLd(article: Article) {
       image: [`${url}/opengraph-image`, absoluteAsset(article.cover.src)],
       datePublished: article.published,
       dateModified: article.updated || article.published,
-      inLanguage: article.lang,
+      inLanguage: LOCALE[article.lang].hreflang,
       workTranslation: getTranslations(article).map((tr) => ({ "@id": `${articleUrl(tr)}#article` })),
       articleSection: category?.name,
       keywords: article.keywords.join(", "),
@@ -160,7 +163,7 @@ export function articleLd(article: Article) {
     ld.push({
       "@type": "HowTo",
       name: block.name,
-      inLanguage: article.lang,
+      inLanguage: LOCALE[article.lang].hreflang,
       totalTime: "PT10M",
       estimatedCost: { "@type": "MonetaryAmount", currency: "USD", value: "0" },
       step: block.items.map((s, i) => ({

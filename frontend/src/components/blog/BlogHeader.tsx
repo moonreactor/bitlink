@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { blogBase, CATEGORIES, categoryPath, UI, type CategoryId, type Lang } from "@/lib/content";
+import { blogBase, CATEGORIES, categoryPath, LOCALE, READ_IN, UI, type CategoryId, type Lang } from "@/lib/content";
 
 export function BlogHeader({
   lang,
@@ -7,15 +7,15 @@ export function BlogHeader({
   title,
   description,
   active,
-  otherLangHref,
+  switchTo,
 }: {
   lang: Lang;
   eyebrow: string;
   title: string;
   description: string;
   active?: CategoryId;
-  /** Same page in the other language, if it exists. */
-  otherLangHref?: string;
+  /** Same page in each language it exists in (the current one is skipped). */
+  switchTo?: { lang: Lang; href: string }[];
 }) {
   const t = UI[lang];
   return (
@@ -24,11 +24,15 @@ export function BlogHeader({
       <div className="relative mx-auto max-w-6xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm font-bold uppercase tracking-wider text-meetup-purple">{eyebrow}</p>
-          {otherLangHref && (
-            <Link href={otherLangHref} hrefLang={lang === "en" ? "es" : "en"} className="text-sm font-semibold text-meetup-muted hover:text-ink">
-              {t.otherLang} →
-            </Link>
-          )}
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {(switchTo || [])
+              .filter((x) => x.lang !== lang)
+              .map((x) => (
+                <Link key={x.lang} href={x.href} hrefLang={LOCALE[x.lang].hreflang} className="text-sm font-semibold text-meetup-muted hover:text-ink">
+                  {READ_IN[x.lang]} →
+                </Link>
+              ))}
+          </div>
         </div>
         <h1 className="mt-3 max-w-3xl font-display text-4xl font-extrabold tracking-tight md:text-6xl md:leading-[1.03]">{title}</h1>
         <p className="mt-4 max-w-2xl text-lg text-meetup-muted">{description}</p>

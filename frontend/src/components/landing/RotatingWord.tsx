@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-const WORDS = ["musicians", "chefs", "creators", "coaches", "shops", "podcasters"];
-
-export function RotatingWord({ className = "" }: { className?: string }) {
+export function RotatingWord({ words, className = "" }: { words: string[]; className?: string }) {
+  const WORDS = words;
   const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(true);
 

@@ -4,6 +4,8 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BitlinkLogo } from "@/components/BitlinkLogo";
 import { ApiError, publicApi } from "@/lib/api";
+import { LANDING } from "@/lib/i18n/landing-copy";
+import type { SiteLang } from "@/lib/i18n/site";
 
 type Status = "idle" | "checking" | "available" | "taken" | "invalid";
 
@@ -16,11 +18,14 @@ function sanitize(raw: string) {
 
 export function ClaimUsername({
   variant = "hero",
-  buttonLabel = "Claim free",
+  buttonLabel,
+  lang = "en",
 }: {
   variant?: "hero" | "footer";
   buttonLabel?: string;
+  lang?: SiteLang;
 }) {
+  const t = LANDING[lang].claim;
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [status, setStatus] = useState<Status>("idle");
@@ -65,14 +70,14 @@ export function ClaimUsername({
   const isDark = variant === "footer";
   const hint =
     status === "checking"
-      ? "Checking…"
+      ? t.checking
       : status === "available"
-        ? "Looking good — that name is free"
+        ? t.available
         : status === "taken"
-          ? "Taken — try another"
+          ? t.taken
           : status === "invalid"
-            ? "Use 3+ letters, numbers or _"
-            : "Claim your Bitlink username";
+            ? t.invalid
+            : t.idle;
 
   return (
     <form onSubmit={onSubmit} className="w-full max-w-xl">
@@ -92,8 +97,8 @@ export function ClaimUsername({
           <input
             value={username}
             onChange={(e) => setUsername(sanitize(e.target.value))}
-            placeholder="yourname"
-            aria-label="Claim your Bitlink username"
+            placeholder={t.placeholder}
+            aria-label={t.aria}
             className="w-full min-w-0 bg-transparent py-3 text-ink outline-none placeholder:text-meetup-muted/60"
             autoComplete="username"
             spellCheck={false}
@@ -110,7 +115,7 @@ export function ClaimUsername({
           }`}
         >
           <BitlinkLogo mark href={null} height={18} className="shrink-0" />
-          {buttonLabel}
+          {buttonLabel ?? t.claimFree}
         </button>
       </div>
       <p

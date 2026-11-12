@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { shortenerLanguages } from "@/lib/i18n/seo";
 import { ShortenerPage } from "@/components/shortener/ShortenerPage";
 
 export const metadata: Metadata = {
@@ -7,7 +8,7 @@ export const metadata: Metadata = {
     "Shorten links for free, with no account and no limits. Create a free Bitlink account when you want to track clicks.",
   alternates: {
     canonical: "/url-shortener",
-    languages: { es: "/acortador-de-links", en: "/url-shortener", "x-default": "/url-shortener" },
+    languages: shortenerLanguages(),
   },
 };
 

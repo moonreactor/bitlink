@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { ApiError, publicApi } from "@/lib/api";
 import { addClaimToken } from "@/lib/claims";
+import type { SiteLang } from "@/lib/i18n/site";
 
-const COPY = {
+const COPY: Record<SiteLang, Record<string, string>> = {
   en: {
     placeholder: "Paste a long link…",
     button: "Shorten",
@@ -47,7 +48,27 @@ const COPY = {
     back: "Editar link",
     invalidEmail: "Ingresá un email válido.",
   },
-} as const;
+  pt: {
+    placeholder: "Cole um link longo…",
+    button: "Encurtar",
+    loading: "Encurtando…",
+    copy: "Copiar",
+    copied: "Copiado",
+    note: "Quer ver quantas pessoas clicam?",
+    cta: "Crie uma conta grátis para acompanhar os cliques",
+    login: "Já tenho conta",
+    error: "Não foi possível encurtar o link. Tente novamente.",
+    label: "URL longa",
+    askTitle: "Quer acompanhar este link?",
+    askBody: "Informe seu e-mail para criar uma conta grátis e ver cliques, países e dispositivos. Ou continue de forma anônima.",
+    emailLabel: "Seu e-mail",
+    emailPlaceholder: "voce@email.com",
+    withAccount: "Criar conta e acompanhar",
+    anonymous: "Continuar anônimo",
+    back: "Editar link",
+    invalidEmail: "Informe um e-mail válido.",
+  },
+};
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -55,9 +76,9 @@ export function PublicShortener({
   lang = "en",
   source,
 }: {
-  lang?: "en" | "es";
-  /** Where the widget lives, for funnel analytics: landing | en | es. */
-  source?: "landing" | "en" | "es";
+  lang?: SiteLang;
+  /** Where the widget lives, for funnel analytics: landing | en | es | pt. */
+  source?: "landing" | SiteLang;
 }) {
   const src = source ?? lang;
   const track = (event: string) => void publicApi.trackShortenerEvent(event, src);

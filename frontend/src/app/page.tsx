@@ -1,27 +1,8 @@
-import { LatestPosts } from "@/components/blog/LatestPosts";
-import { FAQS } from "@/components/landing/faqs";
-import { LandingPage } from "@/components/landing/LandingPage";
-import { faqLd, JsonLd, organizationLd, softwareLd, websiteLd } from "@/lib/jsonld";
-import { siteUrl } from "@/lib/site";
-import type { Metadata } from "next";
+import { HomePage } from "@/components/landing/HomePage";
+import { homeMetadata } from "@/lib/i18n/seo";
 
-export const metadata: Metadata = {
-  alternates: {
-    canonical: "/",
-    types: { "application/rss+xml": [{ url: "/blog/rss.xml", title: "Blog de Bitlink" }] },
-  },
-};
+export const metadata = homeMetadata("en");
 
-export default function HomePage() {
-  return (
-    <>
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@graph": [organizationLd(), websiteLd(), softwareLd(), faqLd(FAQS, `${siteUrl()}/#faq`)],
-        }}
-      />
-      <LandingPage latestPosts={<LatestPosts />} />
-    </>
-  );
+export default function Page() {
+  return <HomePage lang="en" />;
 }
