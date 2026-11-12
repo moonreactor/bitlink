@@ -14,3 +14,8 @@ export function absoluteAsset(path: string): string {
 }
 
 export const OG_IMAGE_PATH = "/bitlink-og.webp";
+
+/** Default social image, for pages that override `openGraph` (which drops the layout's images). */
+export function defaultOgImages() {
+  return [{ url: absoluteAsset(OG_IMAGE_PATH), width: 1731, height: 908, alt: "Bitlink", type: "image/webp" }];
+}

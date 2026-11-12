@@ -34,6 +34,7 @@ class RegisterRequest(BaseModel):
         reserved = {
             "admin",
             "api",
+            "blog",
             "dashboard",
             "login",
             "register",

@@ -21,6 +21,11 @@ const OG_IMAGE = absoluteAsset(OG_IMAGE_PATH);
 export const metadata: Metadata = {
   metadataBase: new URL(WEB),
   title: "Bitlink — Link-in-bio + short links, free forever",
+  applicationName: "Bitlink",
+  alternates: {
+    types: { "application/rss+xml": [{ url: "/blog/rss.xml", title: "Blog de Bitlink" }] },
+  },
+  robots: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
   description:
     "Unlimited link-in-bio and short links with analytics, QR, UTMs, embeds, and themes — free forever. No monthly caps.",
   openGraph: {
