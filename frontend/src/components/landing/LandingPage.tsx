@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
-import { BitlinkLogo } from "@/components/BitlinkLogo";
+import { SiteFooter } from "@/components/SiteFooter";
 import { ClaimUsername } from "./ClaimUsername";
 import { CreatorMarquee } from "./CreatorMarquee";
 import { EXAMPLES, photo } from "./examples";
@@ -59,7 +59,7 @@ function BigTitle({ children, className = "" }: { children: React.ReactNode; cla
   );
 }
 
-export function LandingPage() {
+export function LandingPage({ latestPosts }: { latestPosts?: React.ReactNode }) {
   return (
     <div className="landing-root min-h-screen overflow-x-clip bg-white text-ink">
       <a
@@ -414,6 +414,8 @@ export function LandingPage() {
           </div>
         </section>
 
+        {latestPosts}
+
         {/* FAQ */}
         <section id="faq" className="bg-meetup-bg px-5 py-20 md:px-8 md:py-24">
           <div className="mx-auto max-w-3xl">
@@ -444,25 +446,7 @@ export function LandingPage() {
         </section>
       </main>
 
-      <footer className="bg-[#1a1a1a] px-5 py-10 text-white md:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
-          <BitlinkLogo onDark height={26} />
-          <div className="flex flex-wrap gap-4 text-sm text-white/60">
-            <Link href="/login" className="hover:text-white">
-              Log in
-            </Link>
-            <Link href="/register" className="hover:text-white">
-              Sign up
-            </Link>
-            <a href="#faq" className="hover:text-white">
-              FAQ
-            </a>
-          </div>
-        </div>
-        <p className="mx-auto mt-8 max-w-6xl text-xs text-white/35">
-          © {new Date().getFullYear()} Bitlink · Example pages and photos are for illustration.
-        </p>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

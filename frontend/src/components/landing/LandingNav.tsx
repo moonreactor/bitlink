@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import { BitlinkLogo } from "@/components/BitlinkLogo";
 
 const LINKS = [
-  { href: "#how", label: "How it works" },
-  { href: "#product", label: "Product" },
-  { href: "#faq", label: "FAQ" },
+  { href: "/#how", label: "How it works" },
+  { href: "/#product", label: "Product" },
+  { href: "/#faq", label: "FAQ" },
+  { href: "/blog", label: "Blog" },
 ];
 
 export function LandingNav() {

@@ -8,6 +8,7 @@ const API = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "
 const WEB = siteUrl();
 
 const RESERVED = new Set([
+  "blog",
   "dashboard",
   "login",
   "register",
