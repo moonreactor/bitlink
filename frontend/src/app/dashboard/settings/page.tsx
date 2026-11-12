@@ -44,6 +44,14 @@ export default function SettingsPage() {
     });
   }, []);
 
+  const profileLoaded = profile !== null;
+  useEffect(() => {
+    // Deep links from the setup checklist (#profile, #socials) land after data loads.
+    if (!profileLoaded) return;
+    const id = window.location.hash.slice(1);
+    if (id) document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [profileLoaded]);
+
   async function saveProfile(e: FormEvent) {
     e.preventDefault();
     if (!profile) return;
@@ -197,7 +205,7 @@ export default function SettingsPage() {
         <p className="mt-1 text-sm text-meetup-muted">Profile, SEO, music, locks, QR.</p>
       </div>
 
-      <form onSubmit={saveProfile} className="space-y-4 mu-card p-5 md:p-6">
+      <form id="profile" onSubmit={saveProfile} className="scroll-mt-24 space-y-4 mu-card p-5 md:p-6">
         <h2 className="font-display text-lg font-semibold">Profile</h2>
         <Field
           label="Username"
@@ -375,6 +383,52 @@ export default function SettingsPage() {
         </button>
       </form>
 
+      <form id="socials" onSubmit={saveSocials} className="scroll-mt-24 space-y-3 mu-card p-5 md:p-6">
+        <h2 className="font-display text-lg font-semibold">Social icons</h2>
+        <p className="text-sm text-meetup-muted">Small icons shown under your name — Instagram, TikTok, WhatsApp…</p>
+        {socials.map((s, idx) => (
+          <div key={idx} className="grid gap-2 sm:grid-cols-[140px_1fr]">
+            <select
+              className="min-h-[44px] rounded-xl border border-meetup-border px-2 py-2 text-sm"
+              value={s.platform}
+              onChange={(e) => {
+                const next = [...socials];
+                next[idx] = { ...s, platform: e.target.value };
+                setSocials(next);
+              }}
+            >
+              {PLATFORMS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+            <input
+              className="min-h-[44px] min-w-0 rounded-xl border border-meetup-border px-3 py-2 text-sm"
+              placeholder="https://…"
+              value={s.url}
+              onChange={(e) => {
+                const next = [...socials];
+                next[idx] = { ...s, url: e.target.value };
+                setSocials(next);
+              }}
+            />
+          </div>
+        ))}
+        <button
+          type="button"
+          className="text-sm font-semibold text-meetup-purple"
+          onClick={() => setSocials([...socials, { platform: "instagram", url: "", position: socials.length }])}
+        >
+          + Add social
+        </button>
+        <div>
+          <button type="submit" className="mu-btn-primary">
+            Save socials
+          </button>
+        </div>
+      </form>
+
       <form onSubmit={saveDomain} className="space-y-3 mu-card p-5 md:p-6">
         <h2 className="font-display text-lg font-semibold">Custom domain</h2>
         <p className="text-xs text-meetup-muted">
@@ -435,51 +489,6 @@ export default function SettingsPage() {
             className="mu-btn-secondary min-h-[44px] text-red-600 disabled:opacity-60"
           >
             Remove
-          </button>
-        </div>
-      </form>
-
-      <form onSubmit={saveSocials} className="space-y-3 mu-card p-5 md:p-6">
-        <h2 className="font-display text-lg font-semibold">Social icons</h2>
-        {socials.map((s, idx) => (
-          <div key={idx} className="grid gap-2 sm:grid-cols-[140px_1fr]">
-            <select
-              className="min-h-[44px] rounded-xl border border-meetup-border px-2 py-2 text-sm"
-              value={s.platform}
-              onChange={(e) => {
-                const next = [...socials];
-                next[idx] = { ...s, platform: e.target.value };
-                setSocials(next);
-              }}
-            >
-              {PLATFORMS.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-            <input
-              className="min-h-[44px] min-w-0 rounded-xl border border-meetup-border px-3 py-2 text-sm"
-              placeholder="https://…"
-              value={s.url}
-              onChange={(e) => {
-                const next = [...socials];
-                next[idx] = { ...s, url: e.target.value };
-                setSocials(next);
-              }}
-            />
-          </div>
-        ))}
-        <button
-          type="button"
-          className="text-sm font-semibold text-meetup-purple"
-          onClick={() => setSocials([...socials, { platform: "instagram", url: "", position: socials.length }])}
-        >
-          + Add social
-        </button>
-        <div>
-          <button type="submit" className="mu-btn-primary">
-            Save socials
           </button>
         </div>
       </form>
