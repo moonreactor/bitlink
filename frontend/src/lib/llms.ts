@@ -16,7 +16,7 @@ Key facts:
 - Control: scheduled links, password-locked links and profiles.
 - Custom domain for the profile (verify with a DNS TXT record on _bitlink-challenge.{domain}, then CNAME the subdomain to Bitlink; SSL is configured at the user's DNS/host).
 - Every public page shows a "Create your Bitlink" button; it cannot be removed.
-- Primary audience: creators, musicians, small businesses and brands, with a focus on Latin America and Spain (content in Spanish and English).`;
+- Primary audience: creators, musicians, small businesses and brands, with a focus on Latin America and Spain (content in Spanish, Portuguese and English).`;
 
 export function llmsTxt(): string {
   const WEB = siteUrl();
@@ -35,7 +35,8 @@ export function llmsTxt(): string {
     `- [Sign up](${WEB}/register): create a free Bitlink`,
     `- [Blog (English)](${WEB}/blog): guides and news`,
     `- [Blog (Español)](${WEB}/es/blog): guías y novedades`,
-    `- [Full content for LLMs](${WEB}/llms-full.txt): every blog article in plain Markdown (English and Spanish)`,
+    `- [Blog (Português)](${WEB}/pt/blog): guias e novidades`,
+    `- [Full content for LLMs](${WEB}/llms-full.txt): every blog article in plain Markdown (English, Spanish and Brazilian Portuguese)`,
     "",
   ];
   for (const lang of LANGS) {

@@ -20,7 +20,7 @@ export function HomePage({ lang }: { lang: SiteLang }) {
           ],
         }}
       />
-      <LandingPage lang={lang} latestPosts={hasBlog(lang) ? <LatestPosts lang={lang === "es" ? "es" : "en"} /> : undefined} />
+      <LandingPage lang={lang} latestPosts={hasBlog(lang) ? <LatestPosts lang={lang} /> : undefined} />
     </>
   );
 }

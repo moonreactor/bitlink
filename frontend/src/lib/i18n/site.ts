@@ -1,6 +1,6 @@
 /**
- * Site-wide UI languages (landing, shortener, auth). The blog keeps its own `Lang`
- * (en | es) in lib/content — Portuguese blog articles don't exist yet.
+ * Site-wide UI languages (landing, shortener, auth). The blog uses its own `Lang`
+ * type in lib/content, which covers the same three languages.
  */
 export type SiteLang = "en" | "es" | "pt";
 
@@ -33,9 +33,9 @@ export function homeAnchor(lang: SiteLang, id: string): string {
   return `${homePath(lang)}#${id}`;
 }
 
-/** Blog is only translated to en/es; Portuguese visitors are not sent to a blog they cannot read. */
-export function hasBlog(lang: SiteLang): boolean {
-  return lang !== "pt";
+/** The blog exists in every site language. */
+export function hasBlog(_lang: SiteLang): boolean {
+  return true;
 }
 
 const PT_COUNTRIES = new Set(["BR", "PT", "AO", "MZ"]);

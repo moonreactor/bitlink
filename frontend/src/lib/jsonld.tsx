@@ -1,5 +1,5 @@
 import { plain } from "@/components/blog/RichText";
-import { articlePath, blogBase, categoryPath, getCategory, getTranslations, readingMinutes, UI, type Article, type Faq } from "@/lib/content";
+import { articlePath, blogBase, categoryPath, getCategory, getTranslations, LOCALE, readingMinutes, UI, type Article, type Faq } from "@/lib/content";
 import { LANG_LABEL, shortenerPath, type SiteLang } from "@/lib/i18n/site";
 import { absoluteAsset, OG_IMAGE_PATH, siteUrl } from "@/lib/site";
 
@@ -138,7 +138,7 @@ export function articleLd(article: Article) {
       image: [`${url}/opengraph-image`, absoluteAsset(article.cover.src)],
       datePublished: article.published,
       dateModified: article.updated || article.published,
-      inLanguage: article.lang,
+      inLanguage: LOCALE[article.lang].hreflang,
       workTranslation: getTranslations(article).map((tr) => ({ "@id": `${articleUrl(tr)}#article` })),
       articleSection: category?.name,
       keywords: article.keywords.join(", "),
@@ -163,7 +163,7 @@ export function articleLd(article: Article) {
     ld.push({
       "@type": "HowTo",
       name: block.name,
-      inLanguage: article.lang,
+      inLanguage: LOCALE[article.lang].hreflang,
       totalTime: "PT10M",
       estimatedCost: { "@type": "MonetaryAmount", currency: "USD", value: "0" },
       step: block.items.map((s, i) => ({

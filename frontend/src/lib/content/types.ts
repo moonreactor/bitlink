@@ -5,13 +5,13 @@
  *   **bold**   *italic*   [label](/internal-or-https-url)   `code`
  */
 
-export type Lang = "en" | "es";
+export type Lang = "en" | "es" | "pt";
 
 export type CategoryId = "novedades" | "guias" | "comparativas" | "casos-de-uso";
 
 export type Category = {
   id: CategoryId;
-  /** URL segment for this language (/blog/category/{slug}, /es/blog/categoria/{slug}) */
+  /** URL segment for this language (/blog/category/{slug}, /es/blog/categoria/{slug}, /pt/blog/categoria/{slug}) */
   slug: string;
   name: string;
   /** Plural label used in headings ("Guías", "Novedades") */

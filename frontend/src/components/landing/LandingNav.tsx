@@ -21,7 +21,7 @@ export function LandingNav({
     { href: homeAnchor(lang, "how"), label: t.how },
     { href: homeAnchor(lang, "product"), label: t.product },
     { href: homeAnchor(lang, "faq"), label: t.faq },
-    ...(hasBlog(lang) ? [{ href: lang === "es" ? "/es/blog" : "/blog", label: t.blog }] : []),
+    ...(hasBlog(lang) ? [{ href: lang === "en" ? "/blog" : `/${lang}/blog`, label: t.blog }] : []),
   ];
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);

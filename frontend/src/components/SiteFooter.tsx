@@ -28,7 +28,26 @@ function columns(lang: SiteLang): Column[] {
     ],
   };
 
-  if (lang === "pt") return [product];
+  if (lang === "pt") {
+    return [
+      product,
+      {
+        title: f.guides,
+        links: [
+          { href: "/pt/blog/o-que-e-link-na-bio", label: "O que é link na bio" },
+          { href: "/pt/blog", label: "Todos os artigos" },
+        ],
+      },
+      {
+        title: f.blog,
+        links: [
+          { href: "/pt/blog", label: "Blog do Bitlink" },
+          { href: "/blog", label: "Blog in English" },
+          { href: "/es/blog", label: "Blog en español" },
+        ],
+      },
+    ];
+  }
 
   if (lang === "es") {
     return [
@@ -45,6 +64,7 @@ function columns(lang: SiteLang): Column[] {
         links: [
           { href: "/es/blog", label: "Blog de Bitlink" },
           { href: "/blog", label: "Blog in English" },
+          { href: "/pt/blog", label: "Blog em português" },
         ],
       },
     ];
@@ -70,6 +90,7 @@ function columns(lang: SiteLang): Column[] {
         { href: "/blog/link-in-bio-glossary", label: "Glossary" },
         { href: "/es/blog", label: "Blog en español" },
         { href: "/es/blog/que-es-un-link-en-bio", label: "Qué es un link en bio" },
+        { href: "/pt/blog", label: "Blog em português" },
       ],
     },
   ];
