@@ -1,18 +1,24 @@
 import type { Metadata } from "next";
-import { DM_Sans, Syne } from "next/font/google";
+import localFont from "next/font/local";
 import { absoluteAsset, OG_IMAGE_PATH, siteUrl } from "@/lib/site";
 import "./globals.css";
 
-const syne = Syne({
-  subsets: ["latin"],
+// Self-hosted (latin variable woff2 from Google Fonts) instead of next/font/google:
+// the Google loader fetches at build time and intermittently crashes the Docker
+// build ("Cannot read properties of null (reading '1')") when Google returns a
+// font URL without a file extension.
+const syne = localFont({
+  src: "../fonts/syne-latin.woff2",
   variable: "--font-syne",
-  weight: ["500", "600", "700", "800"],
+  weight: "400 800",
+  display: "swap",
 });
 
-const dmSans = DM_Sans({
-  subsets: ["latin"],
+const dmSans = localFont({
+  src: "../fonts/dm-sans-latin.woff2",
   variable: "--font-dm-sans",
-  weight: ["400", "500", "600", "700"],
+  weight: "100 1000",
+  display: "swap",
 });
 
 const WEB = siteUrl();
