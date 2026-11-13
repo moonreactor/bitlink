@@ -141,6 +141,10 @@ const en = {
   faqTitle: "Questions",
   faqs: [
     {
+      q: "What is Bitlink? Is it the same as Bitly?",
+      a: "Bitlink (bitlink.click) is a free link-in-bio and URL shortener. It is an independent product, not Bitly and not affiliated with it; Bitly uses the word “bitlink” for the short links created on bit.ly.",
+    },
+    {
       q: "Is it free?",
       a: "Yes. Link-in-bio, short links, themes, analytics, QR, email/phone capture, scheduling, locks, products, and custom domains — all included. No plans.",
     },
@@ -186,6 +190,8 @@ const en = {
     guides: "Guides",
     blog: "Blog",
     note: "Example pages and photos are for illustration.",
+    about: "What is Bitlink?",
+    notBitly: "Bitlink is an independent product and is not affiliated with Bitly. A “bitlink” on bit.ly is Bitly's name for its own short links.",
   },
 };
 
@@ -332,6 +338,10 @@ const es: LandingCopy = {
   faqTitle: "Preguntas frecuentes",
   faqs: [
     {
+      q: "¿Qué es Bitlink? ¿Es lo mismo que Bitly?",
+      a: "Bitlink (bitlink.click) es un link en bio y acortador de links gratis. Es un producto independiente: no es Bitly ni está afiliado a Bitly, que usa la palabra “bitlink” para los links cortos creados en bit.ly.",
+    },
+    {
       q: "¿Es gratis?",
       a: "Sí. Link en bio, links cortos, temas, métricas, QR, captura de emails y teléfonos, programación, bloqueos, productos y dominios propios — todo incluido. Sin planes.",
     },
@@ -377,6 +387,8 @@ const es: LandingCopy = {
     guides: "Guías",
     blog: "Blog",
     note: "Las páginas y fotos de ejemplo son solo ilustrativas.",
+    about: "¿Qué es Bitlink?",
+    notBitly: "Bitlink es un producto independiente y no está afiliado a Bitly. Un “bitlink” en bit.ly es el nombre que Bitly da a sus propios links cortos.",
   },
 };
 
@@ -521,6 +533,10 @@ const pt: LandingCopy = {
   faqTitle: "Perguntas frequentes",
   faqs: [
     {
+      q: "O que é o Bitlink? É a mesma coisa que o Bitly?",
+      a: "O Bitlink (bitlink.click) é um link na bio e encurtador de links grátis. É um produto independente: não é o Bitly nem é afiliado ao Bitly, que usa a palavra “bitlink” para os links curtos criados em bit.ly.",
+    },
+    {
       q: "É grátis?",
       a: "Sim. Link na bio, links curtos, temas, estatísticas, QR code, captura de e-mail e telefone, agendamento, bloqueios, produtos e domínios próprios — tudo incluído. Sem planos.",
     },
@@ -566,6 +582,8 @@ const pt: LandingCopy = {
     guides: "Guias",
     blog: "Blog",
     note: "As páginas e fotos de exemplo são apenas ilustrativas.",
+    about: "O que é o Bitlink?",
+    notBitly: "O Bitlink é um produto independente e não é afiliado ao Bitly. Um “bitlink” em bit.ly é o nome que o Bitly dá aos próprios links curtos.",
   },
 };
 

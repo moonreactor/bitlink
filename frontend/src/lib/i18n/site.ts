@@ -28,6 +28,11 @@ export function shortenerPath(lang: SiteLang): string {
   return { en: "/url-shortener", es: "/acortador-de-links", pt: "/encurtador-de-links" }[lang];
 }
 
+/** Brand page ("What is Bitlink") for each language — the canonical answer to the brand query. */
+export function aboutPath(lang: SiteLang): string {
+  return { en: "/about", es: "/es/que-es-bitlink", pt: "/pt/o-que-e-bitlink" }[lang];
+}
+
 /** In-page anchor on the home page of a language (e.g. /pt#faq). */
 export function homeAnchor(lang: SiteLang, id: string): string {
   return `${homePath(lang)}#${id}`;

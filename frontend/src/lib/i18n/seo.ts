@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { defaultOgImages, siteUrl } from "@/lib/site";
 import { LANDING } from "./landing-copy";
-import { homePath, LANG_LABEL, shortenerPath, SITE_LANGS, type SiteLang } from "./site";
+import { ABOUT_COPY } from "@/components/about/AboutPage";
+import { aboutPath, homePath, LANG_LABEL, shortenerPath, SITE_LANGS, type SiteLang } from "./site";
 
 /** hreflang map (relative URLs; Next resolves them against metadataBase). */
 function hreflangMap(path: (l: SiteLang) => string): Record<string, string> {
@@ -44,5 +45,25 @@ export function homeMetadata(lang: SiteLang): Metadata {
           },
           twitter: { card: "summary_large_image", title, description, images: defaultOgImages().map((i) => i.url) },
         }),
+  };
+}
+
+export function aboutMetadata(lang: SiteLang): Metadata {
+  const { title, description } = ABOUT_COPY[lang];
+  const path = aboutPath(lang);
+  return {
+    title: { absolute: title },
+    description,
+    alternates: { canonical: path, languages: hreflangMap(aboutPath) },
+    openGraph: {
+      title,
+      description,
+      url: `${siteUrl()}${path}`,
+      siteName: "Bitlink",
+      type: "website",
+      locale: LANG_LABEL[lang].og,
+      images: defaultOgImages(),
+    },
+    twitter: { card: "summary_large_image", title, description, images: defaultOgImages().map((i) => i.url) },
   };
 }

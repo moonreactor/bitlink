@@ -17,15 +17,34 @@ export function JsonLd({ data }: { data: unknown }) {
   );
 }
 
+/**
+ * Official Bitlink profiles elsewhere (Instagram, X, LinkedIn, Product Hunt, Wikidata…).
+ * Every URL added here becomes a `sameAs` link, which is how search engines and LLMs
+ * confirm that those profiles and bitlink.click are the same entity.
+ */
+export const SAME_AS: string[] = [];
+
+/** Bitly calls its own short links "bitlinks"; this sentence keeps the two apart for crawlers. */
+export const DISAMBIGUATION =
+  "Bitlink (bitlink.click) is an independent product. It is not Bitly and is not affiliated with Bitly; Bitly uses the word \"bitlink\" for the short links it creates on bit.ly.";
+
 export function organizationLd() {
   return {
     "@type": "Organization",
     "@id": ORG_ID,
     name: "Bitlink",
+    alternateName: ["Bitlink.click", "bitlink.click"],
     url: WEB,
     logo: { "@type": "ImageObject", url: absoluteAsset("/bitlink-logo.png") },
+    image: absoluteAsset(OG_IMAGE_PATH),
+    slogan: "Link-in-bio + short links, free forever",
     description:
-      "Bitlink is a free link-in-bio and URL shortener with analytics, QR codes, UTMs, custom domains and products. No paid plans.",
+      "Bitlink (bitlink.click) is a free link-in-bio and URL shortener with analytics, QR codes, UTMs, custom domains and products. No paid plans.",
+    disambiguatingDescription: DISAMBIGUATION,
+    knowsAbout: ["Link in bio", "URL shortening", "QR codes", "UTM parameters", "Click analytics"],
+    areaServed: ["Latin America", "Spain", "Brazil", "United States"],
+    mainEntityOfPage: `${WEB}/about`,
+    ...(SAME_AS.length ? { sameAs: SAME_AS } : {}),
   };
 }
 
@@ -35,6 +54,7 @@ export function websiteLd() {
     "@id": SITE_ID,
     url: WEB,
     name: "Bitlink",
+    alternateName: "bitlink.click",
     inLanguage: ["en", "es", "pt-BR"],
     publisher: { "@id": ORG_ID },
   };
@@ -45,7 +65,9 @@ export function softwareLd() {
     "@type": "SoftwareApplication",
     "@id": `${WEB}/#software`,
     name: "Bitlink",
+    alternateName: "bitlink.click",
     url: WEB,
+    disambiguatingDescription: DISAMBIGUATION,
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     image: absoluteAsset(OG_IMAGE_PATH),

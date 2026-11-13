@@ -11,6 +11,9 @@ from app.models.short_link import ShortLink
 CODE_RE = re.compile(r"^[a-z0-9_-]{2,40}$")
 
 RESERVED_CODES = {
+    "about",
+    "o-que-e-bitlink",
+    "que-es-bitlink",
     "acortador-de-links",
     "url-shortener",
     "admin",

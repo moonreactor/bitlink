@@ -11,7 +11,7 @@ import {
   LANGS,
   type Lang,
 } from "@/lib/content";
-import { homePath, shortenerPath, SITE_LANGS, LANG_LABEL } from "@/lib/i18n/site";
+import { aboutPath, homePath, shortenerPath, SITE_LANGS, LANG_LABEL } from "@/lib/i18n/site";
 import { siteUrl } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -37,6 +37,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   for (const l of SITE_LANGS) {
     entries.push({ url: abs(shortenerPath(l)), changeFrequency: "monthly", priority: 0.9, alternates: siteAlt(shortenerPath) });
+  }
+
+  for (const l of SITE_LANGS) {
+    entries.push({ url: abs(aboutPath(l)), changeFrequency: "monthly", priority: 0.9, alternates: siteAlt(aboutPath) });
   }
 
   for (const lang of LANGS) {

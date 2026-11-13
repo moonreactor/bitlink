@@ -32,6 +32,7 @@ class RegisterRequest(BaseModel):
                 "Username must be 3–30 characters and use only lowercase letters, numbers, and underscores."
             )
         reserved = {
+            "about",
             "admin",
             "api",
             "blog",

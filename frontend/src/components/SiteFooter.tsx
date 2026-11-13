@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { BitlinkLogo } from "@/components/BitlinkLogo";
 import { LANDING } from "@/lib/i18n/landing-copy";
-import { homeAnchor, homePath, shortenerPath, type SiteLang } from "@/lib/i18n/site";
+import { aboutPath, homeAnchor, homePath, shortenerPath, type SiteLang } from "@/lib/i18n/site";
 
 type Column = { title: string; links: { href: string; label: string }[] };
 
@@ -10,6 +10,7 @@ function columns(lang: SiteLang): Column[] {
   const product: Column = {
     title: f.product,
     links: [
+      { href: aboutPath(lang), label: f.about },
       { href: homeAnchor(lang, "product"), label: f.linkInBio },
       { href: shortenerPath(lang), label: f.freeShortener },
       // Cross-language entry points keep the other shorteners discoverable for SEO.
@@ -121,7 +122,13 @@ export function SiteFooter({ lang = "en" }: { lang?: SiteLang }) {
         ))}
       </div>
       <p className="mx-auto mt-10 max-w-6xl text-xs text-white/35">
-        © {new Date().getFullYear()} Bitlink · {f.note}
+        © {new Date().getFullYear()} Bitlink (bitlink.click) · {f.note}
+      </p>
+      <p className="mx-auto mt-2 max-w-6xl text-xs text-white/35">
+        {f.notBitly}{" "}
+        <Link href={`${aboutPath(lang)}#bitlink-vs-bitly`} className="underline underline-offset-2 hover:text-white">
+          {f.about}
+        </Link>
       </p>
     </footer>
   );
