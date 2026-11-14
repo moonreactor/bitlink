@@ -8,8 +8,8 @@ import { PublicShortener } from "./PublicShortener";
 const TEXT = {
   en: {
     path: "/url-shortener",
-    h1: "Free URL shortener",
-    lead: "Shorten any link in one click. No sign-up and no limits. Create a free account to see clicks by day, country, device and source, and to keep your links forever.",
+    h1: "Free Bitlink creator: URL shortener",
+    lead: "Create a short link (a bitlink) in one click. No sign-up and no limits. Create a free account to see clicks by day, country, device and source, and to keep your links forever.",
     points: [
       "Unlimited short links, free forever",
       "Links made with a free account never expire; anonymous ones are kept for 60 days",
@@ -17,6 +17,10 @@ const TEXT = {
     ],
     faqTitle: "Frequently asked questions",
     faqs: [
+      {
+        q: "What is a bitlink creator?",
+        a: "A bitlink creator turns a long URL into a short, shareable link. Paste your URL above and you get a short Bitlink in one click, free and with no account. Bitlink is an independent service and is not affiliated with Bitly.",
+      },
       {
         q: "Is the Bitlink URL shortener free?",
         a: "Yes. You can shorten as many links as you want for free, with no account.",
