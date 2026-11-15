@@ -22,8 +22,6 @@ function columns(lang: SiteLang): Column[] {
         : lang === "es"
           ? [{ href: shortenerPath("pt"), label: "Encurtador de links grátis" }]
           : [{ href: shortenerPath("es"), label: "Acortador de links gratis" }]),
-      { href: homeAnchor(lang, "how"), label: f.shortAndQr },
-      { href: homeAnchor(lang, "faq"), label: f.faq },
       { href: "/register", label: f.signUp },
       { href: "/login", label: f.login },
     ],

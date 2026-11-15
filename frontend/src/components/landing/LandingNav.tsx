@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { BitlinkLogo } from "@/components/BitlinkLogo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { LANDING } from "@/lib/i18n/landing-copy";
-import { hasBlog, homeAnchor, homePath, LANG_LABEL, rememberLang, type SiteLang } from "@/lib/i18n/site";
+import { aboutPath, hasBlog, homePath, LANG_LABEL, rememberLang, shortenerPath, type SiteLang } from "@/lib/i18n/site";
 
 export function LandingNav({
   lang = "en",
@@ -17,10 +17,8 @@ export function LandingNav({
 }) {
   const t = LANDING[lang].nav;
   const LINKS = [
-    { href: homeAnchor(lang, "acortador"), label: t.shorten },
-    { href: homeAnchor(lang, "how"), label: t.how },
-    { href: homeAnchor(lang, "product"), label: t.product },
-    { href: homeAnchor(lang, "faq"), label: t.faq },
+    { href: shortenerPath(lang), label: t.shorten },
+    { href: aboutPath(lang), label: t.about },
     ...(hasBlog(lang) ? [{ href: lang === "en" ? "/blog" : `/${lang}/blog`, label: t.blog }] : []),
   ];
   const [scrolled, setScrolled] = useState(false);
