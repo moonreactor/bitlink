@@ -1,6 +1,7 @@
 import { LatestPosts } from "@/components/blog/LatestPosts";
-import { faqLd, JsonLd, organizationLd, softwareLd, websiteLd } from "@/lib/jsonld";
-import { hasBlog, homePath, type SiteLang } from "@/lib/i18n/site";
+import { faqLd, JsonLd, organizationLd, siteNavigationLd, softwareLd, websiteLd } from "@/lib/jsonld";
+import { LANDING } from "@/lib/i18n/landing-copy";
+import { aboutPath, hasBlog, homePath, shortenerPath, type SiteLang } from "@/lib/i18n/site";
 import { siteUrl } from "@/lib/site";
 import { getFaqs } from "./faqs";
 import { LandingPage } from "./LandingPage";
@@ -16,6 +17,11 @@ export function HomePage({ lang }: { lang: SiteLang }) {
             organizationLd(),
             websiteLd(),
             softwareLd(),
+            siteNavigationLd(lang, [
+              { name: LANDING[lang].nav.shorten, path: shortenerPath(lang) },
+              { name: LANDING[lang].nav.about, path: aboutPath(lang) },
+              { name: LANDING[lang].nav.blog, path: lang === "en" ? "/blog" : `/${lang}/blog` },
+            ]),
             faqLd(getFaqs(lang), `${siteUrl()}${homePath(lang)}#faq`),
           ],
         }}

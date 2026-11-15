@@ -60,6 +60,20 @@ export function websiteLd() {
   };
 }
 
+/** Main navigation as schema.org SiteNavigationElement: a hint of which pages are the site's key sections. */
+export function siteNavigationLd(lang: SiteLang, items: { name: string; path: string }[]) {
+  return {
+    "@type": "ItemList",
+    "@id": `${WEB}${lang === "en" ? "" : `/${lang}`}/#navigation`,
+    itemListElement: items.map((item, i) => ({
+      "@type": "SiteNavigationElement",
+      position: i + 1,
+      name: item.name,
+      url: `${WEB}${item.path}`,
+    })),
+  };
+}
+
 export function softwareLd() {
   return {
     "@type": "SoftwareApplication",
