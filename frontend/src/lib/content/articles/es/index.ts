@@ -22,6 +22,7 @@ import bitlinkVsLinktree from "./bitlink-vs-linktree";
 import bitlinkVsBitly from "./bitlink-vs-bitly";
 import alternativasGratisABitly from "./alternativas-gratis-a-bitly";
 import bitlinkVsBeaconsStanCarrd from "./bitlink-vs-beacons-stan-store-carrd";
+import comoCrearUnBitlink from "./como-crear-un-bitlink";
 
 export const ARTICLES_ES: Article[] = [
   lanzamientoBitlink,
@@ -46,4 +47,5 @@ export const ARTICLES_ES: Article[] = [
   bitlinkVsBitly,
   alternativasGratisABitly,
   bitlinkVsBeaconsStanCarrd,
+  comoCrearUnBitlink,
 ];
