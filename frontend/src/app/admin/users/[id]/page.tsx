@@ -12,6 +12,7 @@ export default function AdminUserDetailPage() {
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [flagNote, setFlagNote] = useState("");
 
   const load = useCallback(async () => {
     const token = getAccessToken();
@@ -28,7 +29,7 @@ export default function AdminUserDetailPage() {
     load();
   }, [load]);
 
-  async function patch(body: { is_active?: boolean; is_superuser?: boolean; is_verified?: boolean }) {
+  async function patch(body: Parameters<typeof adminApi.updateUser>[2]) {
     const token = getAccessToken();
     if (!token || !user) return;
     setSaving(true);
@@ -74,6 +75,16 @@ export default function AdminUserDetailPage() {
         <Stat label="Subscribers" value={user.subscribers_count} />
       </div>
 
+      {user.is_suspicious && (
+        <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <p className="font-semibold">Profile flagged as suspicious</p>
+          <p className="mt-1">
+            {user.suspicious_at ? `Since ${new Date(user.suspicious_at).toLocaleString()}. ` : ""}
+            {user.suspicious_note ? `Note shown to the user: “${user.suspicious_note}”` : "No note."}
+          </p>
+        </div>
+      )}
+
       <section className="rounded-2xl border border-ink/10 bg-white/70 p-5 backdrop-blur">
         <h2 className="font-display text-lg font-semibold">Account</h2>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -108,6 +119,32 @@ export default function AdminUserDetailPage() {
           >
             {user.is_verified ? "Remove verified badge" : "Verify profile"}
           </button>
+          {user.profile_id && !user.is_suspicious && (
+            <input
+              value={flagNote}
+              onChange={(e) => setFlagNote(e.target.value)}
+              placeholder="Note for the user (optional)"
+              maxLength={500}
+              className="min-w-[220px] rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm"
+            />
+          )}
+          <button
+            disabled={saving || !user.profile_id}
+            onClick={() =>
+              patch(
+                user.is_suspicious
+                  ? { is_suspicious: false }
+                  : { is_suspicious: true, suspicious_note: flagNote.trim() || undefined },
+              )
+            }
+            className={`rounded-xl px-4 py-2 text-sm font-medium disabled:opacity-50 ${
+              user.is_suspicious
+                ? "border border-ink/10 hover:bg-ink/5"
+                : "bg-red-600 text-white hover:bg-red-700"
+            }`}
+          >
+            {user.is_suspicious ? "Clear suspicious flag" : "Flag as suspicious"}
+          </button>
           {user.username && (
             <a
               href={`/${user.username}`}
@@ -123,6 +160,7 @@ export default function AdminUserDetailPage() {
           <Badge ok={user.is_active}>{user.is_active ? "Active" : "Disabled"}</Badge>
           {user.is_superuser && <Badge ok>Superuser</Badge>}
           {user.is_verified && <Badge ok>Verified</Badge>}
+          {user.is_suspicious && <Badge>Suspicious</Badge>}
         </div>
       </section>
 

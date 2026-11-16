@@ -46,6 +46,9 @@ def _profile_out(profile: Profile) -> ProfileOut:
         custom_domain_verify_token=getattr(profile, "custom_domain_verify_token", None),
         language=getattr(profile, "language", None),
         discoverable=bool(getattr(profile, "discoverable", False)),
+        is_suspicious=bool(profile.is_suspicious),
+        suspicious_at=profile.suspicious_at,
+        suspicious_note=profile.suspicious_note,
         created_at=profile.created_at,
         updated_at=profile.updated_at,
     )

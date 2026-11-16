@@ -58,6 +58,7 @@ class AdminUserListItem(BaseModel):
     username: str | None = None
     display_name: str | None = None
     referred_by_username: str | None = None
+    is_suspicious: bool = False
     links_count: int = 0
     views_count: int = 0
     clicks_count: int = 0
@@ -96,6 +97,9 @@ class AdminUserDetail(BaseModel):
     bio: str | None = None
     avatar_url: str | None = None
     is_verified: bool = False
+    is_suspicious: bool = False
+    suspicious_at: datetime | None = None
+    suspicious_note: str | None = None
     referred_by_username: str | None = None
     profile_id: UUID | None = None
     links_count: int = 0
@@ -109,6 +113,9 @@ class AdminUserUpdate(BaseModel):
     is_active: bool | None = None
     is_superuser: bool | None = None
     is_verified: bool | None = None
+    is_suspicious: bool | None = None
+    # Shown to the owner in the warning banner; only used when flagging.
+    suspicious_note: str | None = Field(default=None, max_length=500)
 
 
 class AdminLinkListResponse(BaseModel):

@@ -95,6 +95,23 @@ export default function AdminReportsPage() {
     }
   }
 
+  async function flagOwner(r: AdminReportItem) {
+    const token = getAccessToken();
+    if (!token || !r.owner_user_id) return;
+    setBusyId(r.id);
+    setError("");
+    try {
+      await adminApi.updateUser(token, r.owner_user_id, {
+        is_suspicious: true,
+        suspicious_note: notes[r.id] || undefined,
+      });
+      await act(r, "resolved");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to flag profile");
+      setBusyId(null);
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const canDisable = (r: AdminReportItem) =>
     r.target_type !== "profile" && r.target_active === true;
@@ -226,6 +243,15 @@ export default function AdminReportsPage() {
                   className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
                 >
                   Disable &amp; resolve
+                </button>
+              )}
+              {r.owner_user_id && r.status === "pending" && (
+                <button
+                  disabled={busyId === r.id}
+                  onClick={() => flagOwner(r)}
+                  className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  Flag profile &amp; resolve
                 </button>
               )}
               {r.status !== "resolved" && (

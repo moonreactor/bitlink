@@ -17,6 +17,7 @@ ALLOWED_ANIMATIONS = {
     "sparkle",
 }
 
+ALLOWED_DISPLAYS = {"button", "icon"}
 ALLOWED_LINK_TYPES = {"url", "youtube", "spotify", "header", "contact"}
 
 
@@ -24,6 +25,7 @@ class LinkCreate(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     url: str | None = Field(default=None, max_length=2000)
     link_type: str = "url"
+    display: str = "button"
     section_id: UUID | None = None
     thumbnail_url: str | None = None
     icon: str | None = Field(default=None, max_length=32)
@@ -42,6 +44,14 @@ class LinkCreate(BaseModel):
             raise ValueError(f"Invalid link type. Allowed: {', '.join(sorted(ALLOWED_LINK_TYPES))}")
         return v
 
+    @field_validator("display")
+    @classmethod
+    def validate_display(cls, v: str) -> str:
+        v = (v or "button").lower().strip()
+        if v not in ALLOWED_DISPLAYS:
+            raise ValueError("display must be button or icon")
+        return v
+
     @field_validator("animation")
     @classmethod
     def validate_animation(cls, v: str) -> str:
@@ -56,6 +66,13 @@ class LinkCreate(BaseModel):
         if self.link_type == "header":
             self.is_featured = False
             self.lock_code = None
+        if self.display == "icon":
+            if self.link_type != "url":
+                raise ValueError("Only plain URL links can be shown as icons")
+            self.is_featured = False
+            self.lock_code = None
+            self.section_id = None
+            self.animation = "none"
         return self
 
 
@@ -63,6 +80,7 @@ class LinkUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=120)
     url: str | None = Field(default=None, max_length=2000)
     link_type: str | None = None
+    display: str | None = None
     # Send null to take the link out of its section.
     section_id: UUID | None = None
     thumbnail_url: str | None = None
@@ -86,6 +104,16 @@ class LinkUpdate(BaseModel):
         v = v.lower().strip()
         if v not in ALLOWED_LINK_TYPES:
             raise ValueError(f"Invalid link type. Allowed: {', '.join(sorted(ALLOWED_LINK_TYPES))}")
+        return v
+
+    @field_validator("display")
+    @classmethod
+    def validate_display(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.lower().strip()
+        if v not in ALLOWED_DISPLAYS:
+            raise ValueError("display must be button or icon")
         return v
 
     @field_validator("animation")
@@ -113,6 +141,7 @@ class LinkOut(BaseModel):
     title: str
     url: str
     link_type: str
+    display: str = "button"
     section_id: UUID | None = None
     thumbnail_url: str | None
     icon: str | None

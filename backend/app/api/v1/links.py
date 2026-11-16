@@ -37,9 +37,16 @@ def _owned_section(db: Session, profile_id, section_id) -> LinkSection:
     return section
 
 
-def _end_position(db: Session, profile_id, section_id) -> int:
-    """Next position at the end of a section, or at the end of the page when `section_id` is None."""
+def _end_position(db: Session, profile_id, section_id, display: str = "button") -> int:
+    """Next position at the end of a section, or at the end of the page when `section_id` is None.
+
+    Icon links have their own order (the icon row), separate from the page layout.
+    """
     links = db.query(Link).filter(Link.profile_id == profile_id).all()
+    if display == "icon":
+        positions = [l.position for l in links if l.display == "icon"]
+        return (max(positions) + 1) if positions else 0
+    links = [l for l in links if l.display != "icon"]
     if section_id is not None:
         return next_section_link_position(links, section_id)
     sections = db.query(LinkSection).filter(LinkSection.profile_id == profile_id).all()
@@ -52,6 +59,7 @@ def _link_out(link: Link) -> LinkOut:
         title=link.title,
         url=link.url,
         link_type=link.link_type or "url",
+        display=link.display or "button",
         section_id=link.section_id,
         thumbnail_url=link.thumbnail_url,
         icon=link.icon,
@@ -104,7 +112,7 @@ def create_link(
     profile = get_user_profile(db, current_user)
     if payload.section_id is not None:
         _owned_section(db, profile.id, payload.section_id)
-    position = _end_position(db, profile.id, payload.section_id)
+    position = _end_position(db, profile.id, payload.section_id, payload.display)
 
     try:
         url = prepare_link_url(payload.link_type, payload.url, payload.title)
@@ -116,6 +124,7 @@ def create_link(
         title=payload.title,
         url=url,
         link_type=payload.link_type,
+        display=payload.display,
         section_id=payload.section_id,
         thumbnail_url=payload.thumbnail_url,
         icon=payload.icon,
@@ -162,7 +171,21 @@ def update_link(
         if field in data:
             setattr(link, field, data[field])
 
-    if "section_id" in data and data["section_id"] != link.section_id:
+    if "display" in data and data["display"] != link.display:
+        new_display = data["display"]
+        if new_display == "icon" and (link.link_type or "url") != "url":
+            raise HTTPException(status_code=400, detail="Only plain URL links can be shown as icons")
+        link.display = new_display
+        # Icons live outside sections; either way the link lands at the end of its new place.
+        link.section_id = None
+        link.position = _end_position(db, profile.id, None, new_display)
+        if new_display == "icon":
+            link.is_featured = False
+            link.lock_code_hash = None
+            link.animation = "none"
+    elif "section_id" in data and data["section_id"] != link.section_id:
+        if link.display == "icon" and data["section_id"] is not None:
+            raise HTTPException(status_code=400, detail="Icons cannot be placed in a section")
         target = data["section_id"]
         if target is not None:
             _owned_section(db, profile.id, target)
@@ -199,6 +222,12 @@ def update_link(
 
     if link.link_type == "header":
         link.is_featured = False
+    if link.display == "icon":
+        if (link.link_type or "url") != "url":
+            raise HTTPException(status_code=400, detail="Only plain URL links can be shown as icons")
+        link.is_featured = False
+        link.lock_code_hash = None
+        link.section_id = None
 
     db.commit()
     db.refresh(link)

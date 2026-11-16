@@ -99,6 +99,9 @@ def _build_user_detail(db: Session, user: User) -> AdminUserDetail:
         bio=profile.bio if profile else None,
         avatar_url=profile.avatar_url if profile else None,
         is_verified=bool(getattr(profile, "is_verified", False)) if profile else False,
+        is_suspicious=bool(profile.is_suspicious) if profile else False,
+        suspicious_at=profile.suspicious_at if profile else None,
+        suspicious_note=profile.suspicious_note if profile else None,
         referred_by_username=getattr(user, "referred_by_username", None),
         profile_id=profile.id if profile else None,
         links_count=links_count,
@@ -334,6 +337,7 @@ def list_users(
             Profile.username,
             Profile.display_name,
             Profile.id.label("profile_id"),
+            Profile.is_suspicious.label("is_suspicious"),
             func.coalesce(link_counts.c.links, 0).label("links_count"),
             func.coalesce(view_counts.c.views, 0).label("views_count"),
             func.coalesce(click_counts.c.clicks, 0).label("clicks_count"),
@@ -374,12 +378,13 @@ def list_users(
             username=username,
             display_name=display_name,
             referred_by_username=getattr(user, "referred_by_username", None),
+            is_suspicious=bool(is_suspicious),
             links_count=links_count,
             views_count=views_count,
             clicks_count=clicks_count,
             subscribers_count=subscribers_count,
         )
-        for user, username, display_name, _profile_id, links_count, views_count, clicks_count, subscribers_count in rows
+        for user, username, display_name, _profile_id, is_suspicious, links_count, views_count, clicks_count, subscribers_count in rows
     ]
 
     return AdminUserListResponse(items=items, total=total, page=page, page_size=page_size)
@@ -424,6 +429,20 @@ def update_user(
         if profile is None:
             raise HTTPException(status_code=400, detail="User has no profile to verify")
         profile.is_verified = payload.is_verified
+
+    if payload.is_suspicious is not None:
+        profile = db.query(Profile).filter(Profile.user_id == user.id).first()
+        if profile is None:
+            raise HTTPException(status_code=400, detail="User has no profile to flag")
+        if payload.is_suspicious:
+            profile.is_suspicious = True
+            if profile.suspicious_at is None:
+                profile.suspicious_at = datetime.now(timezone.utc)
+            profile.suspicious_note = (payload.suspicious_note or "").strip() or None
+        else:
+            profile.is_suspicious = False
+            profile.suspicious_at = None
+            profile.suspicious_note = None
 
     db.commit()
     db.refresh(user)

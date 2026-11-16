@@ -107,6 +107,11 @@ export default function AdminUsersPage() {
                       <Link href={`/admin/users/${user.id}`} className="font-medium text-ink hover:text-accent">
                         {user.username ? `@${user.username}` : user.email}
                       </Link>
+                      {user.is_suspicious && (
+                        <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                          Suspicious
+                        </span>
+                      )}
                       <p className="text-xs text-ink/45">
                         {user.display_name || "—"} · {user.email}
                         {user.is_superuser ? " · superuser" : ""}

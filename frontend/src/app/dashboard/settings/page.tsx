@@ -3,17 +3,15 @@
 import { FormEvent, useEffect, useState } from "react";
 import { MediaUploadField } from "@/components/MediaUploadField";
 import { useToast } from "@/components/Toast";
-import { authApi, domainApi, linksApi, profileApi, socialApi } from "@/lib/api";
+import { authApi, domainApi, linksApi, profileApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
-import type { DomainInfo, LinkItem, Profile, SocialLink } from "@/lib/types";
+import type { DomainInfo, LinkItem, Profile } from "@/lib/types";
 
-const PLATFORMS = ["instagram", "twitter", "tiktok", "youtube", "linkedin", "github", "website"];
 
 export default function SettingsPage() {
   const { success, error: toastError } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [links, setLinks] = useState<LinkItem[]>([]);
-  const [socials, setSocials] = useState<SocialLink[]>([]);
   const [profilePassword, setProfilePassword] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -29,16 +27,10 @@ export default function SettingsPage() {
     Promise.all([
       profileApi.get(token),
       linksApi.list(token),
-      socialApi.list(token),
       domainApi.get(token),
-    ]).then(([p, l, s, d]) => {
+    ]).then(([p, l, d]) => {
       setProfile(p);
       setLinks(l);
-      setSocials(
-        s.length
-          ? s
-          : PLATFORMS.slice(0, 3).map((platform, position) => ({ platform, url: "", position })),
-      );
       setDomain(d);
       setDomainInput(d.custom_domain || "");
     });
@@ -46,7 +38,7 @@ export default function SettingsPage() {
 
   const profileLoaded = profile !== null;
   useEffect(() => {
-    // Deep links from the setup checklist (#profile, #socials) land after data loads.
+    // Deep links from the setup checklist (#profile) land after data loads.
     if (!profileLoaded) return;
     const id = window.location.hash.slice(1);
     if (id) document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -106,22 +98,6 @@ export default function SettingsPage() {
       success("Profile lock removed");
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Failed to remove lock");
-    }
-  }
-
-  async function saveSocials(e: FormEvent) {
-    e.preventDefault();
-    const token = getAccessToken();
-    if (!token) return;
-    const items = socials
-      .filter((s) => s.url.trim())
-      .map((s, i) => ({ platform: s.platform, url: s.url, position: i }));
-    try {
-      const saved = await socialApi.replace(token, items);
-      setSocials(saved);
-      success("Social links saved");
-    } catch (err) {
-      toastError(err instanceof Error ? err.message : "Failed to save socials");
     }
   }
 
@@ -417,52 +393,6 @@ export default function SettingsPage() {
         <button type="submit" className="mu-btn-primary">
           Save settings
         </button>
-      </form>
-
-      <form id="socials" onSubmit={saveSocials} className="scroll-mt-24 space-y-3 mu-card p-5 md:p-6">
-        <h2 className="font-display text-lg font-semibold">Social icons</h2>
-        <p className="text-sm text-meetup-muted">Small icons shown under your name — Instagram, TikTok, WhatsApp…</p>
-        {socials.map((s, idx) => (
-          <div key={idx} className="grid gap-2 sm:grid-cols-[140px_1fr]">
-            <select
-              className="min-h-[44px] rounded-xl border border-meetup-border px-2 py-2 text-sm"
-              value={s.platform}
-              onChange={(e) => {
-                const next = [...socials];
-                next[idx] = { ...s, platform: e.target.value };
-                setSocials(next);
-              }}
-            >
-              {PLATFORMS.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-            <input
-              className="min-h-[44px] min-w-0 rounded-xl border border-meetup-border px-3 py-2 text-sm"
-              placeholder="https://…"
-              value={s.url}
-              onChange={(e) => {
-                const next = [...socials];
-                next[idx] = { ...s, url: e.target.value };
-                setSocials(next);
-              }}
-            />
-          </div>
-        ))}
-        <button
-          type="button"
-          className="text-sm font-semibold text-meetup-purple"
-          onClick={() => setSocials([...socials, { platform: "instagram", url: "", position: socials.length }])}
-        >
-          + Add social
-        </button>
-        <div>
-          <button type="submit" className="mu-btn-primary">
-            Save socials
-          </button>
-        </div>
       </form>
 
       <form onSubmit={saveDomain} className="space-y-3 mu-card p-5 md:p-6">

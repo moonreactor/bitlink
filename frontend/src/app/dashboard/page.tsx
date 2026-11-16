@@ -5,10 +5,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { QuickAddLink } from "@/components/dashboard/QuickAddLink";
 import { SetupChecklist, type SetupStep } from "@/components/dashboard/SetupChecklist";
 import { useToast } from "@/components/Toast";
-import { analyticsApi, linksApi, profileApi, socialApi } from "@/lib/api";
+import { analyticsApi, linksApi, profileApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { displayPageUrl, hasSharedPage, sharePage } from "@/lib/share";
-import type { AnalyticsSummary, LinkItem, Profile, SocialLink, Subscriber } from "@/lib/types";
+import type { AnalyticsSummary, LinkItem, Profile, Subscriber } from "@/lib/types";
 
 const SETUP_HIDDEN_KEY = "bitlink_setup_hidden";
 
@@ -60,7 +60,6 @@ export default function DashboardOverviewPage() {
   const [range, setRange] = useState<RangeKey>("30d");
   const [loading, setLoading] = useState(true);
   const [links, setLinks] = useState<LinkItem[] | null>(null);
-  const [socials, setSocials] = useState<SocialLink[]>([]);
   const [shared, setShared] = useState(false);
   const [setupHidden, setSetupHidden] = useState(false);
   const { success, error: toastError } = useToast();
@@ -86,12 +85,8 @@ export default function DashboardOverviewPage() {
   const loadSetup = useCallback(async () => {
     const token = getAccessToken();
     if (!token) return;
-    const [l, so] = await Promise.all([
-      linksApi.list(token).catch(() => [] as LinkItem[]),
-      socialApi.list(token).catch(() => [] as SocialLink[]),
-    ]);
+    const l = await linksApi.list(token).catch(() => [] as LinkItem[]);
     setLinks(l);
-    setSocials(so);
   }, []);
 
   useEffect(() => {
@@ -118,7 +113,7 @@ export default function DashboardOverviewPage() {
     else if (res === "failed") toastError("Couldn’t share — copy the link manually");
   }
 
-  const realLinks = (links || []).filter((l) => l.link_type !== "header");
+  const realLinks = (links || []).filter((l) => l.link_type !== "header" && l.display !== "icon");
   const hasLinks = realLinks.length > 0;
   const steps: SetupStep[] = profile
     ? [
@@ -146,10 +141,10 @@ export default function DashboardOverviewPage() {
         {
           id: "socials",
           title: "Add your social icons",
-          hint: "Small icons under your name so people can follow you everywhere.",
-          done: socials.length > 0,
+          hint: "Small icons under your name so people can follow you everywhere. Pick “Icon” when you add a link.",
+          done: (links ?? []).some((l) => l.display === "icon"),
           cta: "Add socials",
-          href: "/dashboard/settings#socials",
+          href: "/dashboard/links?add=1",
         },
         {
           id: "share",

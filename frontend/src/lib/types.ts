@@ -61,6 +61,9 @@ export type Profile = {
   custom_domain_verify_token: string | null;
   language: "en" | "es" | "pt" | null;
   discoverable: boolean;
+  is_suspicious: boolean;
+  suspicious_at: string | null;
+  suspicious_note: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -95,11 +98,14 @@ export type PublicProduct = {
   thumbnail_url: string | null;
 };
 
+export type LinkDisplay = "button" | "icon";
+
 export type LinkItem = {
   id: string;
   title: string;
   url: string;
   link_type: LinkType;
+  display: LinkDisplay;
   section_id: string | null;
   thumbnail_url: string | null;
   icon: string | null;
@@ -288,6 +294,7 @@ export type AdminUserListItem = {
   created_at: string;
   username: string | null;
   display_name: string | null;
+  is_suspicious: boolean;
   referred_by_username: string | null;
   links_count: number;
   views_count: number;
@@ -327,6 +334,9 @@ export type AdminUserDetail = {
   bio: string | null;
   avatar_url: string | null;
   is_verified: boolean;
+  is_suspicious: boolean;
+  suspicious_at: string | null;
+  suspicious_note: string | null;
   referred_by_username: string | null;
   profile_id: string | null;
   links_count: number;

@@ -183,6 +183,9 @@ class ProfileOut(BaseModel):
     custom_domain_verify_token: str | None = None
     language: str | None = None
     discoverable: bool = False
+    is_suspicious: bool = False
+    suspicious_at: datetime | None = None
+    suspicious_note: str | None = None
     created_at: datetime
     updated_at: datetime
 

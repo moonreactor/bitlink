@@ -27,8 +27,9 @@ import { getAccessToken } from "@/lib/auth";
 import { animationClass } from "@/lib/linkAnimations";
 import { QUICK_ADD, isPrefixOnly, type QuickAddTemplate } from "@/lib/quickAdd";
 import { SocialBrandIcon, detectSocialBrand } from "@/lib/socialBrands";
+import { DisplayToggle, IconLinks } from "@/components/dashboard/IconLinks";
 import { buildEditorBlocks, toLayoutPayload, type EditorBlock } from "@/lib/linkBlocks";
-import type { LinkItem, LinkSection, LinkType, SectionLayout } from "@/lib/types";
+import type { LinkDisplay, LinkItem, LinkSection, LinkType, SectionLayout } from "@/lib/types";
 
 const LINK_TYPES: { id: LinkType; label: string }[] = [
   { id: "url", label: "Link" },
@@ -38,6 +39,7 @@ const LINK_TYPES: { id: LinkType; label: string }[] = [
 ];
 
 type Draft = {
+  display: LinkDisplay;
   title: string;
   url: string;
   link_type: LinkType;
@@ -50,7 +52,8 @@ type Draft = {
   visible_until: string | null;
 };
 
-const emptyDraft = (): Draft => ({
+const emptyDraft = (display: LinkDisplay = "button"): Draft => ({
+  display,
   title: "",
   url: "",
   link_type: "url",
@@ -92,7 +95,11 @@ export function LinksEditor() {
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
 
-  const blocks = buildEditorBlocks(links, sections);
+  const buttons = links.filter((l) => l.display !== "icon");
+  const icons = links
+    .filter((l) => l.display === "icon")
+    .sort((a, b) => a.position - b.position);
+  const blocks = buildEditorBlocks(buttons, sections);
 
   async function load() {
     const token = getAccessToken();
@@ -117,7 +124,7 @@ export function LinksEditor() {
     titleTouched.current = true;
     metaReq.current += 1;
     setFetchingMeta(false);
-    setDraft({ ...emptyDraft(), link_type: "url", url: t.prefix, title: t.label });
+    setDraft({ ...emptyDraft(draft.display), link_type: "url", url: t.prefix, title: t.label });
     setComposerOpen(true);
     focusComposer(true);
   }
@@ -210,6 +217,7 @@ export function LinksEditor() {
         title,
         url: draft.url.trim() || null,
         link_type: draft.link_type,
+        display: draft.display,
         section_id: draft.section_id,
         thumbnail_url: draft.thumbnail_url.trim() || null,
         icon: draft.icon,
@@ -218,13 +226,14 @@ export function LinksEditor() {
         visible_from: draft.visible_from,
         visible_until: draft.visible_until,
       });
-      const wasFirst = links.filter((l) => l.link_type !== "header").length === 0;
-      setDraft(emptyDraft());
+      const wasFirst = draft.display === "button" && buttons.filter((l) => l.link_type !== "header").length === 0;
+      const wasIcon = draft.display === "icon";
+      setDraft(emptyDraft(draft.display));
       setComposerOpen(false);
       setMoreOptions(false);
       titleTouched.current = false;
       await load();
-      success(wasFirst ? "Your first link is live 🎉 Now share your page" : "Link added");
+      success(wasFirst ? "Your first link is live 🎉 Now share your page" : wasIcon ? "Icon added" : "Link added");
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Failed to create link");
     }
@@ -263,7 +272,7 @@ export function LinksEditor() {
       b.links.forEach((l, j) => nextLinks.push({ ...l, section_id: b.section.id, position: j }));
     });
     setSections(nextSections);
-    setLinks(nextLinks);
+    setLinks([...nextLinks, ...links.filter((l) => l.display === "icon")]);
     const token = getAccessToken();
     if (!token) return;
     try {
@@ -358,6 +367,21 @@ export function LinksEditor() {
     focusComposer();
   }
 
+  async function moveIcon(index: number, delta: -1 | 1) {
+    const to = index + delta;
+    if (to < 0 || to >= icons.length) return;
+    const next = arrayMove(icons, index, to).map((l, i) => ({ ...l, position: i }));
+    setLinks([...buttons, ...next]);
+    const token = getAccessToken();
+    if (!token) return;
+    try {
+      await linksApi.reorder(token, next.map((l) => ({ id: l.id, position: l.position })));
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Failed to reorder");
+      await load();
+    }
+  }
+
   async function toggle(link: LinkItem, field: "is_active" | "is_featured") {
     const token = getAccessToken();
     if (!token) return;
@@ -433,9 +457,19 @@ export function LinksEditor() {
 
       <form ref={formRef} onSubmit={onCreate} className="mu-card scroll-mt-20 space-y-4 p-4 md:p-5">
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-meetup-muted">
-            Quick add
-          </p>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-meetup-muted">Quick add</p>
+            <DisplayToggle
+              value={draft.display}
+              onChange={(display) =>
+                setDraft((prev) => ({
+                  ...prev,
+                  display,
+                  ...(display === "icon" ? { section_id: null, link_type: "url" as LinkType, is_featured: false } : {}),
+                }))
+              }
+            />
+          </div>
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:mx-0 md:flex-wrap md:px-0">
             {QUICK_ADD.map((t) => (
               <button
@@ -507,7 +541,7 @@ export function LinksEditor() {
 
         {composerOpen && (
           <div className="space-y-4 rounded-meetup border border-meetup-border bg-meetup-bg/60 p-4">
-            {sections.length > 0 && (
+            {sections.length > 0 && draft.display === "button" && (
               <label className="block text-sm">
                 <span className="mb-1 block font-semibold text-ink">Section</span>
                 <select
@@ -550,6 +584,7 @@ export function LinksEditor() {
               </div>
             </div>
 
+            {draft.display === "button" && (
             <button
               type="button"
               onClick={() => setMoreOptions((v) => !v)}
@@ -570,8 +605,9 @@ export function LinksEditor() {
                 <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
+            )}
 
-            {moreOptions && (
+            {moreOptions && draft.display === "button" && (
               <div className="space-y-4 border-t border-meetup-border pt-4">
                 <div>
                   <p className="mb-2 text-sm font-semibold text-ink">Type</p>
@@ -648,12 +684,20 @@ export function LinksEditor() {
                 Cancel
               </button>
               <button type="submit" className="mu-btn-primary min-h-[48px]">
-                Add link
+                {draft.display === "icon" ? "Add icon" : "Add link"}
               </button>
             </div>
           </div>
         )}
       </form>
+
+      <IconLinks
+        icons={icons}
+        onSave={(link, patch) => saveInline(link, patch)}
+        onToggleActive={(link) => toggle(link, "is_active")}
+        onMove={moveIcon}
+        onRemove={remove}
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-lg font-bold text-ink">Your page</h2>
