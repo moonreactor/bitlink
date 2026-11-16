@@ -200,7 +200,13 @@ export const adminApi = {
   updateUser: (
     token: string,
     id: string,
-    body: { is_active?: boolean; is_superuser?: boolean; is_verified?: boolean },
+    body: {
+      is_active?: boolean;
+      is_superuser?: boolean;
+      is_verified?: boolean;
+      is_suspicious?: boolean;
+      suspicious_note?: string;
+    },
   ) =>
     request<AdminUserDetail>(
       `/admin/users/${id}`,
@@ -284,12 +290,6 @@ export const sectionsApi = {
       { method: "PUT", body: JSON.stringify({ blocks }) },
       token,
     ),
-};
-
-export const socialApi = {
-  list: (token: string) => request<SocialLink[]>("/me/social-links", {}, token),
-  replace: (token: string, items: SocialLink[]) =>
-    request<SocialLink[]>("/me/social-links", { method: "PUT", body: JSON.stringify({ items }) }, token),
 };
 
 export const mediaApi = {

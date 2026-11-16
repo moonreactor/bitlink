@@ -41,6 +41,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   const [username, setUsername] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
   const [isSuperuser, setIsSuperuser] = useState(false);
+  const [flag, setFlag] = useState<{ note: string | null } | null>(null);
   const [ready, setReady] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -55,6 +56,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
         setUsername(p.username);
         setDisplayName(p.display_name || p.username);
         setIsSuperuser(user.is_superuser);
+        setFlag(p.is_suspicious ? { note: p.suspicious_note } : null);
         setReady(true);
       })
       .catch(() => {
@@ -117,6 +119,33 @@ function ShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-meetup-bg">
+      {flag && (
+        <div
+          role="alert"
+          className="border-b border-red-300 bg-red-600 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white"
+        >
+          <div className="mx-auto flex max-w-[1400px] items-start gap-3 text-sm">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden className="mt-0.5 shrink-0">
+              <path
+                d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <div>
+              <p className="font-semibold">
+                Your profile was flagged as suspicious of not complying with our usage policies.
+              </p>
+              <p className="mt-0.5 text-white/90">
+                {flag.note ? `${flag.note} ` : ""}
+                Review your links and content. If you think this is a mistake, contact support.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <header className="sticky top-0 z-40 border-b border-meetup-border bg-white/90 pt-[env(safe-area-inset-top)] backdrop-blur">
         <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-2.5 md:gap-4 md:px-6">
           <BitlinkLogo href="/dashboard" className="shrink-0" height={26} />

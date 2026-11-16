@@ -6,7 +6,8 @@ import { linksApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { QUICK_ADD, isPrefixOnly, type QuickAddTemplate } from "@/lib/quickAdd";
 import { SocialBrandIcon } from "@/lib/socialBrands";
-import type { LinkItem } from "@/lib/types";
+import { DisplayToggle } from "@/components/dashboard/IconLinks";
+import type { LinkDisplay, LinkItem } from "@/lib/types";
 
 function normalize(raw: string) {
   const v = raw.trim();
@@ -28,6 +29,7 @@ export function QuickAddLink({ onCreated }: { onCreated: (link: LinkItem) => voi
   const [url, setUrl] = useState("");
   const [template, setTemplate] = useState<QuickAddTemplate | null>(null);
   const [busy, setBusy] = useState(false);
+  const [display, setDisplay] = useState<LinkDisplay>("button");
   const inputRef = useRef<HTMLInputElement>(null);
 
   function pick(t: QuickAddTemplate) {
@@ -62,10 +64,10 @@ export function QuickAddLink({ onCreated }: { onCreated: (link: LinkItem) => voi
       }
     }
     try {
-      const link = await linksApi.create(token, { title: title || "My link", url: target, link_type: "url" });
+      const link = await linksApi.create(token, { title: title || "My link", url: target, link_type: "url", display });
       setUrl("");
       setTemplate(null);
-      success("Link added to your page");
+      success(display === "icon" ? "Icon added to your page" : "Link added to your page");
       onCreated(link);
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Couldn’t add the link");
@@ -76,6 +78,7 @@ export function QuickAddLink({ onCreated }: { onCreated: (link: LinkItem) => voi
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
+      <DisplayToggle value={display} onChange={setDisplay} />
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
         {QUICK_ADD.map((t) => (
           <button

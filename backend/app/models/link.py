@@ -24,6 +24,10 @@ class Link(Base):
         nullable=True,
         index=True,
     )
+    # "button" = regular block on the page; "icon" = small icon in the social row at the top.
+    display: Mapped[str] = mapped_column(
+        String(8), default="button", server_default="button", nullable=False, index=True
+    )
     thumbnail_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     icon: Mapped[str | None] = mapped_column(String(32), nullable=True)
     animation: Mapped[str] = mapped_column(String(32), default="none", nullable=False)

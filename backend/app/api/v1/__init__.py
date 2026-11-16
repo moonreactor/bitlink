@@ -13,7 +13,6 @@ from app.api.v1 import (
     reports,
     sections,
     short_links,
-    social,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -22,7 +21,6 @@ api_router.include_router(profile.router)
 api_router.include_router(domain.router)
 api_router.include_router(links.router)
 api_router.include_router(sections.router)
-api_router.include_router(social.router)
 api_router.include_router(analytics.router)
 api_router.include_router(media.router)
 api_router.include_router(short_links.router)

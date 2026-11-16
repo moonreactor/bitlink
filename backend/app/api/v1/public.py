@@ -33,7 +33,6 @@ def _get_profile(db: Session, username: str) -> Profile:
         .options(
             joinedload(Profile.links),
             selectinload(Profile.sections),
-            joinedload(Profile.social_links),
             joinedload(Profile.products),
         )
         .filter(Profile.username == username.lower())
@@ -85,6 +84,7 @@ def _public_link(link: Link) -> PublicLinkOut:
         title=link.title,
         url=None if hide_url else link.url,
         link_type=link_type,
+        display=link.display or "button",
         section_id=link.section_id,
         thumbnail_url=link.thumbnail_url,
         icon=link.icon,
@@ -207,6 +207,11 @@ def get_public_profile(
                 redirect_url = link.url
                 break
 
+    icon_links = sorted(
+        (l for l in visible_links if l.display == "icon" and not l.lock_code_hash),
+        key=lambda l: (l.position, l.created_at),
+    )
+    visible_links = [l for l in visible_links if l.display != "icon"]
     blocks = public_blocks(visible_links, profile.sections)
     public_links = [_public_link(l) for _, items in blocks for l in items]
     public_sections = [
@@ -247,7 +252,8 @@ def get_public_profile(
         links=public_links,
         sections=public_sections,
         social_links=[
-            SocialLinkOut.model_validate(s) for s in sorted(profile.social_links, key=lambda x: x.position)
+            SocialLinkOut(id=l.id, platform=l.title, url=l.url, position=i)
+            for i, l in enumerate(icon_links)
         ],
         products=_public_products(profile),
         language=profile.language,

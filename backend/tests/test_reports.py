@@ -105,3 +105,32 @@ def test_admin_endpoints_require_superuser(client):
     alice = register(client, "alice")
     assert client.get(ADMIN).status_code in (401, 403)
     assert client.get(ADMIN, headers=alice).status_code == 403
+
+
+def test_superadmin_flags_profile_and_owner_sees_it(client, db):
+    alice = register(client, "alice")
+    admin = _admin(client, db)
+    uid = client.get("/api/v1/auth/me", headers=alice).json()["id"]
+
+    assert client.get("/api/v1/me/profile", headers=alice).json()["is_suspicious"] is False
+
+    res = client.patch(
+        f"/api/v1/admin/users/{uid}",
+        json={"is_suspicious": True, "suspicious_note": "Phishing links"},
+        headers=admin,
+    )
+    assert res.status_code == 200
+    assert res.json()["is_suspicious"] is True and res.json()["suspicious_at"]
+
+    mine = client.get("/api/v1/me/profile", headers=alice).json()
+    assert mine["is_suspicious"] is True and mine["suspicious_note"] == "Phishing links"
+    listed = client.get("/api/v1/admin/users", headers=admin).json()["items"]
+    assert {u["username"]: u["is_suspicious"] for u in listed}["alice"] is True
+
+    # The owner cannot clear the flag themselves.
+    client.patch("/api/v1/me/profile", json={"is_suspicious": False}, headers=alice)
+    assert client.get("/api/v1/me/profile", headers=alice).json()["is_suspicious"] is True
+
+    client.patch(f"/api/v1/admin/users/{uid}", json={"is_suspicious": False}, headers=admin)
+    mine = client.get("/api/v1/me/profile", headers=alice).json()
+    assert mine["is_suspicious"] is False and mine["suspicious_note"] is None

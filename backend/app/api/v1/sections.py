@@ -33,9 +33,10 @@ def _sections(db: Session, profile_id) -> list[LinkSection]:
 
 
 def _links(db: Session, profile_id) -> list[Link]:
+    """Links that take part in the page layout (icon links have their own row and order)."""
     return (
         db.query(Link)
-        .filter(Link.profile_id == profile_id)
+        .filter(Link.profile_id == profile_id, Link.display != "icon")
         .order_by(Link.position.asc(), Link.created_at.asc())
         .all()
     )
@@ -132,7 +133,13 @@ def save_layout(
     except LayoutError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     db.commit()
+    icons = (
+        db.query(Link)
+        .filter(Link.profile_id == profile.id, Link.display == "icon")
+        .order_by(Link.position.asc(), Link.created_at.asc())
+        .all()
+    )
     return LayoutOut(
         sections=[SectionOut.model_validate(s) for s in sorted(sections, key=lambda s: s.position)],
-        links=[_link_out(l) for l in links],
+        links=[_link_out(l) for l in [*links, *icons]],
     )

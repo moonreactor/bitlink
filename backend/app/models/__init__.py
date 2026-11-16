@@ -7,7 +7,6 @@ from app.models.profile import Profile
 from app.models.report import Report
 from app.models.shortener_event import ShortenerEvent
 from app.models.short_link import ShortLink, ShortLinkClick
-from app.models.social_link import SocialLink
 from app.models.subscriber import Subscriber
 from app.models.user import User
 
@@ -16,7 +15,6 @@ __all__ = [
     "Profile",
     "Link",
     "LinkSection",
-    "SocialLink",
     "PageView",
     "LinkClick",
     "Subscriber",
