@@ -1,7 +1,7 @@
 import re
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.security import verify_password
@@ -14,7 +14,7 @@ from app.models.subscriber import Subscriber
 from app.schemas.analytics import ClickRequest, ClickResponse, SubscribeRequest, TrackMeta, UnlockProfileRequest
 from app.schemas.link import PublicLinkOut
 from app.schemas.product import PublicProductOut
-from app.schemas.public import PublicDomainResolveOut, PublicProfileOut
+from app.schemas.public import PublicDirectoryItem, PublicDomainResolveOut, PublicProfileOut
 from app.schemas.social import SocialLinkOut
 from app.services.analytics import detect_device, hash_visitor, normalize_referrer
 from app.services.domain import normalize_domain
@@ -123,6 +123,34 @@ def resolve_by_domain(host: str, db: Session = Depends(get_db)) -> PublicDomainR
     return PublicDomainResolveOut(username=profile.username, custom_domain=profile.custom_domain)
 
 
+@router.get("/directory", response_model=list[PublicDirectoryItem])
+def public_directory(
+    limit: int = Query(default=12, ge=1, le=5000),
+    lang: str | None = Query(default=None, pattern="^(en|es|pt)$"),
+    db: Session = Depends(get_db),
+) -> list[PublicDirectoryItem]:
+    """Opt-in directory: only unlocked profiles that chose to be discoverable."""
+    q = db.query(Profile).filter(
+        Profile.discoverable.is_(True),
+        Profile.profile_password_hash.is_(None),
+    )
+    if lang:
+        q = q.filter(Profile.language == lang)
+    rows = q.order_by(Profile.updated_at.desc()).limit(limit).all()
+    return [
+        PublicDirectoryItem(
+            username=p.username,
+            display_name=p.display_name,
+            bio=p.bio,
+            avatar_url=p.avatar_url,
+            language=p.language,
+            is_verified=bool(p.is_verified),
+            updated_at=p.updated_at,
+        )
+        for p in rows
+    ]
+
+
 @router.get("/{username}", response_model=PublicProfileOut)
 def get_public_profile(
     username: str,
@@ -160,6 +188,9 @@ def get_public_profile(
             links=[],
             social_links=[],
             products=[],
+            language=profile.language,
+            created_at=profile.created_at,
+            updated_at=profile.updated_at,
         )
 
     visible_links = [l for l in profile.links if is_link_visible(l)]
@@ -211,6 +242,10 @@ def get_public_profile(
             SocialLinkOut.model_validate(s) for s in sorted(profile.social_links, key=lambda x: x.position)
         ],
         products=_public_products(profile),
+        language=profile.language,
+        discoverable=bool(profile.discoverable),
+        created_at=profile.created_at,
+        updated_at=profile.updated_at,
     )
 
 

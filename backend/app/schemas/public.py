@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel
@@ -31,6 +32,20 @@ class PublicProfileOut(BaseModel):
     links: list[PublicLinkOut]
     social_links: list[SocialLinkOut]
     products: list[PublicProductOut] = []
+    language: str | None = None
+    discoverable: bool = False
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class PublicDirectoryItem(BaseModel):
+    username: str
+    display_name: str
+    bio: str | None = None
+    avatar_url: str | None = None
+    language: str | None = None
+    is_verified: bool = False
+    updated_at: datetime
 
 
 class PublicDomainResolveOut(BaseModel):
