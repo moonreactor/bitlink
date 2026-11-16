@@ -13,6 +13,17 @@ class RegisterRequest(BaseModel):
     username: str
     display_name: str = Field(min_length=1, max_length=100)
     referred_by_username: str | None = Field(default=None, max_length=30)
+    # UI language the visitor was browsing in; becomes the default language of their public page.
+    language: str | None = Field(default=None, max_length=8)
+
+    @field_validator("language")
+    @classmethod
+    def validate_language(cls, v: str | None) -> str | None:
+        """Unknown or regional values (e.g. "es-AR") degrade gracefully instead of failing signup."""
+        if v is None:
+            return None
+        v = v.strip().lower()[:2]
+        return v if v in {"en", "es", "pt"} else None
 
     @field_validator("password")
     @classmethod
@@ -54,6 +65,8 @@ class RegisterRequest(BaseModel):
             "en",
             "es",
             "pt",
+            "directory",
+            "report",
         }
         if v in reserved:
             raise ValueError("This username is reserved. Please choose another.")

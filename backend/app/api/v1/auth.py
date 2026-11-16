@@ -73,6 +73,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> TokenRe
         username=payload.username,
         display_name=payload.display_name,
         theme_json=dict(DEFAULT_THEME),
+        language=payload.language,
     )
     db.add(profile)
     db.commit()

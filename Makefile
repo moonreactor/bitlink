@@ -1,6 +1,6 @@
 COMPOSE = docker compose
 
-.PHONY: build up down logs migrate shell-api shell-db restart ps
+.PHONY: build up down logs migrate shell-api shell-db restart ps test
 
 build:
 	$(COMPOSE) build
@@ -36,3 +36,7 @@ restart:
 
 ps:
 	$(COMPOSE) ps
+
+# Backend tests: SQLite, no Docker needed. First time: pip install -r backend/requirements-dev.txt
+test:
+	cd backend && python -m pytest -q

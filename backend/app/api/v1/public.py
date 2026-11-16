@@ -1,8 +1,8 @@
 import re
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from sqlalchemy.orm import Session, joinedload
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.security import verify_password
 from app.db.session import get_db
@@ -14,8 +14,10 @@ from app.models.subscriber import Subscriber
 from app.schemas.analytics import ClickRequest, ClickResponse, SubscribeRequest, TrackMeta, UnlockProfileRequest
 from app.schemas.link import PublicLinkOut
 from app.schemas.product import PublicProductOut
-from app.schemas.public import PublicDomainResolveOut, PublicProfileOut
+from app.schemas.public import PublicDirectoryItem, PublicDomainResolveOut, PublicProfileOut
+from app.schemas.section import PublicSectionOut
 from app.schemas.social import SocialLinkOut
+from app.services.link_layout import public_blocks
 from app.services.analytics import detect_device, hash_visitor, normalize_referrer
 from app.services.domain import normalize_domain
 from app.services.embeds import public_embed_payload
@@ -30,6 +32,7 @@ def _get_profile(db: Session, username: str) -> Profile:
         db.query(Profile)
         .options(
             joinedload(Profile.links),
+            selectinload(Profile.sections),
             joinedload(Profile.social_links),
             joinedload(Profile.products),
         )
@@ -82,8 +85,7 @@ def _public_link(link: Link) -> PublicLinkOut:
         title=link.title,
         url=None if hide_url else link.url,
         link_type=link_type,
-        collection=link.collection,
-        collection_layout=link.collection_layout or "list",
+        section_id=link.section_id,
         thumbnail_url=link.thumbnail_url,
         icon=link.icon,
         animation=link.animation or "none",
@@ -123,6 +125,34 @@ def resolve_by_domain(host: str, db: Session = Depends(get_db)) -> PublicDomainR
     return PublicDomainResolveOut(username=profile.username, custom_domain=profile.custom_domain)
 
 
+@router.get("/directory", response_model=list[PublicDirectoryItem])
+def public_directory(
+    limit: int = Query(default=12, ge=1, le=5000),
+    lang: str | None = Query(default=None, pattern="^(en|es|pt)$"),
+    db: Session = Depends(get_db),
+) -> list[PublicDirectoryItem]:
+    """Opt-in directory: only unlocked profiles that chose to be discoverable."""
+    q = db.query(Profile).filter(
+        Profile.discoverable.is_(True),
+        Profile.profile_password_hash.is_(None),
+    )
+    if lang:
+        q = q.filter(Profile.language == lang)
+    rows = q.order_by(Profile.updated_at.desc()).limit(limit).all()
+    return [
+        PublicDirectoryItem(
+            username=p.username,
+            display_name=p.display_name,
+            bio=p.bio,
+            avatar_url=p.avatar_url,
+            language=p.language,
+            is_verified=bool(p.is_verified),
+            updated_at=p.updated_at,
+        )
+        for p in rows
+    ]
+
+
 @router.get("/{username}", response_model=PublicProfileOut)
 def get_public_profile(
     username: str,
@@ -160,6 +190,9 @@ def get_public_profile(
             links=[],
             social_links=[],
             products=[],
+            language=profile.language,
+            created_at=profile.created_at,
+            updated_at=profile.updated_at,
         )
 
     visible_links = [l for l in profile.links if is_link_visible(l)]
@@ -174,8 +207,13 @@ def get_public_profile(
                 redirect_url = link.url
                 break
 
-    ordered = sorted(visible_links, key=lambda l: (0 if l.is_featured else 1, l.position))
-    public_links = [_public_link(l) for l in ordered]
+    blocks = public_blocks(visible_links, profile.sections)
+    public_links = [_public_link(l) for _, items in blocks for l in items]
+    public_sections = [
+        PublicSectionOut(id=sec.id, title=sec.title, layout=sec.layout)
+        for sec, _ in blocks
+        if sec is not None
+    ]
 
     return PublicProfileOut(
         username=profile.username,
@@ -207,10 +245,15 @@ def get_public_profile(
             else None
         ),
         links=public_links,
+        sections=public_sections,
         social_links=[
             SocialLinkOut.model_validate(s) for s in sorted(profile.social_links, key=lambda x: x.position)
         ],
         products=_public_products(profile),
+        language=profile.language,
+        discoverable=bool(profile.discoverable),
+        created_at=profile.created_at,
+        updated_at=profile.updated_at,
     )
 
 

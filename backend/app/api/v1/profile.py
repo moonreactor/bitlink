@@ -44,6 +44,8 @@ def _profile_out(profile: Profile) -> ProfileOut:
         custom_domain=getattr(profile, "custom_domain", None),
         custom_domain_verified=bool(getattr(profile, "custom_domain_verified", False)),
         custom_domain_verify_token=getattr(profile, "custom_domain_verify_token", None),
+        language=getattr(profile, "language", None),
+        discoverable=bool(getattr(profile, "discoverable", False)),
         created_at=profile.created_at,
         updated_at=profile.updated_at,
     )
@@ -102,9 +104,15 @@ def update_profile(
         "qr_logo_enabled",
         "background_music_url",
         "background_music_enabled",
+        "discoverable",
     ):
         if field in data:
             setattr(profile, field, data[field])
+
+    if "language" in data:
+        profile.language = data["language"]
+    if data.get("clear_language"):
+        profile.language = None
 
     if data.get("clear_google_analytics_id"):
         profile.google_analytics_id = None

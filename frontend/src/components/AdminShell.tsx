@@ -5,13 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BitlinkLogo } from "@/components/BitlinkLogo";
 import { ToastProvider } from "@/components/Toast";
-import { authApi } from "@/lib/api";
+import { adminApi, authApi } from "@/lib/api";
 import { clearTokens, getAccessToken } from "@/lib/auth";
 
 const NAV = [
   { href: "/admin", label: "Metrics" },
   { href: "/admin/users", label: "Users" },
   { href: "/admin/links", label: "Links" },
+  { href: "/admin/reports", label: "Reports" },
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -19,6 +20,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
+  const [pendingReports, setPendingReports] = useState(0);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -35,6 +37,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         }
         setEmail(user.email);
         setReady(true);
+        adminApi
+          .reports(token, { status: "pending", page_size: 1 })
+          .then((r) => setPendingReports(r.total))
+          .catch(() => {});
       })
       .catch(() => {
         clearTokens();
@@ -84,6 +90,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   }`}
                 >
                   {item.label}
+                  {item.href === "/admin/reports" && pendingReports > 0 && (
+                    <span className="ml-2 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {pendingReports}
+                    </span>
+                  )}
                 </Link>
               );
             })}

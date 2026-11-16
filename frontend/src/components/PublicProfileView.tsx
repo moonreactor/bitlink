@@ -11,7 +11,13 @@ import { buildLinkBlocks } from "@/lib/linkBlocks";
 import { animationClass } from "@/lib/linkAnimations";
 import { brandColor, brandFromPlatform, detectSocialBrand } from "@/lib/socialBrands";
 import { buttonRadius, resolveSocialIconColor } from "@/lib/themes";
-import type { PublicLink, PublicProfile, SocialIconStyle } from "@/lib/types";
+import { PROFILE_COPY, type ProfileCopy } from "@/lib/i18n/profile-copy";
+import { LANG_LABEL } from "@/lib/i18n/site";
+import { useSiteLang } from "@/lib/i18n/useSiteLang";
+import { sharePage } from "@/lib/share";
+import { ReportDialog } from "@/components/ReportDialog";
+import { REPORT_COPY } from "@/lib/i18n/report-copy";
+import type { PublicDirectoryItem, PublicLink, PublicProfile, SocialIconStyle } from "@/lib/types";
 
 function visitorId() {
   if (typeof window === "undefined") return undefined;
@@ -27,10 +33,18 @@ function visitorId() {
 export function PublicProfileView({
   initial,
   username,
+  related = [],
 }: {
   initial: PublicProfile;
   username: string;
+  related?: PublicDirectoryItem[];
 }) {
+  const siteLang = useSiteLang();
+  const lang = profileLang(initial.language, siteLang);
+  const t = PROFILE_COPY[lang];
+  const [subscribeOpen, setSubscribeOpen] = useState(false);
+  const [shareMsg, setShareMsg] = useState("");
+  const [reportOpen, setReportOpen] = useState(false);
   const [profile, setProfile] = useState(initial);
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
@@ -55,7 +69,18 @@ export function PublicProfileView({
     return { ...defaults, ...profile.theme_json };
   }, [profile.theme_json]);
 
-  const blocks = useMemo(() => buildLinkBlocks(profile.links), [profile.links]);
+  useEffect(() => {
+    if (initial.language) document.documentElement.lang = LANG_LABEL[initial.language].html;
+  }, [initial.language]);
+
+  useEffect(() => {
+    if (!subscribeOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSubscribeOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [subscribeOpen]);
+
+  const blocks = useMemo(() => buildLinkBlocks(profile.links, profile.sections), [profile.links, profile.sections]);
 
   useEffect(() => {
     const href = googleFontsHref(theme.font_family);
@@ -87,24 +112,28 @@ export function PublicProfileView({
       const next = await publicApi.getProfile(username, res.unlock_token || password);
       setProfile(next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid password");
+      setError(t.invalidPassword);
     }
   }
 
-  async function onLinkClick(linkId: string, hasLock: boolean, title: string) {
-    if (hasLock) {
-      setLockPrompt({ id: linkId, title });
-      setLinkCode("");
-      return;
-    }
-    try {
-      const res = await publicApi.click(username, linkId, {
-        referrer: document.referrer,
-        visitor_id: visitorId(),
-      });
-      window.open(res.url, "_blank", "noopener,noreferrer");
-    } catch {
-      /* ignore */
+  /** Locked links still ask for a code before revealing their URL. */
+  function onLockedClick(linkId: string, title: string) {
+    setLockPrompt({ id: linkId, title });
+    setLinkCode("");
+  }
+
+  /** Regular links are real anchors; the click is only counted, never awaited. */
+  function onLinkClick(linkId: string) {
+    publicApi
+      .click(username, linkId, { referrer: document.referrer, visitor_id: visitorId() })
+      .catch(() => {});
+  }
+
+  async function onShare() {
+    const result = await sharePage(username, profile.display_name);
+    if (result === "copied") {
+      setShareMsg(t.copied);
+      window.setTimeout(() => setShareMsg(""), 2200);
     }
   }
 
@@ -120,7 +149,7 @@ export function PublicProfileView({
       setLockPrompt(null);
       window.open(res.url, "_blank", "noopener,noreferrer");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid code");
+      setError(t.invalidCode);
     }
   }
 
@@ -130,16 +159,16 @@ export function PublicProfileView({
     if (profile.show_email_capture && email.trim()) body.email = email.trim();
     if (profile.show_phone_capture && phone.trim()) body.phone = phone.trim();
     if (!body.email && !body.phone) {
-      setSubMsg("Add an email or phone number.");
+      setSubMsg(t.addEmailOrPhone);
       return;
     }
     try {
       await publicApi.subscribe(username, body);
-      setSubMsg("Thanks for subscribing!");
+      setSubMsg(t.thanks);
       setEmail("");
       setPhone("");
     } catch (err) {
-      setSubMsg(err instanceof Error ? err.message : "Failed");
+      setSubMsg(err instanceof Error && err.message ? err.message : t.failed);
     }
   }
 
@@ -171,11 +200,44 @@ export function PublicProfileView({
         )}
 
       <div className="mx-auto flex w-full max-w-md flex-col items-center">
+        <div className="mb-4 flex w-full items-center justify-end gap-2">
+          {shareMsg && (
+            <span role="status" className="text-xs opacity-80">
+              {shareMsg}
+            </span>
+          )}
+          {!profile.is_locked && showLeadForm && (
+            <button
+              type="button"
+              onClick={() => setSubscribeOpen(true)}
+              className="rounded-full bg-white/15 px-3.5 py-2 text-xs font-semibold backdrop-blur transition hover:bg-white/25"
+            >
+              {t.subscribe}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onShare}
+            aria-label={t.share}
+            title={t.share}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 backdrop-blur transition hover:bg-white/25"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path
+                d="M12 15V3m0 0L8 7m4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
         {profile.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={profile.avatar_url}
-            alt=""
+            alt={t.avatarAlt(profile.display_name)}
             className="h-24 w-24 rounded-full object-cover ring-2 ring-white/30"
           />
         ) : (
@@ -187,9 +249,9 @@ export function PublicProfileView({
           <span>{profile.display_name}</span>
           {profile.is_verified && (
             <span
-              title="Verified"
+              title={t.verified}
               className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-sky-500 text-white shadow"
-              aria-label="Verified"
+              aria-label={t.verified}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
                 <path
@@ -218,8 +280,9 @@ export function PublicProfileView({
                   key={`${s.platform}-${s.url}`}
                   href={s.url}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   title={s.platform}
+                  aria-label={`${profile.display_name} — ${s.platform}`}
                   className="transition hover:scale-110"
                 >
                   <LinkVisual
@@ -237,12 +300,12 @@ export function PublicProfileView({
 
         {profile.is_locked ? (
           <form onSubmit={unlockProfile} className="mt-10 w-full space-y-3">
-            <p className="text-center text-sm opacity-80">This page is locked</p>
+            <p className="text-center text-sm opacity-80">{t.locked}</p>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
+              placeholder={t.password}
               className="w-full rounded-xl border-0 px-4 py-3 text-ink outline-none"
               required
             />
@@ -256,7 +319,7 @@ export function PublicProfileView({
                 borderRadius: buttonRadius(theme.button_style),
               }}
             >
-              Unlock
+              {t.unlock}
             </button>
           </form>
         ) : (
@@ -268,15 +331,17 @@ export function PublicProfileView({
                     key={block.link.id}
                     link={block.link}
                     theme={theme}
+                    t={t}
                     onClick={onLinkClick}
+                    onLockedClick={onLockedClick}
                   />
                 );
               }
               return (
-                <div key={`c-${block.name}`} className="space-y-2">
-                  <p className="px-1 text-xs font-semibold uppercase tracking-wide opacity-70">
-                    {block.name}
-                  </p>
+                <section key={`s-${block.id}`} aria-label={block.title} className="space-y-2">
+                  <h2 className="px-1 text-xs font-semibold uppercase tracking-wide opacity-70">
+                    {block.title}
+                  </h2>
                   <div className={block.layout === "grid" ? "grid grid-cols-2 gap-2" : "space-y-2"}>
                     {block.links.map((link) => (
                       <ProfileLinkItem
@@ -284,11 +349,13 @@ export function PublicProfileView({
                         link={link}
                         theme={theme}
                         compact={block.layout === "grid"}
+                        t={t}
                         onClick={onLinkClick}
+                        onLockedClick={onLockedClick}
                       />
                     ))}
                   </div>
-                </div>
+                </section>
               );
             })}
 
@@ -299,7 +366,7 @@ export function PublicProfileView({
                     key={product.id}
                     href={product.checkout_url}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="flex w-full items-center gap-3 overflow-hidden px-3 py-3 text-left shadow-lg shadow-black/10 transition hover:scale-[1.01]"
                     style={{
                       background: theme.button_color,
@@ -337,7 +404,7 @@ export function PublicProfileView({
               <a
                 href={profile.tip_jar_url}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="flex w-full items-center justify-center gap-2 px-4 py-3 text-sm font-bold shadow-lg shadow-black/10 transition hover:scale-[1.01]"
                 style={{
                   background: theme.button_color,
@@ -346,50 +413,58 @@ export function PublicProfileView({
                 }}
               >
                 <span aria-hidden>♡</span>
-                {profile.tip_jar_label || "Tip me"}
+                {profile.tip_jar_label && profile.tip_jar_label !== "Tip me" ? profile.tip_jar_label : t.tipDefault}
               </a>
             )}
 
-            {showLeadForm && (
-              <form onSubmit={subscribe} className="mt-6 space-y-2">
-                <p className="text-center text-xs opacity-70">Get updates</p>
-                {profile.show_email_capture && (
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@email.com"
-                    className="w-full rounded-xl border-0 px-3 py-2.5 text-sm text-ink outline-none"
-                    required={!profile.show_phone_capture}
-                  />
-                )}
-                {profile.show_phone_capture && (
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+54 9 11 1234 5678"
-                    className="w-full rounded-xl border-0 px-3 py-2.5 text-sm text-ink outline-none"
-                    required={!profile.show_email_capture}
-                  />
-                )}
-                <button
-                  type="submit"
-                  className="w-full rounded-xl px-4 py-2.5 text-sm font-semibold"
-                  style={{ background: theme.button_color, color: theme.button_text_color }}
-                >
-                  Join
-                </button>
-                {subMsg && <p className="text-center text-xs opacity-80">{subMsg}</p>}
-              </form>
-            )}
           </div>
+        )}
+
+        {!profile.is_locked && (
+          <AboutAccount profile={profile} t={t} lang={lang} />
+        )}
+
+        {related.length > 0 && !profile.is_locked && (
+          <nav aria-label={t.discoverTitle} className="mt-8 w-full">
+            <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wide opacity-70">
+              {t.discoverTitle}
+            </p>
+            <ul className="grid grid-cols-2 gap-2">
+              {related.map((p) => (
+                <li key={p.username}>
+                  <a
+                    href={`/${p.username}`}
+                    className="flex items-center gap-2 rounded-2xl bg-white/10 px-3 py-2 transition hover:bg-white/20"
+                  >
+                    {p.avatar_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={p.avatar_url}
+                        alt=""
+                        loading="lazy"
+                        className="h-8 w-8 shrink-0 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold">
+                        {p.display_name.slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                    <span className="min-w-0 truncate text-xs font-semibold">{p.display_name}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
         )}
 
         <p className="mt-10 text-center text-xs opacity-55">
           <a href="/" className="hover:opacity-90">
-            Made with Bitlink
+            {t.madeWith}
           </a>
+          <span aria-hidden> · </span>
+          <button type="button" onClick={() => setReportOpen(true)} className="hover:opacity-90">
+            {REPORT_COPY[lang].action}
+          </button>
         </p>
       </div>
 
@@ -413,30 +488,96 @@ export function PublicProfileView({
             className="inline-flex w-full items-center justify-center gap-2.5 rounded-full bg-white px-5 py-3 text-sm font-bold text-ink shadow-[0_-4px_24px_rgba(0,0,0,0.18)] ring-1 ring-black/5 transition hover:scale-[1.01] hover:bg-white"
           >
             <BitlinkLogo mark href={null} height={22} className="shrink-0" />
-            Create your Bitlink — free
+            {t.createCta}
           </a>
         </div>
       </div>
 
+      {reportOpen && (
+        <ReportDialog
+          lang={lang}
+          username={username}
+          links={profile.links
+            .filter((l) => l.link_type !== "header" && l.url)
+            .map((l) => ({ id: l.id, title: l.title }))}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
+
+      {subscribeOpen && showLeadForm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={(e) => e.target === e.currentTarget && setSubscribeOpen(false)}
+        >
+          <form
+            onSubmit={subscribe}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t.getUpdates}
+            className="w-full max-w-sm space-y-3 rounded-2xl bg-white p-5 text-ink"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-lg font-semibold">{t.getUpdates}</h2>
+              <button
+                type="button"
+                onClick={() => setSubscribeOpen(false)}
+                aria-label={t.close}
+                className="px-2 text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            {profile.show_email_capture && (
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t.emailPlaceholder}
+                className="w-full rounded-xl border border-ink/10 px-3 py-2.5 text-sm"
+                required={!profile.show_phone_capture}
+                autoFocus
+              />
+            )}
+            {profile.show_phone_capture && (
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder={t.phonePlaceholder}
+                className="w-full rounded-xl border border-ink/10 px-3 py-2.5 text-sm"
+                required={!profile.show_email_capture}
+              />
+            )}
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white"
+            >
+              {t.join}
+            </button>
+            {subMsg && <p role="status" className="text-center text-xs opacity-80">{subMsg}</p>}
+          </form>
+        </div>
+      )}
+
       {lockPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <form onSubmit={unlockLink} className="w-full max-w-sm space-y-3 rounded-2xl bg-white p-5 text-ink">
-            <h3 className="font-display text-lg font-semibold">Unlock “{lockPrompt.title}”</h3>
+            <h3 className="font-display text-lg font-semibold">{t.unlockLink(lockPrompt.title)}</h3>
             <input
               type="password"
               value={linkCode}
               onChange={(e) => setLinkCode(e.target.value)}
-              placeholder="Enter code"
+              placeholder={t.enterCode}
               className="w-full rounded-xl border border-ink/10 px-3 py-2"
               required
             />
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setLockPrompt(null)} className="px-3 py-2 text-sm">
-                Cancel
+                {t.cancel}
               </button>
               <button type="submit" className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white">
-                Open
+                {t.open}
               </button>
             </div>
           </form>
@@ -450,7 +591,9 @@ function ProfileLinkItem({
   link,
   theme,
   compact,
+  t,
   onClick,
+  onLockedClick,
 }: {
   link: PublicLink;
   theme: {
@@ -459,7 +602,9 @@ function ProfileLinkItem({
     button_style: string;
   };
   compact?: boolean;
-  onClick: (id: string, hasLock: boolean, title: string) => void;
+  t: ProfileCopy;
+  onClick: (id: string) => void;
+  onLockedClick: (id: string, title: string) => void;
 }) {
   const type = link.link_type || "url";
 
@@ -497,34 +642,109 @@ function ProfileLinkItem({
     );
   }
 
+  const className = `flex w-full items-center gap-3 text-left font-semibold shadow-lg shadow-black/10 transition hover:scale-[1.01] ${animationClass(link.animation)} ${
+    compact
+      ? "min-h-[64px] flex-col justify-center px-3 py-3 text-xs"
+      : link.is_featured
+        ? "min-h-[72px] px-4 py-4 text-base ring-2 ring-white/55"
+        : "px-4 py-3 text-sm"
+  }`;
+  const style = {
+    background: theme.button_color,
+    color: theme.button_text_color,
+    borderRadius: buttonRadius(theme.button_style),
+  };
+  const content = (
+    <>
+      <LinkVisual
+        url={link.url}
+        icon={link.icon}
+        thumbnailUrl={link.thumbnail_url}
+        featured={link.is_featured}
+        size={compact ? "md" : link.is_featured ? "lg" : "sm"}
+      />
+      <span className={compact ? "text-center" : "flex-1 text-center"}>{link.title}</span>
+      {link.has_lock && (
+        <span className="text-xs opacity-60" role="img" aria-label={t.lockedAria}>
+          🔒
+        </span>
+      )}
+    </>
+  );
+
+  // Real anchors: crawlable, middle-click / long-press friendly and never popup-blocked.
+  if (link.url && !link.has_lock) {
+    const external = /^https?:\/\//i.test(link.url);
+    return (
+      <a
+        href={link.url}
+        {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+        onClick={() => onClick(link.id)}
+        onAuxClick={() => onClick(link.id)}
+        className={className}
+        style={style}
+      >
+        {content}
+      </a>
+    );
+  }
+
   return (
     <button
       type="button"
-      onClick={() => onClick(link.id, link.has_lock, link.title)}
-      className={`flex w-full items-center gap-3 text-left font-semibold shadow-lg shadow-black/10 transition hover:scale-[1.01] ${animationClass(link.animation)} ${
-        compact
-          ? "min-h-[64px] flex-col justify-center px-3 py-3 text-xs"
-          : link.is_featured
-            ? "min-h-[72px] px-4 py-4 text-base ring-2 ring-white/55"
-            : "px-4 py-3 text-sm"
-      }`}
-      style={{
-        background: theme.button_color,
-        color: theme.button_text_color,
-        borderRadius: buttonRadius(theme.button_style),
-      }}
+      onClick={() => onLockedClick(link.id, link.title)}
+      className={className}
+      style={style}
     >
-      {!compact && (
-        <LinkVisual
-          url={link.url}
-          icon={link.icon}
-          thumbnailUrl={link.thumbnail_url}
-          featured={link.is_featured}
-          size={link.is_featured ? "lg" : "sm"}
-        />
-      )}
-      <span className={compact ? "text-center" : "flex-1 text-center"}>{link.title}</span>
-      {link.has_lock && <span className="text-xs opacity-60">🔒</span>}
+      {content}
     </button>
+  );
+}
+
+function profileLang(lang: PublicProfile["language"], fallback: keyof typeof PROFILE_COPY) {
+  return lang ?? fallback;
+}
+
+function AboutAccount({
+  profile,
+  t,
+  lang,
+}: {
+  profile: PublicProfile;
+  t: ProfileCopy;
+  lang: keyof typeof PROFILE_COPY;
+}) {
+  const links = profile.links.filter((l) => l.link_type !== "header");
+  const joined = profile.created_at
+    ? new Date(profile.created_at).toLocaleDateString(LANG_LABEL[lang].html, {
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      })
+    : null;
+  if (!joined && !links.length && !profile.social_links.length) return null;
+  return (
+    <details className="mt-8 w-full rounded-2xl bg-white/10 px-4 py-3 text-xs">
+      <summary className="cursor-pointer font-semibold">{t.aboutTitle}</summary>
+      <div className="mt-2 space-y-2 opacity-85">
+        {joined && <p>{t.aboutText(profile.display_name, joined)}</p>}
+        {profile.social_links.length > 0 && (
+          <p>
+            <span className="font-semibold">{t.aboutSocials}: </span>
+            {profile.social_links.map((s) => s.platform).join(", ")}
+          </p>
+        )}
+        {links.length > 0 && (
+          <div>
+            <p className="font-semibold">{t.aboutLinks}:</p>
+            <ul className="list-disc pl-4">
+              {links.map((l) => (
+                <li key={l.id}>{l.title}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </details>
   );
 }

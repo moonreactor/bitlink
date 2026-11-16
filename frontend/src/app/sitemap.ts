@@ -13,8 +13,9 @@ import {
 } from "@/lib/content";
 import { aboutPath, homePath, shortenerPath, SITE_LANGS, LANG_LABEL } from "@/lib/i18n/site";
 import { siteUrl } from "@/lib/site";
+import { fetchDirectory } from "@/lib/publicProfile";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const WEB = siteUrl();
   const abs = (p: string) => `${WEB}${p}`;
   const alt = (paths: Partial<Record<Lang, string>>) => ({
@@ -87,5 +88,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }
 
   entries.push({ url: abs("/register"), changeFrequency: "yearly", priority: 0.5 });
+  // Opt-in public profiles (discoverable and not password-locked).
+  for (const p of await fetchDirectory(5000)) {
+    entries.push({
+      url: abs(`/${p.username}`),
+      lastModified: p.updated_at,
+      changeFrequency: "weekly",
+      priority: 0.5,
+    });
+  }
+
   return entries;
 }

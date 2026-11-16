@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BitlinkLogo } from "@/components/BitlinkLogo";
 import { LANDING } from "@/lib/i18n/landing-copy";
+import { REPORT_COPY } from "@/lib/i18n/report-copy";
 import { aboutPath, homeAnchor, homePath, shortenerPath, type SiteLang } from "@/lib/i18n/site";
 
 type Column = { title: string; links: { href: string; label: string }[] };
@@ -126,6 +127,10 @@ export function SiteFooter({ lang = "en" }: { lang?: SiteLang }) {
         {f.notBitly}{" "}
         <Link href={`${aboutPath(lang)}#bitlink-vs-bitly`} className="underline underline-offset-2 hover:text-white">
           {f.about}
+        </Link>
+        {" · "}
+        <Link href="/report" className="underline underline-offset-2 hover:text-white">
+          {REPORT_COPY[lang].pageTitle}
         </Link>
       </p>
     </footer>

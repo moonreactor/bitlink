@@ -1,4 +1,8 @@
 import type {
+  AdminReportItem,
+  AdminReportListResponse,
+  ReportReason,
+  ReportStatus,
   AdminLinkListResponse,
   AdminMetrics,
   AdminUserDetail,
@@ -7,6 +11,7 @@ import type {
   AuthUser,
   DomainInfo,
   LinkItem,
+  LinkSection,
   ProductItem,
   Profile,
   PublicProfile,
@@ -158,6 +163,7 @@ export const authApi = {
     username: string;
     display_name: string;
     referred_by_username?: string | null;
+    language?: string | null;
   }) => request<TokenResponse>("/auth/register", { method: "POST", body: JSON.stringify(body) }),
   login: (body: { email: string; password: string }) =>
     request<TokenResponse>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
@@ -211,6 +217,24 @@ export const adminApi = {
     const qs = sp.toString();
     return request<AdminLinkListResponse>(`/admin/links${qs ? `?${qs}` : ""}`, {}, token);
   },
+  reports: (token: string, params?: { status?: ReportStatus; page?: number; page_size?: number }) => {
+    const sp = new URLSearchParams();
+    if (params?.status) sp.set("status", params.status);
+    if (params?.page) sp.set("page", String(params.page));
+    if (params?.page_size) sp.set("page_size", String(params.page_size));
+    const qs = sp.toString();
+    return request<AdminReportListResponse>(`/admin/reports${qs ? `?${qs}` : ""}`, {}, token);
+  },
+  updateReport: (
+    token: string,
+    id: string,
+    body: { status: ReportStatus; resolution_note?: string; disable_target?: boolean },
+  ) =>
+    request<AdminReportItem>(
+      `/admin/reports/${id}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+      token,
+    ),
 };
 
 export const profileApi = {
@@ -239,6 +263,27 @@ export const linksApi = {
     request<void>(`/me/links/${id}`, { method: "DELETE" }, token),
   reorder: (token: string, items: { id: string; position: number }[]) =>
     request<LinkItem[]>("/me/links/reorder", { method: "PUT", body: JSON.stringify({ items }) }, token),
+};
+
+export type LayoutBlock =
+  | { type: "link"; id: string }
+  | { type: "section"; id: string; link_ids: string[] };
+
+export const sectionsApi = {
+  list: (token: string) => request<LinkSection[]>("/me/sections", {}, token),
+  create: (token: string, body: { title: string; layout: "list" | "grid" }) =>
+    request<LinkSection>("/me/sections", { method: "POST", body: JSON.stringify(body) }, token),
+  update: (token: string, id: string, body: { title?: string; layout?: "list" | "grid" }) =>
+    request<LinkSection>(`/me/sections/${id}`, { method: "PATCH", body: JSON.stringify(body) }, token),
+  remove: (token: string, id: string) =>
+    request<void>(`/me/sections/${id}`, { method: "DELETE" }, token),
+  /** Save the whole page order: sections, loose links and the links inside each section. */
+  saveLayout: (token: string, blocks: LayoutBlock[]) =>
+    request<{ sections: LinkSection[]; links: LinkItem[] }>(
+      "/me/layout",
+      { method: "PUT", body: JSON.stringify({ blocks }) },
+      token,
+    ),
 };
 
 export const socialApi = {
@@ -329,6 +374,13 @@ export const productsApi = {
 };
 
 export const publicApi = {
+  report: (body: {
+    reason: ReportReason;
+    details?: string;
+    username?: string;
+    link_id?: string;
+    short_code?: string;
+  }) => request<void>("/public/reports", { method: "POST", body: JSON.stringify(body) }),
   createShortLink: (destination_url: string, source?: string) =>
     request<{ code: string; short_url: string; destination_url: string; claim_token: string }>(
       "/public/short-links",

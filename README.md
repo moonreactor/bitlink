@@ -42,6 +42,7 @@ API docs: https://bitlink-production.up.railway.app/docs
 | `make migrate` | Run Alembic migrations |
 | `make shell-api` | Shell into API container |
 | `make shell-db` | `psql` into Postgres |
+| `make test` | Backend tests (SQLite, no Docker; `pip install -r backend/requirements-dev.txt` first) |
 
 ## Superuser admin
 
@@ -60,7 +61,8 @@ UPDATE users SET is_superuser = true WHERE email = 'you@example.com';
 - Auth (register / login / refresh / forgot & reset password)
 - Public profile at `/{username}` with Open Graph previews
 - Unlimited links with reorder, featured, scheduling, thumbnails
-- Link types: URL, YouTube/Spotify embeds, headers, contact + collections (list/grid)
+- Link types: URL, YouTube/Spotify embeds, contact
+- Sections: titled groups of links, reorderable (drag or ↑ ↓), shown as list or grid (`/api/v1/me/sections`, `PUT /me/layout`)
 - Media uploads (avatar, thumbnails, backgrounds)
 - Themes, fonts & appearance
 - Analytics with date ranges, daily chart, countries + CSV export
@@ -72,3 +74,7 @@ UPDATE users SET is_superuser = true WHERE email = 'you@example.com';
 - Profile products/offers with external checkout URLs
 - Always-visible “Create your Bitlink” CTA on public pages
 - Superuser admin area (`/admin`) with referral sources from “Create your Bitlink” CTA
+- Public page in EN/ES/PT: per-page language (or the visitor’s), share button, subscribe modal, real `<a href>` links
+- Profile SEO: `ProfilePage` JSON-LD, canonical URL, generated OG image, “About this account” text
+- Opt-in directory: pages that choose to be listed join the sitemap and cross-link to each other (`/api/v1/public/directory`)
+- Signup language becomes the default language of the new public page

@@ -105,6 +105,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
               username,
               display_name: displayName || username,
               referred_by_username: referredBy || undefined,
+              language: lang,
             });
       setTokens(tokens.access_token, tokens.refresh_token);
       try {

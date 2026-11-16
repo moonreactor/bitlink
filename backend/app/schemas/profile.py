@@ -66,6 +66,9 @@ class ProfileUpdate(BaseModel):
     clear_profile_password: bool | None = None
     redirect_link_id: UUID | None = None
     clear_redirect: bool | None = None
+    language: str | None = None
+    clear_language: bool | None = None
+    discoverable: bool | None = None
 
     @field_validator("username")
     @classmethod
@@ -75,6 +78,18 @@ class ProfileUpdate(BaseModel):
         v = v.lower().strip()
         if not USERNAME_RE.match(v):
             raise ValueError("Username must be 3-30 chars: lowercase letters, numbers, underscore")
+        return v
+
+    @field_validator("language")
+    @classmethod
+    def validate_language(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip().lower()
+        if not v:
+            return None
+        if v not in {"en", "es", "pt"}:
+            raise ValueError("Language must be en, es or pt")
         return v
 
     @field_validator("background_music_url")
@@ -166,6 +181,8 @@ class ProfileOut(BaseModel):
     custom_domain: str | None = None
     custom_domain_verified: bool = False
     custom_domain_verify_token: str | None = None
+    language: str | None = None
+    discoverable: bool = False
     created_at: datetime
     updated_at: datetime
 

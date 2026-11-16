@@ -9,9 +9,11 @@ from app.core.deps import get_current_user
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.models.link import Link
+from app.models.link_section import LinkSection
 from app.models.user import User
 from app.schemas.link import LinkCreate, LinkOut, LinkReorderRequest, LinkUpdate
 from app.services.embeds import prepare_link_url
+from app.services.link_layout import next_section_link_position, next_top_position
 from app.services.link_meta import fetch_link_meta
 
 router = APIRouter(prefix="/me/links", tags=["links"])
@@ -24,14 +26,33 @@ class LinkMetaOut(BaseModel):
     domain: str | None = None
 
 
+def _owned_section(db: Session, profile_id, section_id) -> LinkSection:
+    section = (
+        db.query(LinkSection)
+        .filter(LinkSection.id == section_id, LinkSection.profile_id == profile_id)
+        .first()
+    )
+    if section is None:
+        raise HTTPException(status_code=404, detail="Section not found")
+    return section
+
+
+def _end_position(db: Session, profile_id, section_id) -> int:
+    """Next position at the end of a section, or at the end of the page when `section_id` is None."""
+    links = db.query(Link).filter(Link.profile_id == profile_id).all()
+    if section_id is not None:
+        return next_section_link_position(links, section_id)
+    sections = db.query(LinkSection).filter(LinkSection.profile_id == profile_id).all()
+    return next_top_position(links, sections)
+
+
 def _link_out(link: Link) -> LinkOut:
     return LinkOut(
         id=link.id,
         title=link.title,
         url=link.url,
         link_type=link.link_type or "url",
-        collection=link.collection,
-        collection_layout=link.collection_layout or "list",
+        section_id=link.section_id,
         thumbnail_url=link.thumbnail_url,
         icon=link.icon,
         animation=link.animation or "none",
@@ -81,13 +102,9 @@ def create_link(
     db: Session = Depends(get_db),
 ) -> LinkOut:
     profile = get_user_profile(db, current_user)
-    max_pos = (
-        db.query(Link.position)
-        .filter(Link.profile_id == profile.id)
-        .order_by(Link.position.desc())
-        .first()
-    )
-    position = (max_pos[0] + 1) if max_pos else 0
+    if payload.section_id is not None:
+        _owned_section(db, profile.id, payload.section_id)
+    position = _end_position(db, profile.id, payload.section_id)
 
     try:
         url = prepare_link_url(payload.link_type, payload.url, payload.title)
@@ -99,8 +116,7 @@ def create_link(
         title=payload.title,
         url=url,
         link_type=payload.link_type,
-        collection=payload.collection,
-        collection_layout=payload.collection_layout,
+        section_id=payload.section_id,
         thumbnail_url=payload.thumbnail_url,
         icon=payload.icon,
         animation=payload.animation,
@@ -142,16 +158,17 @@ def update_link(
         "is_active",
         "is_featured",
         "link_type",
-        "collection_layout",
     ):
         if field in data:
             setattr(link, field, data[field])
 
-    if data.get("clear_collection"):
-        link.collection = None
-    elif "collection" in data:
-        value = data["collection"]
-        link.collection = value.strip() if isinstance(value, str) and value.strip() else None
+    if "section_id" in data and data["section_id"] != link.section_id:
+        target = data["section_id"]
+        if target is not None:
+            _owned_section(db, profile.id, target)
+        # Moving between containers: land at the end of the new one.
+        link.position = _end_position(db, profile.id, target)
+        link.section_id = target
 
     if data.get("clear_thumbnail"):
         link.thumbnail_url = None

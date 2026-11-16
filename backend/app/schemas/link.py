@@ -18,15 +18,13 @@ ALLOWED_ANIMATIONS = {
 }
 
 ALLOWED_LINK_TYPES = {"url", "youtube", "spotify", "header", "contact"}
-ALLOWED_COLLECTION_LAYOUTS = {"list", "grid"}
 
 
 class LinkCreate(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     url: str | None = Field(default=None, max_length=2000)
     link_type: str = "url"
-    collection: str | None = Field(default=None, max_length=80)
-    collection_layout: str = "list"
+    section_id: UUID | None = None
     thumbnail_url: str | None = None
     icon: str | None = Field(default=None, max_length=32)
     animation: str = "none"
@@ -43,22 +41,6 @@ class LinkCreate(BaseModel):
         if v not in ALLOWED_LINK_TYPES:
             raise ValueError(f"Invalid link type. Allowed: {', '.join(sorted(ALLOWED_LINK_TYPES))}")
         return v
-
-    @field_validator("collection_layout")
-    @classmethod
-    def validate_layout(cls, v: str) -> str:
-        v = (v or "list").lower().strip()
-        if v not in ALLOWED_COLLECTION_LAYOUTS:
-            raise ValueError("collection_layout must be list or grid")
-        return v
-
-    @field_validator("collection")
-    @classmethod
-    def validate_collection(cls, v: str | None) -> str | None:
-        if v is None:
-            return None
-        v = v.strip()
-        return v or None
 
     @field_validator("animation")
     @classmethod
@@ -81,9 +63,8 @@ class LinkUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=120)
     url: str | None = Field(default=None, max_length=2000)
     link_type: str | None = None
-    collection: str | None = None
-    clear_collection: bool | None = None
-    collection_layout: str | None = None
+    # Send null to take the link out of its section.
+    section_id: UUID | None = None
     thumbnail_url: str | None = None
     icon: str | None = Field(default=None, max_length=32)
     clear_icon: bool | None = None
@@ -105,16 +86,6 @@ class LinkUpdate(BaseModel):
         v = v.lower().strip()
         if v not in ALLOWED_LINK_TYPES:
             raise ValueError(f"Invalid link type. Allowed: {', '.join(sorted(ALLOWED_LINK_TYPES))}")
-        return v
-
-    @field_validator("collection_layout")
-    @classmethod
-    def validate_layout(cls, v: str | None) -> str | None:
-        if v is None:
-            return v
-        v = v.lower().strip()
-        if v not in ALLOWED_COLLECTION_LAYOUTS:
-            raise ValueError("collection_layout must be list or grid")
         return v
 
     @field_validator("animation")
@@ -142,8 +113,7 @@ class LinkOut(BaseModel):
     title: str
     url: str
     link_type: str
-    collection: str | None
-    collection_layout: str
+    section_id: UUID | None = None
     thumbnail_url: str | None
     icon: str | None
     animation: str
@@ -164,8 +134,7 @@ class PublicLinkOut(BaseModel):
     title: str
     url: str | None
     link_type: str = "url"
-    collection: str | None = None
-    collection_layout: str = "list"
+    section_id: UUID | None = None
     thumbnail_url: str | None
     icon: str | None
     animation: str
