@@ -214,3 +214,57 @@ export function articleLd(article: Article) {
 
   return { "@context": "https://schema.org", "@graph": [organizationLd(), ...ld] };
 }
+
+/** ProfilePage + Person for a public profile, with its social profiles as `sameAs`. */
+export function profilePageLd(profile: {
+  username: string;
+  display_name: string;
+  bio: string | null;
+  avatar_url: string | null;
+  social_links: { url: string }[];
+  language: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}) {
+  const url = `${WEB}/${profile.username}`;
+  const image = profile.avatar_url
+    ? profile.avatar_url.startsWith("http")
+      ? profile.avatar_url
+      : `${WEB}${profile.avatar_url}`
+    : `${url}/opengraph-image`;
+  const person: Record<string, unknown> = {
+    "@type": "Person",
+    "@id": `${url}#person`,
+    name: profile.display_name,
+    alternateName: `@${profile.username}`,
+    identifier: profile.username,
+    url,
+    image,
+    ...(profile.bio ? { description: profile.bio } : {}),
+    ...(profile.social_links.length ? { sameAs: profile.social_links.map((s) => s.url) } : {}),
+  };
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "ProfilePage",
+        "@id": url,
+        url,
+        name: profile.display_name,
+        inLanguage: profile.language === "pt" ? "pt-BR" : profile.language || "en",
+        ...(profile.created_at ? { dateCreated: profile.created_at } : {}),
+        ...(profile.updated_at ? { dateModified: profile.updated_at } : {}),
+        isPartOf: { "@id": SITE_ID },
+        mainEntity: { "@id": `${url}#person` },
+      },
+      person,
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Bitlink", item: WEB },
+          { "@type": "ListItem", position: 2, name: profile.display_name, item: url },
+        ],
+      },
+    ],
+  };
+}

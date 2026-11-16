@@ -158,6 +158,7 @@ export const authApi = {
     username: string;
     display_name: string;
     referred_by_username?: string | null;
+    language?: string | null;
   }) => request<TokenResponse>("/auth/register", { method: "POST", body: JSON.stringify(body) }),
   login: (body: { email: string; password: string }) =>
     request<TokenResponse>("/auth/login", { method: "POST", body: JSON.stringify(body) }),

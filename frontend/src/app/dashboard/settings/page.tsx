@@ -77,7 +77,10 @@ export default function SettingsPage() {
       background_music_url: profile.background_music_url,
       background_music_enabled: profile.background_music_enabled,
       redirect_link_id: profile.redirect_link_id,
+      language: profile.language,
+      discoverable: profile.discoverable,
     };
+    if (!profile.language) body.clear_language = true;
     if (!profile.redirect_link_id) body.clear_redirect = true;
     if (!profile.background_music_url) body.clear_background_music = true;
     if (!profile.google_analytics_id) body.clear_google_analytics_id = true;
@@ -258,6 +261,39 @@ export default function SettingsPage() {
             onChange={(e) => setProfile({ ...profile, show_phone_capture: e.target.checked })}
           />
           Show phone capture on public page
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block font-medium">Page language</span>
+          <select
+            className="w-full rounded-xl border border-meetup-border px-3 py-2"
+            value={profile.language || ""}
+            onChange={(e) =>
+              setProfile({ ...profile, language: (e.target.value || null) as Profile["language"] })
+            }
+          >
+            <option value="">Automatic (visitor&apos;s language)</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
+            <option value="pt">Português</option>
+          </select>
+          <span className="mt-1 block text-xs text-meetup-muted">
+            Language of the buttons and messages on your public page.
+          </span>
+        </label>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={profile.discoverable}
+            onChange={(e) => setProfile({ ...profile, discoverable: e.target.checked })}
+          />
+          <span>
+            List my page in the Bitlink directory
+            <span className="block text-xs text-meetup-muted">
+              Adds your page to the sitemap and shows other listed pages on yours (and yours on theirs).
+              Locked pages are never listed.
+            </span>
+          </span>
         </label>
         <p className="text-xs text-meetup-muted">
           The “Create your Bitlink” CTA always appears on your public page and can’t be turned off.

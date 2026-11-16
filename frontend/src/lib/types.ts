@@ -47,6 +47,8 @@ export type Profile = {
   custom_domain: string | null;
   custom_domain_verified: boolean;
   custom_domain_verify_token: string | null;
+  language: "en" | "es" | "pt" | null;
+  discoverable: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -154,6 +156,20 @@ export type PublicProfile = {
   links: PublicLink[];
   social_links: SocialLink[];
   products: PublicProduct[];
+  language: "en" | "es" | "pt" | null;
+  discoverable: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type PublicDirectoryItem = {
+  username: string;
+  display_name: string;
+  bio: string | null;
+  avatar_url: string | null;
+  language: "en" | "es" | "pt" | null;
+  is_verified: boolean;
+  updated_at: string;
 };
 
 export type AnalyticsSummary = {
