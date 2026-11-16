@@ -76,6 +76,12 @@ class Profile(Base):
         foreign_keys="Link.profile_id",
         order_by="Link.position",
     )
+    sections = relationship(
+        "LinkSection",
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        order_by="LinkSection.position",
+    )
     social_links = relationship(
         "SocialLink",
         back_populates="profile",

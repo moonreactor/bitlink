@@ -18,8 +18,12 @@ class Link(Base):
     title: Mapped[str] = mapped_column(String(120), nullable=False)
     url: Mapped[str] = mapped_column(Text, nullable=False)
     link_type: Mapped[str] = mapped_column(String(32), default="url", nullable=False)
-    collection: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    collection_layout: Mapped[str] = mapped_column(String(16), default="list", nullable=False)
+    section_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("link_sections.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     thumbnail_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     icon: Mapped[str | None] = mapped_column(String(32), nullable=True)
     animation: Mapped[str] = mapped_column(String(32), default="none", nullable=False)

@@ -16,7 +16,19 @@ export type Theme = {
 };
 
 export type LinkType = "url" | "youtube" | "spotify" | "header" | "contact";
-export type CollectionLayout = "list" | "grid";
+export type SectionLayout = "list" | "grid";
+
+/** A titled, orderable group of links. `position` shares the page order with loose links. */
+export type LinkSection = {
+  id: string;
+  title: string;
+  layout: SectionLayout;
+  position: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PublicSection = { id: string; title: string; layout: SectionLayout };
 
 export type Profile = {
   id: string;
@@ -88,8 +100,7 @@ export type LinkItem = {
   title: string;
   url: string;
   link_type: LinkType;
-  collection: string | null;
-  collection_layout: CollectionLayout;
+  section_id: string | null;
   thumbnail_url: string | null;
   icon: string | null;
   animation: string;
@@ -115,8 +126,7 @@ export type PublicLink = {
   title: string;
   url: string | null;
   link_type: LinkType;
-  collection: string | null;
-  collection_layout: CollectionLayout;
+  section_id: string | null;
   thumbnail_url: string | null;
   icon: string | null;
   animation: string;
@@ -154,6 +164,7 @@ export type PublicProfile = {
   background_music_enabled: boolean;
   background_music_video_id: string | null;
   links: PublicLink[];
+  sections: PublicSection[];
   social_links: SocialLink[];
   products: PublicProduct[];
   language: "en" | "es" | "pt" | null;
@@ -347,4 +358,37 @@ export type ShortLinkStats = {
   countries: { label: string; count: number }[];
   devices: { label: string; count: number }[];
   referrers: { label: string; count: number }[];
+};
+
+export type ReportReason = "phishing" | "malware" | "scam" | "spam" | "adult" | "illegal" | "other";
+export type ReportStatus = "pending" | "resolved" | "dismissed";
+
+export type AdminReportItem = {
+  id: string;
+  target_type: "profile" | "link" | "short_link";
+  target_label: string;
+  target_url: string | null;
+  username: string | null;
+  owner_user_id: string | null;
+  link_id: string | null;
+  short_link_id: string | null;
+  target_active: boolean | null;
+  reason: ReportReason;
+  details: string | null;
+  status: ReportStatus;
+  resolution_note: string | null;
+  resolved_at: string | null;
+  resolved_by_email: string | null;
+  created_at: string;
+  reports_for_target: number;
+};
+
+export type AdminReportListResponse = {
+  items: AdminReportItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  pending: number;
+  resolved: number;
+  dismissed: number;
 };

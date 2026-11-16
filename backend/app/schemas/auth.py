@@ -66,6 +66,7 @@ class RegisterRequest(BaseModel):
             "es",
             "pt",
             "directory",
+            "report",
         }
         if v in reserved:
             raise ValueError("This username is reserved. Please choose another.")

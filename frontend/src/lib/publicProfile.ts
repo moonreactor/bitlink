@@ -24,6 +24,7 @@ export const RESERVED = new Set([
   "encurtador-de-links",
   "about",
   "directory",
+  "report",
   "es",
   "pt",
   "r",

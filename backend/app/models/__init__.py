@@ -1,8 +1,10 @@
 from app.models.analytics import LinkClick, PageView
 from app.models.growth import GrowthCtaClick
 from app.models.link import Link
+from app.models.link_section import LinkSection
 from app.models.product import Product
 from app.models.profile import Profile
+from app.models.report import Report
 from app.models.shortener_event import ShortenerEvent
 from app.models.short_link import ShortLink, ShortLinkClick
 from app.models.social_link import SocialLink
@@ -13,6 +15,7 @@ __all__ = [
     "User",
     "Profile",
     "Link",
+    "LinkSection",
     "SocialLink",
     "PageView",
     "LinkClick",
@@ -22,4 +25,5 @@ __all__ = [
     "Product",
     "GrowthCtaClick",
     "ShortenerEvent",
+    "Report",
 ]

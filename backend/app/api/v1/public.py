@@ -2,7 +2,7 @@ import re
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.security import verify_password
 from app.db.session import get_db
@@ -15,7 +15,9 @@ from app.schemas.analytics import ClickRequest, ClickResponse, SubscribeRequest,
 from app.schemas.link import PublicLinkOut
 from app.schemas.product import PublicProductOut
 from app.schemas.public import PublicDirectoryItem, PublicDomainResolveOut, PublicProfileOut
+from app.schemas.section import PublicSectionOut
 from app.schemas.social import SocialLinkOut
+from app.services.link_layout import public_blocks
 from app.services.analytics import detect_device, hash_visitor, normalize_referrer
 from app.services.domain import normalize_domain
 from app.services.embeds import public_embed_payload
@@ -30,6 +32,7 @@ def _get_profile(db: Session, username: str) -> Profile:
         db.query(Profile)
         .options(
             joinedload(Profile.links),
+            selectinload(Profile.sections),
             joinedload(Profile.social_links),
             joinedload(Profile.products),
         )
@@ -82,8 +85,7 @@ def _public_link(link: Link) -> PublicLinkOut:
         title=link.title,
         url=None if hide_url else link.url,
         link_type=link_type,
-        collection=link.collection,
-        collection_layout=link.collection_layout or "list",
+        section_id=link.section_id,
         thumbnail_url=link.thumbnail_url,
         icon=link.icon,
         animation=link.animation or "none",
@@ -205,8 +207,13 @@ def get_public_profile(
                 redirect_url = link.url
                 break
 
-    ordered = sorted(visible_links, key=lambda l: (0 if l.is_featured else 1, l.position))
-    public_links = [_public_link(l) for l in ordered]
+    blocks = public_blocks(visible_links, profile.sections)
+    public_links = [_public_link(l) for _, items in blocks for l in items]
+    public_sections = [
+        PublicSectionOut(id=sec.id, title=sec.title, layout=sec.layout)
+        for sec, _ in blocks
+        if sec is not None
+    ]
 
     return PublicProfileOut(
         username=profile.username,
@@ -238,6 +245,7 @@ def get_public_profile(
             else None
         ),
         links=public_links,
+        sections=public_sections,
         social_links=[
             SocialLinkOut.model_validate(s) for s in sorted(profile.social_links, key=lambda x: x.position)
         ],

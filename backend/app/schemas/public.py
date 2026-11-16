@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from app.schemas.link import PublicLinkOut
 from app.schemas.product import PublicProductOut
+from app.schemas.section import PublicSectionOut
 from app.schemas.social import SocialLinkOut
 
 
@@ -30,6 +31,7 @@ class PublicProfileOut(BaseModel):
     background_music_enabled: bool = False
     background_music_video_id: str | None = None
     links: list[PublicLinkOut]
+    sections: list[PublicSectionOut] = []
     social_links: list[SocialLinkOut]
     products: list[PublicProductOut] = []
     language: str | None = None

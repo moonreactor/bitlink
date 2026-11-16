@@ -6,6 +6,7 @@ import {
   closestCenter,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -21,18 +22,18 @@ import { LinkIconPicker } from "@/components/LinkIconPicker";
 import { LinkVisual } from "@/components/LinkVisual";
 import { MediaUploadField } from "@/components/MediaUploadField";
 import { useToast } from "@/components/Toast";
-import { linksApi } from "@/lib/api";
+import { linksApi, sectionsApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { animationClass } from "@/lib/linkAnimations";
 import { QUICK_ADD, isPrefixOnly, type QuickAddTemplate } from "@/lib/quickAdd";
 import { SocialBrandIcon, detectSocialBrand } from "@/lib/socialBrands";
-import type { CollectionLayout, LinkItem, LinkType } from "@/lib/types";
+import { buildEditorBlocks, toLayoutPayload, type EditorBlock } from "@/lib/linkBlocks";
+import type { LinkItem, LinkSection, LinkType, SectionLayout } from "@/lib/types";
 
 const LINK_TYPES: { id: LinkType; label: string }[] = [
   { id: "url", label: "Link" },
   { id: "youtube", label: "YouTube" },
   { id: "spotify", label: "Spotify" },
-  { id: "header", label: "Header" },
   { id: "contact", label: "Contact" },
 ];
 
@@ -40,8 +41,7 @@ type Draft = {
   title: string;
   url: string;
   link_type: LinkType;
-  collection: string;
-  collection_layout: CollectionLayout;
+  section_id: string | null;
   thumbnail_url: string;
   icon: string | null;
   animation: string;
@@ -54,8 +54,7 @@ const emptyDraft = (): Draft => ({
   title: "",
   url: "",
   link_type: "url",
-  collection: "",
-  collection_layout: "list",
+  section_id: null,
   thumbnail_url: "",
   icon: null,
   animation: "none",
@@ -74,6 +73,10 @@ function looksLikeUrl(value: string) {
 export function LinksEditor() {
   const { success, error: toastError } = useToast();
   const [links, setLinks] = useState<LinkItem[]>([]);
+  const [sections, setSections] = useState<LinkSection[]>([]);
+  const [sectionComposer, setSectionComposer] = useState(false);
+  const [sectionTitle, setSectionTitle] = useState("");
+  const [sectionLayout, setSectionLayout] = useState<SectionLayout>("list");
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [composerOpen, setComposerOpen] = useState(false);
   const [fetchingMeta, setFetchingMeta] = useState(false);
@@ -85,12 +88,18 @@ export function LinksEditor() {
   const formRef = useRef<HTMLFormElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
+
+  const blocks = buildEditorBlocks(links, sections);
 
   async function load() {
     const token = getAccessToken();
     if (!token) return;
-    setLinks(await linksApi.list(token));
+    const [l, s] = await Promise.all([linksApi.list(token), sectionsApi.list(token)]);
+    setLinks(l);
+    setSections(s);
     setLoaded(true);
   }
 
@@ -188,31 +197,24 @@ export function LinksEditor() {
       focusComposer(true);
       return;
     }
-    if (draft.link_type !== "header" && !draft.url.trim()) {
+    if (!draft.url.trim()) {
       toastError(draft.link_type === "contact" ? "Add an email or phone" : "Paste a link first");
-      return;
-    }
-    if (!draft.title.trim() && draft.link_type === "header") {
-      toastError("Header needs a title");
       return;
     }
     try {
       // Don't block the tap on a pending metadata fetch (blur fires it right before submit).
       metaReq.current += 1;
       setFetchingMeta(false);
-      const title =
-        draft.title.trim() ||
-        (draft.link_type === "header" ? "Section" : draft.url.trim() || "Link");
+      const title = draft.title.trim() || draft.url.trim() || "Link";
       await linksApi.create(token, {
         title,
         url: draft.url.trim() || null,
         link_type: draft.link_type,
-        collection: draft.collection.trim() || null,
-        collection_layout: draft.collection_layout,
+        section_id: draft.section_id,
         thumbnail_url: draft.thumbnail_url.trim() || null,
         icon: draft.icon,
         animation: draft.animation,
-        is_featured: draft.link_type === "header" ? false : draft.is_featured,
+        is_featured: draft.is_featured,
         visible_from: draft.visible_from,
         visible_until: draft.visible_until,
       });
@@ -237,25 +239,123 @@ export function LinksEditor() {
     setFetchingMeta(false);
   }
 
-  async function onDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = links.findIndex((l) => l.id === active.id);
-    const newIndex = links.findIndex((l) => l.id === over.id);
-    const next = arrayMove(links, oldIndex, newIndex);
-    setLinks(next);
+  /** Items can only be dropped next to items of the same container (the page, or one section). */
+  const collisionDetection: CollisionDetection = (args) => {
+    const from = args.active.data.current?.container;
+    return closestCenter({
+      ...args,
+      droppableContainers: args.droppableContainers.filter(
+        (c) => c.data.current?.container === from,
+      ),
+    });
+  };
+
+  /** Apply a new page layout locally, then persist it; reload if the server disagrees. */
+  async function commitBlocks(next: EditorBlock[]) {
+    const nextSections: LinkSection[] = [];
+    const nextLinks: LinkItem[] = [];
+    next.forEach((b, i) => {
+      if (b.kind === "link") {
+        nextLinks.push({ ...b.link, section_id: null, position: i });
+        return;
+      }
+      nextSections.push({ ...b.section, position: i });
+      b.links.forEach((l, j) => nextLinks.push({ ...l, section_id: b.section.id, position: j }));
+    });
+    setSections(nextSections);
+    setLinks(nextLinks);
     const token = getAccessToken();
     if (!token) return;
     try {
-      await linksApi.reorder(
-        token,
-        next.map((l, i) => ({ id: l.id, position: i })),
-      );
+      await sectionsApi.saveLayout(token, toLayoutPayload(next));
       success("Order updated");
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "Failed to reorder links");
+      toastError(err instanceof Error ? err.message : "Failed to reorder");
       await load();
     }
+  }
+
+  async function onDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const container = active.data.current?.container as string | undefined;
+    if (container !== over.data.current?.container) return;
+
+    if (container === "root") {
+      const ids = blocks.map((b) => (b.kind === "link" ? b.link.id : `section:${b.section.id}`));
+      const from = ids.indexOf(String(active.id));
+      const to = ids.indexOf(String(over.id));
+      if (from < 0 || to < 0) return;
+      await commitBlocks(arrayMove(blocks, from, to));
+      return;
+    }
+
+    const next = blocks.map((b) => {
+      if (b.kind !== "section" || b.section.id !== container) return b;
+      const from = b.links.findIndex((l) => l.id === active.id);
+      const to = b.links.findIndex((l) => l.id === over.id);
+      return from < 0 || to < 0 ? b : { ...b, links: arrayMove(b.links, from, to) };
+    });
+    await commitBlocks(next);
+  }
+
+  /** Move a top-level block one step (accessible alternative to dragging). */
+  async function moveBlock(index: number, delta: -1 | 1) {
+    const to = index + delta;
+    if (to < 0 || to >= blocks.length) return;
+    await commitBlocks(arrayMove(blocks, index, to));
+  }
+
+  async function createSection(e: FormEvent) {
+    e.preventDefault();
+    const token = getAccessToken();
+    const title = sectionTitle.trim();
+    if (!token || !title) return;
+    try {
+      await sectionsApi.create(token, { title, layout: sectionLayout });
+      setSectionTitle("");
+      setSectionLayout("list");
+      setSectionComposer(false);
+      await load();
+      success("Section added");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Failed to add section");
+    }
+  }
+
+  async function updateSection(id: string, patch: { title?: string; layout?: SectionLayout }) {
+    const token = getAccessToken();
+    if (!token) return;
+    try {
+      await sectionsApi.update(token, id, patch);
+      await load();
+      success("Section updated");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Failed to update section");
+      await load();
+    }
+  }
+
+  async function removeSection(section: LinkSection, count: number) {
+    const token = getAccessToken();
+    if (!token) return;
+    const msg = count
+      ? `Delete the section “${section.title}”? Its ${count} link${count === 1 ? "" : "s"} will stay on your page.`
+      : `Delete the section “${section.title}”?`;
+    if (!confirm(msg)) return;
+    try {
+      await sectionsApi.remove(token, section.id);
+      await load();
+      success("Section deleted");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Failed to delete section");
+    }
+  }
+
+  function addLinkToSection(sectionId: string) {
+    setDraft({ ...emptyDraft(), section_id: sectionId });
+    setComposerOpen(true);
+    focusComposer();
   }
 
   async function toggle(link: LinkItem, field: "is_active" | "is_featured") {
@@ -289,7 +389,6 @@ export function LinksEditor() {
     patch: Partial<LinkItem> & {
       clear_thumbnail?: boolean;
       clear_icon?: boolean;
-      clear_collection?: boolean;
     },
   ) {
     const token = getAccessToken();
@@ -297,10 +396,6 @@ export function LinksEditor() {
     const body: Record<string, unknown> = { ...patch };
     if (patch.thumbnail_url === null || patch.thumbnail_url === "") body.clear_thumbnail = true;
     if (patch.icon === null || patch.icon === "") body.clear_icon = true;
-    if (patch.clear_collection || patch.collection === null || patch.collection === "") {
-      body.clear_collection = true;
-      delete body.collection;
-    }
     try {
       await linksApi.update(token, link.id, body);
       await load();
@@ -332,7 +427,7 @@ export function LinksEditor() {
       <div>
         <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">Links</h1>
         <p className="mt-1 text-sm text-meetup-muted">
-          What people can tap on your page. Drag to reorder.
+          What people can tap on your page. Group links into sections and drag to reorder.
         </p>
       </div>
 
@@ -381,15 +476,13 @@ export function LinksEditor() {
                 }
               }}
               placeholder={
-                draft.link_type === "header"
-                  ? "Optional — headers only need a title"
-                  : draft.link_type === "contact"
-                    ? "Email or phone"
-                    : draft.link_type === "youtube"
-                      ? "YouTube URL or video id"
-                      : draft.link_type === "spotify"
-                        ? "Spotify track / playlist URL"
-                        : "Paste or type a link (https://…)"
+                draft.link_type === "contact"
+                  ? "Email or phone"
+                  : draft.link_type === "youtube"
+                    ? "YouTube URL or video id"
+                    : draft.link_type === "spotify"
+                      ? "Spotify track / playlist URL"
+                      : "Paste or type a link (https://…)"
               }
               autoComplete="url"
               className="mu-input min-h-[48px] w-full pr-24"
@@ -403,11 +496,8 @@ export function LinksEditor() {
           {!composerOpen && (
             <button
               type="button"
-              onClick={() => {
-                if (draft.link_type === "header") setComposerOpen(true);
-                else onUrlCommit();
-              }}
-              disabled={draft.link_type !== "header" && !looksLikeUrl(draft.url) && draft.link_type !== "contact"}
+              onClick={onUrlCommit}
+              disabled={!looksLikeUrl(draft.url) && draft.link_type !== "contact"}
               className="mu-btn-primary min-h-[48px] shrink-0 disabled:opacity-50"
             >
               Continue
@@ -417,6 +507,23 @@ export function LinksEditor() {
 
         {composerOpen && (
           <div className="space-y-4 rounded-meetup border border-meetup-border bg-meetup-bg/60 p-4">
+            {sections.length > 0 && (
+              <label className="block text-sm">
+                <span className="mb-1 block font-semibold text-ink">Section</span>
+                <select
+                  className="mu-input"
+                  value={draft.section_id ?? ""}
+                  onChange={(e) => setDraft({ ...draft, section_id: e.target.value || null })}
+                >
+                  <option value="">No section (loose link)</option>
+                  {sections.map((sec) => (
+                    <option key={sec.id} value={sec.id}>
+                      {sec.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <div className="flex items-start gap-3">
               <LinkVisual
                 url={draft.url}
@@ -481,41 +588,14 @@ export function LinksEditor() {
                     ))}
                   </div>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block text-sm">
-                    <span className="mb-1 block font-semibold text-ink">Collection</span>
-                    <input
-                      className="mu-input"
-                      value={draft.collection}
-                      onChange={(e) => setDraft({ ...draft, collection: e.target.value })}
-                      placeholder="e.g. Music, Shop"
-                    />
-                  </label>
-                  <label className="block text-sm">
-                    <span className="mb-1 block font-semibold text-ink">Collection layout</span>
-                    <select
-                      className="mu-input"
-                      value={draft.collection_layout}
-                      onChange={(e) =>
-                        setDraft({ ...draft, collection_layout: e.target.value as CollectionLayout })
-                      }
-                    >
-                      <option value="list">List</option>
-                      <option value="grid">Grid</option>
-                    </select>
-                  </label>
-                </div>
-
-                {draft.link_type !== "header" && (
-                  <label className="inline-flex items-center gap-2 text-sm text-meetup-muted">
-                    <input
-                      type="checkbox"
-                      checked={draft.is_featured}
-                      onChange={(e) => setDraft({ ...draft, is_featured: e.target.checked })}
-                    />
-                    Featured link
-                  </label>
-                )}
+                <label className="inline-flex items-center gap-2 text-sm text-meetup-muted">
+                  <input
+                    type="checkbox"
+                    checked={draft.is_featured}
+                    onChange={(e) => setDraft({ ...draft, is_featured: e.target.checked })}
+                  />
+                  Featured link
+                </label>
 
                 <LinkIconPicker value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
 
@@ -575,10 +655,57 @@ export function LinksEditor() {
         )}
       </form>
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={links.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-display text-lg font-bold text-ink">Your page</h2>
+        {!sectionComposer && (
+          <button type="button" onClick={() => setSectionComposer(true)} className="mu-btn-ghost">
+            + Add section
+          </button>
+        )}
+      </div>
+
+      {sectionComposer && (
+        <form onSubmit={createSection} className="mu-card space-y-3 p-4">
+          <p className="text-sm text-meetup-muted">
+            A section is a title for the links that follow, shown as a list or a grid.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <input
+              autoFocus
+              className="mu-input min-h-[44px] flex-1"
+              value={sectionTitle}
+              maxLength={80}
+              onChange={(e) => setSectionTitle(e.target.value)}
+              placeholder="e.g. Music, Shop, Social"
+              aria-label="Section title"
+            />
+            <LayoutToggle value={sectionLayout} onChange={setSectionLayout} />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="mu-btn-ghost"
+              onClick={() => {
+                setSectionComposer(false);
+                setSectionTitle("");
+              }}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="mu-btn-primary" disabled={!sectionTitle.trim()}>
+              Add section
+            </button>
+          </div>
+        </form>
+      )}
+
+      <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragEnd={onDragEnd}>
+        <SortableContext
+          items={blocks.map((b) => (b.kind === "link" ? b.link.id : `section:${b.section.id}`))}
+          strategy={verticalListSortingStrategy}
+        >
           <ul className="space-y-3">
-            {loaded && links.length === 0 && (
+            {loaded && blocks.length === 0 && (
               <li className="rounded-2xl border border-dashed border-meetup-border bg-white/60 p-6 text-center">
                 <p className="font-semibold text-ink">Your page has no links yet</p>
                 <p className="mx-auto mt-1 max-w-xs text-sm text-meetup-muted">
@@ -586,24 +713,195 @@ export function LinksEditor() {
                 </p>
               </li>
             )}
-            {links.map((link) => (
-              <SortableLink
-                key={link.id}
-                link={link}
-                expanded={expandedId === link.id}
-                onToggleExpand={() =>
-                  setExpandedId((id) => (id === link.id ? null : link.id))
-                }
-                onToggle={toggle}
-                onRemove={remove}
-                onSave={saveInline}
-                onSetLock={setLock}
-              />
-            ))}
+            {blocks.map((block) =>
+              block.kind === "link" ? (
+                <SortableLink
+                  key={block.link.id}
+                  link={block.link}
+                  container="root"
+                  sections={sections}
+                  expanded={expandedId === block.link.id}
+                  onToggleExpand={() =>
+                    setExpandedId((id) => (id === block.link.id ? null : block.link.id))
+                  }
+                  onToggle={toggle}
+                  onRemove={remove}
+                  onSave={saveInline}
+                  onSetLock={setLock}
+                />
+              ) : (
+                <SectionBlock
+                  key={block.section.id}
+                  section={block.section}
+                  count={block.links.length}
+                  canMoveUp={blocks.indexOf(block) > 0}
+                  canMoveDown={blocks.indexOf(block) < blocks.length - 1}
+                  onMove={(delta) => moveBlock(blocks.indexOf(block), delta)}
+                  onUpdate={updateSection}
+                  onRemove={removeSection}
+                  onAddLink={addLinkToSection}
+                >
+                  <SortableContext
+                    items={block.links.map((l) => l.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <ul className="space-y-3">
+                      {block.links.length === 0 && (
+                        <li className="rounded-xl border border-dashed border-meetup-border px-3 py-4 text-center text-xs text-meetup-muted">
+                          Empty section. Add a link here, or move one in from a link’s “Section” menu.
+                        </li>
+                      )}
+                      {block.links.map((link) => (
+                        <SortableLink
+                          key={link.id}
+                          link={link}
+                          container={block.section.id}
+                          sections={sections}
+                          expanded={expandedId === link.id}
+                          onToggleExpand={() =>
+                            setExpandedId((id) => (id === link.id ? null : link.id))
+                          }
+                          onToggle={toggle}
+                          onRemove={remove}
+                          onSave={saveInline}
+                          onSetLock={setLock}
+                        />
+                      ))}
+                    </ul>
+                  </SortableContext>
+                </SectionBlock>
+              ),
+            )}
           </ul>
         </SortableContext>
       </DndContext>
     </div>
+  );
+}
+
+function LayoutToggle({
+  value,
+  onChange,
+}: {
+  value: SectionLayout;
+  onChange: (v: SectionLayout) => void;
+}) {
+  return (
+    <div role="group" aria-label="Section layout" className="inline-flex shrink-0 gap-1">
+      {(["list", "grid"] as const).map((l) => (
+        <button
+          key={l}
+          type="button"
+          aria-pressed={value === l}
+          onClick={() => onChange(l)}
+          className={`mu-chip min-h-[40px] ${value === l ? "mu-chip-active" : ""}`}
+        >
+          {l === "list" ? "☰ List" : "▦ Grid"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SectionBlock({
+  section,
+  count,
+  canMoveUp,
+  canMoveDown,
+  onMove,
+  onUpdate,
+  onRemove,
+  onAddLink,
+  children,
+}: {
+  section: LinkSection;
+  count: number;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMove: (delta: -1 | 1) => void;
+  onUpdate: (id: string, patch: { title?: string; layout?: SectionLayout }) => void;
+  onRemove: (section: LinkSection, count: number) => void;
+  onAddLink: (sectionId: string) => void;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `section:${section.id}`,
+    data: { container: "root" },
+  });
+  const [title, setTitle] = useState(section.title);
+  useEffect(() => setTitle(section.title), [section.title]);
+
+  function commitTitle() {
+    const next = title.trim();
+    if (!next) return setTitle(section.title);
+    if (next !== section.title) onUpdate(section.id, { title: next });
+  }
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.7 : 1,
+      }}
+      className="rounded-2xl border border-meetup-purple/25 bg-meetup-purple/5 p-3 md:p-4"
+    >
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="flex h-10 w-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-lg text-lg text-ink/30 active:cursor-grabbing active:bg-mist"
+          {...attributes}
+          {...listeners}
+          aria-label={`Reorder section ${section.title}`}
+        >
+          ⠿
+        </button>
+        <input
+          className="mu-input min-h-[40px] min-w-0 flex-1 font-semibold"
+          value={title}
+          maxLength={80}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={commitTitle}
+          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+          aria-label="Section title"
+        />
+        <LayoutToggle value={section.layout as SectionLayout} onChange={(layout) => onUpdate(section.id, { layout })} />
+        <div className="inline-flex gap-1">
+          <button
+            type="button"
+            onClick={() => onMove(-1)}
+            disabled={!canMoveUp}
+            aria-label={`Move section ${section.title} up`}
+            className="mu-chip min-h-[40px] min-w-[40px] justify-center disabled:opacity-40"
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            onClick={() => onMove(1)}
+            disabled={!canMoveDown}
+            aria-label={`Move section ${section.title} down`}
+            className="mu-chip min-h-[40px] min-w-[40px] justify-center disabled:opacity-40"
+          >
+            ↓
+          </button>
+        </div>
+      </div>
+      {children}
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <button type="button" onClick={() => onAddLink(section.id)} className="mu-btn-ghost text-sm">
+          + Add link here
+        </button>
+        <button
+          type="button"
+          onClick={() => onRemove(section, count)}
+          className="text-sm font-semibold text-red-600 hover:underline"
+        >
+          Delete section
+        </button>
+      </div>
+    </li>
   );
 }
 
@@ -635,6 +933,8 @@ function toLocalInput(iso: string | null | undefined) {
 
 function SortableLink({
   link,
+  container,
+  sections,
   expanded,
   onToggleExpand,
   onToggle,
@@ -643,6 +943,9 @@ function SortableLink({
   onSetLock,
 }: {
   link: LinkItem;
+  /** "root" for loose links, or the id of the section the link is in (drag stays inside it). */
+  container: string;
+  sections: LinkSection[];
   expanded: boolean;
   onToggleExpand: () => void;
   onToggle: (link: LinkItem, field: "is_active" | "is_featured") => void;
@@ -652,13 +955,13 @@ function SortableLink({
     patch: Partial<LinkItem> & {
       clear_thumbnail?: boolean;
       clear_icon?: boolean;
-      clear_collection?: boolean;
     },
   ) => Promise<void>;
   onSetLock: (link: LinkItem, code: string | null) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: link.id,
+    data: { container },
   });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -669,10 +972,7 @@ function SortableLink({
   const [title, setTitle] = useState(link.title);
   const [url, setUrl] = useState(link.url);
   const [linkType, setLinkType] = useState<LinkType>(link.link_type || "url");
-  const [collection, setCollection] = useState(link.collection || "");
-  const [collectionLayout, setCollectionLayout] = useState<CollectionLayout>(
-    link.collection_layout || "list",
-  );
+  const [sectionId, setSectionId] = useState<string | null>(link.section_id);
   const [icon, setIcon] = useState<string | null>(link.icon);
   const [thumbnail, setThumbnail] = useState(link.thumbnail_url || "");
   const [animation, setAnimation] = useState(link.animation || "none");
@@ -686,8 +986,7 @@ function SortableLink({
     setTitle(link.title);
     setUrl(link.url);
     setLinkType(link.link_type || "url");
-    setCollection(link.collection || "");
-    setCollectionLayout(link.collection_layout || "list");
+    setSectionId(link.section_id);
     setIcon(link.icon);
     setThumbnail(link.thumbnail_url || "");
     setAnimation(link.animation || "none");
@@ -730,11 +1029,6 @@ function SortableLink({
               <span className="rounded-full bg-mist px-2 py-0.5 text-[10px] font-bold uppercase text-meetup-muted">
                 {link.link_type || "url"}
               </span>
-              {link.collection && (
-                <span className="rounded-full bg-meetup-lavender px-2 py-0.5 text-[10px] font-bold uppercase text-meetup-purple">
-                  {link.collection}
-                </span>
-              )}
               {link.is_featured && (
                 <span className="rounded-full bg-meetup-lavender px-2 py-0.5 text-[10px] font-bold uppercase text-meetup-purple">
                   Featured
@@ -830,28 +1124,21 @@ function SortableLink({
             </label>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm">
-              <span className="mb-1 block font-semibold">Collection</span>
-              <input
-                className="mu-input"
-                value={collection}
-                onChange={(e) => setCollection(e.target.value)}
-                placeholder="Optional group"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1 block font-semibold">Layout</span>
-              <select
-                className="mu-input"
-                value={collectionLayout}
-                onChange={(e) => setCollectionLayout(e.target.value as CollectionLayout)}
-              >
-                <option value="list">List</option>
-                <option value="grid">Grid</option>
-              </select>
-            </label>
-          </div>
+          <label className="block text-sm">
+            <span className="mb-1 block font-semibold">Section</span>
+            <select
+              className="mu-input"
+              value={sectionId ?? ""}
+              onChange={(e) => setSectionId(e.target.value || null)}
+            >
+              <option value="">No section (loose link)</option>
+              {sections.map((sec) => (
+                <option key={sec.id} value={sec.id}>
+                  {sec.title}
+                </option>
+              ))}
+            </select>
+          </label>
 
           {linkType !== "header" && (
             <label className="inline-flex items-center gap-2 text-sm text-meetup-muted">
@@ -927,16 +1214,14 @@ function SortableLink({
                     title,
                     url,
                     link_type: linkType,
-                    collection: collection.trim() || null,
-                    collection_layout: collectionLayout,
-                    clear_collection: !collection.trim(),
+                    section_id: sectionId,
                     icon,
                     thumbnail_url: thumbnail || null,
                     animation,
                     is_featured: linkType === "header" ? false : featured,
                     visible_from: visibleFrom,
                     visible_until: visibleUntil,
-                  } as Partial<LinkItem> & { clear_thumbnail?: boolean; clear_icon?: boolean; clear_collection?: boolean })
+                  } as Partial<LinkItem> & { clear_thumbnail?: boolean; clear_icon?: boolean })
                 }
               >
                 Save changes

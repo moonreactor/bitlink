@@ -15,6 +15,8 @@ import { PROFILE_COPY, type ProfileCopy } from "@/lib/i18n/profile-copy";
 import { LANG_LABEL } from "@/lib/i18n/site";
 import { useSiteLang } from "@/lib/i18n/useSiteLang";
 import { sharePage } from "@/lib/share";
+import { ReportDialog } from "@/components/ReportDialog";
+import { REPORT_COPY } from "@/lib/i18n/report-copy";
 import type { PublicDirectoryItem, PublicLink, PublicProfile, SocialIconStyle } from "@/lib/types";
 
 function visitorId() {
@@ -42,6 +44,7 @@ export function PublicProfileView({
   const t = PROFILE_COPY[lang];
   const [subscribeOpen, setSubscribeOpen] = useState(false);
   const [shareMsg, setShareMsg] = useState("");
+  const [reportOpen, setReportOpen] = useState(false);
   const [profile, setProfile] = useState(initial);
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
@@ -77,7 +80,7 @@ export function PublicProfileView({
     return () => window.removeEventListener("keydown", onKey);
   }, [subscribeOpen]);
 
-  const blocks = useMemo(() => buildLinkBlocks(profile.links), [profile.links]);
+  const blocks = useMemo(() => buildLinkBlocks(profile.links, profile.sections), [profile.links, profile.sections]);
 
   useEffect(() => {
     const href = googleFontsHref(theme.font_family);
@@ -335,10 +338,10 @@ export function PublicProfileView({
                 );
               }
               return (
-                <div key={`c-${block.name}`} className="space-y-2">
-                  <p className="px-1 text-xs font-semibold uppercase tracking-wide opacity-70">
-                    {block.name}
-                  </p>
+                <section key={`s-${block.id}`} aria-label={block.title} className="space-y-2">
+                  <h2 className="px-1 text-xs font-semibold uppercase tracking-wide opacity-70">
+                    {block.title}
+                  </h2>
                   <div className={block.layout === "grid" ? "grid grid-cols-2 gap-2" : "space-y-2"}>
                     {block.links.map((link) => (
                       <ProfileLinkItem
@@ -352,7 +355,7 @@ export function PublicProfileView({
                       />
                     ))}
                   </div>
-                </div>
+                </section>
               );
             })}
 
@@ -458,6 +461,10 @@ export function PublicProfileView({
           <a href="/" className="hover:opacity-90">
             {t.madeWith}
           </a>
+          <span aria-hidden> · </span>
+          <button type="button" onClick={() => setReportOpen(true)} className="hover:opacity-90">
+            {REPORT_COPY[lang].action}
+          </button>
         </p>
       </div>
 
@@ -485,6 +492,17 @@ export function PublicProfileView({
           </a>
         </div>
       </div>
+
+      {reportOpen && (
+        <ReportDialog
+          lang={lang}
+          username={username}
+          links={profile.links
+            .filter((l) => l.link_type !== "header" && l.url)
+            .map((l) => ({ id: l.id, title: l.title }))}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
 
       {subscribeOpen && showLeadForm && (
         <div
@@ -638,15 +656,13 @@ function ProfileLinkItem({
   };
   const content = (
     <>
-      {!compact && (
-        <LinkVisual
-          url={link.url}
-          icon={link.icon}
-          thumbnailUrl={link.thumbnail_url}
-          featured={link.is_featured}
-          size={link.is_featured ? "lg" : "sm"}
-        />
-      )}
+      <LinkVisual
+        url={link.url}
+        icon={link.icon}
+        thumbnailUrl={link.thumbnail_url}
+        featured={link.is_featured}
+        size={compact ? "md" : link.is_featured ? "lg" : "sm"}
+      />
       <span className={compact ? "text-center" : "flex-1 text-center"}>{link.title}</span>
       {link.has_lock && (
         <span className="text-xs opacity-60" role="img" aria-label={t.lockedAria}>

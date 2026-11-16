@@ -11,9 +11,12 @@ from app.models.analytics import LinkClick, PageView
 from app.models.growth import GrowthCtaClick
 from app.models.link import Link
 from app.models.profile import Profile
+from app.models.report import STATUSES as REPORT_STATUSES, Report
+from app.models.short_link import ShortLink
 from app.models.shortener_event import FUNNEL_EVENTS, SOURCES, ShortenerEvent
 from app.models.subscriber import Subscriber
 from app.models.user import User
+from app.schemas.report import AdminReportItem, AdminReportListResponse, AdminReportUpdate
 from app.schemas.admin import (
     AdminDailyStat,
     AdminLinkItem,
@@ -539,3 +542,141 @@ def shortener_funnel(
         ],
         by_source={s: steps_for([s]) for s in sorted(SOURCES)},
     )
+
+
+def _report_items(db: Session, reports: list[Report]) -> list[AdminReportItem]:
+    profile_ids = {r.profile_id for r in reports if r.profile_id}
+    link_ids = {r.link_id for r in reports if r.link_id}
+    short_ids = {r.short_link_id for r in reports if r.short_link_id}
+    resolver_ids = {r.resolved_by_id for r in reports if r.resolved_by_id}
+
+    profiles = (
+        {p.id: p for p in db.query(Profile).filter(Profile.id.in_(profile_ids)).all()}
+        if profile_ids
+        else {}
+    )
+    links = {l.id: l for l in db.query(Link).filter(Link.id.in_(link_ids)).all()} if link_ids else {}
+    shorts = (
+        {s.id: s for s in db.query(ShortLink).filter(ShortLink.id.in_(short_ids)).all()}
+        if short_ids
+        else {}
+    )
+    resolvers = (
+        {u.id: u.email for u in db.query(User).filter(User.id.in_(resolver_ids)).all()}
+        if resolver_ids
+        else {}
+    )
+
+    def target_key(r: Report):
+        return r.short_link_id or r.link_id or r.profile_id
+
+    keys = {target_key(r) for r in reports if target_key(r)}
+    counts: dict = {}
+    if keys:
+        for col in (Report.short_link_id, Report.link_id, Report.profile_id):
+            for key, n in (
+                db.query(col, func.count(Report.id)).filter(col.in_(keys)).group_by(col).all()
+            ):
+                counts[key] = counts.get(key, 0) + n
+
+    out: list[AdminReportItem] = []
+    for r in reports:
+        profile = profiles.get(r.profile_id) if r.profile_id else None
+        active: bool | None = None
+        if r.target_type == "link":
+            link = links.get(r.link_id) if r.link_id else None
+            active = link.is_active if link else False
+        elif r.target_type == "short_link":
+            short = shorts.get(r.short_link_id) if r.short_link_id else None
+            active = short.is_active if short else False
+        out.append(
+            AdminReportItem(
+                id=r.id,
+                target_type=r.target_type,
+                target_label=r.target_label,
+                target_url=r.target_url,
+                username=profile.username if profile else None,
+                owner_user_id=profile.user_id if profile else None,
+                link_id=r.link_id,
+                short_link_id=r.short_link_id,
+                target_active=active,
+                reason=r.reason,
+                details=r.details,
+                status=r.status,
+                resolution_note=r.resolution_note,
+                resolved_at=r.resolved_at,
+                resolved_by_email=resolvers.get(r.resolved_by_id) if r.resolved_by_id else None,
+                created_at=r.created_at,
+                reports_for_target=counts.get(target_key(r), 1),
+            )
+        )
+    return out
+
+
+@router.get("/reports", response_model=AdminReportListResponse)
+def list_reports(
+    status_filter: str | None = Query(default=None, alias="status"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> AdminReportListResponse:
+    if status_filter and status_filter not in REPORT_STATUSES:
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    query = db.query(Report)
+    if status_filter:
+        query = query.filter(Report.status == status_filter)
+    total = query.count()
+    rows = (
+        query.order_by(Report.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    )
+    by_status = dict(db.query(Report.status, func.count(Report.id)).group_by(Report.status).all())
+    return AdminReportListResponse(
+        items=_report_items(db, rows),
+        total=total,
+        page=page,
+        page_size=page_size,
+        pending=by_status.get("pending", 0),
+        resolved=by_status.get("resolved", 0),
+        dismissed=by_status.get("dismissed", 0),
+    )
+
+
+@router.patch("/reports/{report_id}", response_model=AdminReportItem)
+def update_report(
+    report_id: UUID,
+    payload: AdminReportUpdate,
+    current_user: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> AdminReportItem:
+    report = db.get(Report, report_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    if payload.disable_target:
+        if report.link_id:
+            link = db.get(Link, report.link_id)
+            if link:
+                link.is_active = False
+        elif report.short_link_id:
+            short = db.get(ShortLink, report.short_link_id)
+            if short:
+                short.is_active = False
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Only links and short links can be disabled here; manage profiles from Users.",
+            )
+
+    report.status = payload.status
+    report.resolution_note = (payload.resolution_note or "").strip() or None
+    if payload.status == "pending":
+        report.resolved_at = None
+        report.resolved_by_id = None
+    else:
+        report.resolved_at = datetime.now(timezone.utc)
+        report.resolved_by_id = current_user.id
+    db.commit()
+    db.refresh(report)
+    return _report_items(db, [report])[0]

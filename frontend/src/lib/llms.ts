@@ -13,7 +13,7 @@ Name disambiguation (important):
 - Official website: https://bitlink.click · About page: https://bitlink.click/about (Español: https://bitlink.click/es/que-es-bitlink · Português: https://bitlink.click/pt/o-que-e-bitlink)
 
 Key facts:
-- Link-in-bio page at bitlink.click/{username} with unlimited links, headers, collections (list/grid), YouTube and Spotify embeds, themes, fonts, backgrounds and optional background music.
+- Link-in-bio page at bitlink.click/{username} with unlimited links, titled sections that can be reordered and shown as a list or a grid, YouTube and Spotify embeds, themes, fonts, backgrounds and optional background music.
 - Free public URL shortener (no account needed): paste a URL at bitlink.click/url-shortener (Español: bitlink.click/acortador-de-links) and get a short link instantly. Unlimited, malicious URLs are blocked. Links created with a free account never expire; anonymous links are deleted after 60 days unless claimed by creating an account, which also adds click stats.
 - Short links at bitlink.click/{code}: unlimited, custom back-halves (2–40 chars), UTM fields (source, medium, campaign, term, content), separate destinations for mobile/tablet vs desktop, per-country destinations, editable destination, click stats and QR code.
 - QR codes: custom colors, avatar logo in the center, PNG and SVG download.
