@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BitlinkLogo } from "@/components/BitlinkLogo";
+import { InstallAppBanner } from "@/components/InstallAppBanner";
 import { ToastProvider, useToast } from "@/components/Toast";
 import { clearTokens, getAccessToken } from "@/lib/auth";
 import { authApi, profileApi } from "@/lib/api";
@@ -15,6 +16,7 @@ const NAV = [
   { href: "/dashboard/appearance", label: "Design", icon: AppearIcon },
   { href: "/dashboard/products", label: "Products", icon: ProductsIcon },
   { href: "/dashboard/short-links", label: "Short links", icon: ShortIcon },
+  { href: "/dashboard/qr", label: "QR codes", icon: QrIcon },
   { href: "/dashboard/settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -264,7 +266,10 @@ function ShellInner({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
 
-        <main className="min-w-0">{children}</main>
+        <main className="min-w-0">
+          <InstallAppBanner />
+          {children}
+        </main>
       </div>
 
       {/* Bottom tab bar (mobile) — primary nav lives in the thumb zone */}
@@ -460,6 +465,17 @@ function ShortIcon() {
       <path d="M7 7h6a5 5 0 0 1 0 10H9" strokeLinecap="round" />
       <path d="M11 12H4m0 0 2.5-2.5M4 12l2.5 2.5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M13 12h7m0 0-2.5-2.5M20 12l-2.5 2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function QrIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <path d="M14 14h3v3h-3zM20 14v1M14 20h1M18 18h3v3h-3z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

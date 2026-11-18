@@ -341,8 +341,17 @@ export const shortLinksApi = {
     ),
   remove: (token: string, id: string) =>
     request<void>(`/me/short-links/${id}`, { method: "DELETE" }, token),
-  qrUrl: (id: string, fmt: "png" | "svg" = "png") =>
-    `${BROWSER_API}/api/v1/me/short-links/${id}/qr?fmt=${fmt}`,
+  qrUrl: (
+    id: string,
+    fmt: "png" | "svg" = "png",
+    style?: { fg?: string; bg?: string; logo?: boolean },
+  ) => {
+    const q = new URLSearchParams({ fmt });
+    if (style?.fg) q.set("fg", style.fg.replace("#", ""));
+    if (style?.bg) q.set("bg", style.bg.replace("#", ""));
+    if (style?.logo) q.set("logo", "true");
+    return `${BROWSER_API}/api/v1/me/short-links/${id}/qr?${q.toString()}`;
+  },
 };
 
 export const domainApi = {
