@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.deps import get_current_user
 from app.db.session import get_db
+from app.models.profile import Profile
 from app.models.short_link import ShortLink, ShortLinkClick
 from app.models.shortener_event import CLIENT_EVENTS, SOURCES, ShortenerEvent
 from app.models.user import User
@@ -489,6 +490,9 @@ def short_link_qr(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     fmt: str = Query(default="png", pattern="^(png|svg)$"),
+    fg: str | None = Query(default=None, pattern="^#?[0-9a-fA-F]{6}$"),
+    bg: str | None = Query(default=None, pattern="^#?[0-9a-fA-F]{6}$"),
+    logo: bool = Query(default=False),
 ) -> FastAPIResponse:
     link = (
         db.query(ShortLink)
@@ -497,8 +501,25 @@ def short_link_qr(
     )
     if link is None:
         raise HTTPException(status_code=404, detail="Short link not found")
+
+    def _hex(value: str | None, default: str) -> str:
+        if not value:
+            return default
+        return value if value.startswith("#") else f"#{value}"
+
+    logo_url = None
+    if logo and fmt == "png":
+        profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+        logo_url = profile.avatar_url if profile else None
     # Encode the public short URL (bitlink.click/code), not the Railway host.
-    content = generate_profile_qr(link.code, fmt=fmt, base_url=settings.short_base_url)
+    content = generate_profile_qr(
+        link.code,
+        fill_color=_hex(fg, "#000000"),
+        back_color=_hex(bg, "#ffffff"),
+        logo_url=logo_url,
+        fmt=fmt,
+        base_url=settings.short_base_url,
+    )
     media = "image/svg+xml" if fmt == "svg" else "image/png"
     return Response(content=content, media_type=media)
 
