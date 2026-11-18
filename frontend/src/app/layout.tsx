@@ -28,6 +28,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(WEB),
   title: "Bitlink — Link-in-bio + short links, free forever",
   applicationName: "Bitlink",
+  appleWebApp: { capable: true, title: "Bitlink", statusBarStyle: "default" },
+  icons: { apple: "/icons/icon-192.png" },
   alternates: {
     types: { "application/rss+xml": [{ url: "/blog/rss.xml", title: "Blog de Bitlink" }] },
   },

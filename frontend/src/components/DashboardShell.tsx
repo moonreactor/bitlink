@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BitlinkLogo } from "@/components/BitlinkLogo";
+import { InstallAppBanner } from "@/components/InstallAppBanner";
 import { ToastProvider, useToast } from "@/components/Toast";
 import { clearTokens, getAccessToken } from "@/lib/auth";
 import { authApi, profileApi } from "@/lib/api";
@@ -264,7 +265,10 @@ function ShellInner({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
 
-        <main className="min-w-0">{children}</main>
+        <main className="min-w-0">
+          <InstallAppBanner />
+          {children}
+        </main>
       </div>
 
       {/* Bottom tab bar (mobile) — primary nav lives in the thumb zone */}
