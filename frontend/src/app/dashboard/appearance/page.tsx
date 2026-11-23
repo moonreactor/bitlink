@@ -117,29 +117,31 @@ export default function AppearancePage() {
           ))}
         </div>
 
-        <div className="space-y-3 mu-card p-4 md:p-5">
-          {(
-            [
-              ["background_color", "Background"],
-              ["button_color", "Button"],
-              ["button_text_color", "Button text"],
-              ["text_color", "Text"],
-            ] as const
-          ).map(([key, label]) => (
-            <label key={key} className="flex items-center justify-between gap-3 text-sm">
-              <span>{label}</span>
-              <input
-                type="color"
-                value={theme[key]}
-                onChange={(e) => patchTheme({ [key]: e.target.value })}
-              />
-            </label>
-          ))}
+        <div className="mu-dash-block space-y-4 !border-b-0 !pb-0">
+          <div className="divide-y divide-meetup-border border-y border-meetup-border">
+            {(
+              [
+                ["background_color", "Background"],
+                ["button_color", "Button"],
+                ["button_text_color", "Button text"],
+                ["text_color", "Text"],
+              ] as const
+            ).map(([key, label]) => (
+              <label key={key} className="mu-toggle-row text-sm">
+                <span className="font-medium">{label}</span>
+                <input
+                  type="color"
+                  value={theme[key]}
+                  onChange={(e) => patchTheme({ [key]: e.target.value })}
+                />
+              </label>
+            ))}
+          </div>
 
           <label className="block text-sm">
-            Button style
+            <span className="mb-1.5 block font-medium">Button style</span>
             <select
-              className="mt-1 w-full rounded-xl border border-meetup-border px-3 py-2"
+              className="mu-input"
               value={theme.button_style}
               onChange={(e) => patchTheme({ button_style: e.target.value })}
             >
@@ -150,9 +152,9 @@ export default function AppearancePage() {
           </label>
 
           <label className="block text-sm">
-            Font
+            <span className="mb-1.5 block font-medium">Font</span>
             <select
-              className="mt-1 w-full rounded-xl border border-meetup-border px-3 py-2"
+              className="mu-input"
               value={theme.font_family || "DM Sans"}
               onChange={(e) => patchTheme({ font_family: e.target.value })}
               style={{ fontFamily: fontStack(theme.font_family) }}
@@ -172,13 +174,15 @@ export default function AppearancePage() {
             hint="Upload or paste a direct image URL."
           />
 
-          <div className="border-t border-meetup-border pt-3">
-            <p className="text-sm font-medium">Social icons</p>
-            <p className="mt-0.5 text-xs text-meetup-muted">
-              Brand colors can disappear on dark backgrounds — pick a solid color when needed.
-            </p>
+          <div className="space-y-3 pt-2">
+            <div>
+              <p className="text-sm font-semibold text-ink">Social icons</p>
+              <p className="mt-0.5 text-xs text-meetup-muted">
+                Brand colors can disappear on dark backgrounds — pick a solid color when needed.
+              </p>
+            </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {(
                 [
                   ["brand", "Brand colors"],
@@ -189,10 +193,10 @@ export default function AppearancePage() {
                   key={value}
                   type="button"
                   onClick={() => setSocialStyle(value)}
-                  className={`rounded-xl border px-3 py-2.5 text-left text-sm ${
+                  className={`rounded-xl px-3 py-2.5 text-left text-sm ring-1 transition ${
                     theme.social_icon_style === value
-                      ? "border-meetup-purple bg-meetup-lavender"
-                      : "border-meetup-border bg-white hover:border-meetup-purple/40"
+                      ? "bg-meetup-lavender text-meetup-purple ring-meetup-purple/30"
+                      : "bg-white text-ink ring-meetup-border hover:ring-meetup-purple/40"
                   }`}
                 >
                   {label}
@@ -201,9 +205,9 @@ export default function AppearancePage() {
             </div>
 
             {theme.social_icon_style === "mono" && (
-              <div className="mt-3 space-y-2">
-                <label className="flex items-center justify-between gap-3 text-sm">
-                  <span>Icon color</span>
+              <div className="space-y-2">
+                <label className="mu-toggle-row text-sm">
+                  <span className="font-medium">Icon color</span>
                   <input
                     type="color"
                     value={theme.social_icon_color || theme.text_color}
@@ -213,7 +217,7 @@ export default function AppearancePage() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="rounded-lg border border-meetup-border px-2.5 py-1 text-xs hover:border-meetup-purple/40"
+                    className="rounded-lg px-2.5 py-1 text-xs ring-1 ring-meetup-border hover:ring-meetup-purple/40"
                     onClick={() => patchTheme({ social_icon_color: theme.text_color })}
                   >
                     Match text
@@ -225,10 +229,10 @@ export default function AppearancePage() {
                       title={hex}
                       aria-label={`Use ${hex}`}
                       onClick={() => patchTheme({ social_icon_color: hex })}
-                      className={`h-7 w-7 rounded-full border ${
+                      className={`h-7 w-7 rounded-full ring-1 ${
                         theme.social_icon_color?.toLowerCase() === hex
                           ? "ring-2 ring-meetup-purple ring-offset-1"
-                          : "border-meetup-border"
+                          : "ring-meetup-border"
                       }`}
                       style={{ background: hex }}
                     />

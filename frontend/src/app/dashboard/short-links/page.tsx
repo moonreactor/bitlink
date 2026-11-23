@@ -197,7 +197,7 @@ export default function ShortLinksPage() {
         </p>
       </div>
 
-      <form onSubmit={onCreate} className="mu-card space-y-4 p-5 md:p-6">
+      <form onSubmit={onCreate} className="mu-dash-block space-y-4">
         <label className="block text-sm">
           <span className="mb-1 block font-semibold">Destination URL</span>
           <input
@@ -285,7 +285,7 @@ export default function ShortLinksPage() {
         )}
 
         {showRules && (
-          <div className="space-y-3 rounded-xl border border-meetup-border bg-meetup-bg/50 p-4">
+          <div className="space-y-3 border-t border-meetup-border pt-4">
             <p className="text-xs text-meetup-muted">
               Optional overrides by device or country. Default destination is used when no rule matches.
             </p>
@@ -324,16 +324,17 @@ export default function ShortLinksPage() {
         </button>
       </form>
 
-      <section className="space-y-3">
+      <section>
         {items.length === 0 && (
-          <p className="rounded-2xl border border-dashed border-meetup-border bg-white px-4 py-10 text-center text-sm text-meetup-muted">
+          <p className="border-y border-dashed border-meetup-border py-10 text-center text-sm text-meetup-muted">
             No short links yet. Create your first one above.
           </p>
         )}
+        <ul className="mu-list border-y border-meetup-border">
         {items.map((item) => (
-          <article
+          <li
             key={item.id}
-            className={`mu-card space-y-3 p-4 md:p-5 ${item.is_active ? "" : "opacity-60"}`}
+            className={`space-y-3 py-5 ${item.is_active ? "" : "opacity-60"}`}
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
@@ -397,8 +398,9 @@ export default function ShortLinksPage() {
               </div>
             )}
             {statsId === item.id && <ShortLinkStats linkId={item.id} />}
-          </article>
+          </li>
         ))}
+        </ul>
       </section>
     </div>
   );

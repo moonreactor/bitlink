@@ -128,8 +128,10 @@ export default function ProductsPage() {
         </p>
       </div>
 
-      <form onSubmit={onCreate} className="space-y-3 mu-card p-5 md:p-6">
-        <h2 className="font-display text-lg font-semibold">Add product</h2>
+      <form onSubmit={onCreate} className="mu-dash-block space-y-4">
+        <header>
+          <h2 className="mu-dash-h2">Add product</h2>
+        </header>
         <Field
           label="Title"
           value={draft.title}
@@ -137,9 +139,9 @@ export default function ProductsPage() {
           required
         />
         <label className="block text-sm">
-          <span className="mb-1 block font-medium">Description</span>
+          <span className="mb-1.5 block font-medium">Description</span>
           <textarea
-            className="w-full rounded-xl border border-meetup-border px-3 py-2"
+            className="mu-input"
             rows={2}
             value={draft.description}
             onChange={(e) => setDraft({ ...draft, description: e.target.value })}
@@ -164,108 +166,88 @@ export default function ProductsPage() {
           label="Thumbnail"
           value={draft.thumbnail_url || null}
           onChange={(url) => setDraft({ ...draft, thumbnail_url: url || "" })}
-          hint="Optional image for the product card."
+          hint="Optional image for the product."
         />
         <button type="submit" disabled={saving} className="mu-btn-primary disabled:opacity-60">
           {saving ? "Saving…" : "Add product"}
         </button>
       </form>
 
-      <div className="space-y-3">
+      <div>
         {items.length === 0 && (
-          <p className="text-sm text-meetup-muted">No products yet.</p>
+          <p className="py-8 text-center text-sm text-meetup-muted">No products yet.</p>
         )}
-        {items.map((item, index) => (
-          <div key={item.id} className="mu-card space-y-3 p-4">
-            {editingId === item.id ? (
-              <EditForm
-                item={item}
-                onCancel={() => setEditingId(null)}
-                onSave={(body) => saveEdit(item, body)}
-              />
-            ) : (
-              <>
-                <div className="flex gap-3">
-                  {item.thumbnail_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={item.thumbnail_url}
-                      alt=""
-                      className="h-16 w-16 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-meetup-bg text-xs text-meetup-muted">
-                      No img
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-ink">{item.title}</p>
-                      {item.price_label && (
-                        <span className="rounded-full bg-meetup-bg px-2 py-0.5 text-xs font-medium">
-                          {item.price_label}
-                        </span>
-                      )}
-                      {!item.is_active && (
-                        <span className="text-xs text-meetup-muted">Hidden</span>
-                      )}
-                    </div>
-                    {item.description && (
-                      <p className="mt-0.5 line-clamp-2 text-sm text-meetup-muted">{item.description}</p>
+        <ul className="mu-list border-y border-meetup-border">
+          {items.map((item, index) => (
+            <li key={item.id} className="space-y-3 py-4">
+              {editingId === item.id ? (
+                <EditForm
+                  item={item}
+                  onCancel={() => setEditingId(null)}
+                  onSave={(body) => saveEdit(item, body)}
+                />
+              ) : (
+                <>
+                  <div className="flex gap-3">
+                    {item.thumbnail_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.thumbnail_url}
+                        alt=""
+                        className="h-14 w-14 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white text-xs text-meetup-muted ring-1 ring-meetup-border">
+                        No img
+                      </div>
                     )}
-                    <a
-                      href={item.checkout_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-1 block break-all text-xs text-meetup-pink hover:underline"
-                    >
-                      {item.checkout_url}
-                    </a>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-ink">{item.title}</p>
+                        {item.price_label && (
+                          <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium ring-1 ring-meetup-border">
+                            {item.price_label}
+                          </span>
+                        )}
+                        {!item.is_active && (
+                          <span className="text-xs text-meetup-muted">Hidden</span>
+                        )}
+                      </div>
+                      {item.description && (
+                        <p className="mt-0.5 line-clamp-2 text-sm text-meetup-muted">{item.description}</p>
+                      )}
+                      <a
+                        href={item.checkout_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1 block break-all text-xs text-meetup-pink hover:underline"
+                      >
+                        {item.checkout_url}
+                      </a>
+                    </div>
                   </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="mu-btn-secondary min-h-[40px] px-3 text-xs"
-                    onClick={() => setEditingId(item.id)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="mu-btn-secondary min-h-[40px] px-3 text-xs"
-                    onClick={() => toggleActive(item)}
-                  >
-                    {item.is_active ? "Hide" : "Show"}
-                  </button>
-                  <button
-                    type="button"
-                    className="mu-btn-secondary min-h-[40px] px-3 text-xs"
-                    disabled={index === 0}
-                    onClick={() => move(item.id, -1)}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="mu-btn-secondary min-h-[40px] px-3 text-xs"
-                    disabled={index === items.length - 1}
-                    onClick={() => move(item.id, 1)}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    className="mu-btn-secondary min-h-[40px] px-3 text-xs text-red-600"
-                    onClick={() => remove(item.id)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        ))}
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" className="mu-btn-ghost !min-h-[40px] px-3 text-xs" onClick={() => setEditingId(item.id)}>
+                      Edit
+                    </button>
+                    <button type="button" className="mu-btn-ghost !min-h-[40px] px-3 text-xs" onClick={() => toggleActive(item)}>
+                      {item.is_active ? "Hide" : "Show"}
+                    </button>
+                    <button type="button" className="mu-btn-ghost !min-h-[40px] px-3 text-xs" disabled={index === 0} onClick={() => move(item.id, -1)}>
+                      ↑
+                    </button>
+                    <button type="button" className="mu-btn-ghost !min-h-[40px] px-3 text-xs" disabled={index === items.length - 1} onClick={() => move(item.id, 1)}>
+                      ↓
+                    </button>
+                    <button type="button" className="mu-btn-ghost !min-h-[40px] px-3 text-xs text-red-600" onClick={() => remove(item.id)}>
+                      Delete
+                    </button>
+                  </div>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
@@ -307,7 +289,7 @@ function EditForm({
       <label className="block text-sm">
         <span className="mb-1 block font-medium">Description</span>
         <textarea
-          className="w-full rounded-xl border border-meetup-border px-3 py-2"
+          className="mu-input"
           rows={2}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -326,7 +308,7 @@ function EditForm({
         <button type="submit" className="mu-btn-primary">
           Save
         </button>
-        <button type="button" className="mu-btn-secondary" onClick={onCancel}>
+        <button type="button" className="mu-btn-ghost" onClick={onCancel}>
           Cancel
         </button>
       </div>
@@ -351,7 +333,7 @@ function Field({
     <label className="block text-sm">
       <span className="mb-1 block font-medium">{label}</span>
       <input
-        className="w-full rounded-xl border border-meetup-border px-3 py-2"
+        className="mu-input"
         value={value}
         required={required}
         placeholder={placeholder}

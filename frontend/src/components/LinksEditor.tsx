@@ -455,7 +455,7 @@ export function LinksEditor() {
         </p>
       </div>
 
-      <form ref={formRef} onSubmit={onCreate} className="mu-card scroll-mt-20 space-y-4 p-4 md:p-5">
+      <form ref={formRef} onSubmit={onCreate} className="mu-dash-block scroll-mt-20 space-y-4">
         <div>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-meetup-muted">Quick add</p>
@@ -540,7 +540,7 @@ export function LinksEditor() {
         </div>
 
         {composerOpen && (
-          <div className="space-y-4 rounded-meetup border border-meetup-border bg-meetup-bg/60 p-4">
+          <div className="space-y-4 border-t border-meetup-border pt-4">
             {sections.length > 0 && draft.display === "button" && (
               <label className="block text-sm">
                 <span className="mb-1 block font-semibold text-ink">Section</span>
@@ -709,7 +709,7 @@ export function LinksEditor() {
       </div>
 
       {sectionComposer && (
-        <form onSubmit={createSection} className="mu-card space-y-3 p-4">
+        <form onSubmit={createSection} className="space-y-3 border-y border-meetup-border py-4">
           <p className="text-sm text-meetup-muted">
             A section is a title for the links that follow, shown as a list or a grid.
           </p>
@@ -748,9 +748,9 @@ export function LinksEditor() {
           items={blocks.map((b) => (b.kind === "link" ? b.link.id : `section:${b.section.id}`))}
           strategy={verticalListSortingStrategy}
         >
-          <ul className="space-y-3">
+          <ul className="mu-list border-y border-meetup-border">
             {loaded && blocks.length === 0 && (
-              <li className="rounded-2xl border border-dashed border-meetup-border bg-white/60 p-6 text-center">
+              <li className="border-b border-dashed border-meetup-border py-8 text-center">
                 <p className="font-semibold text-ink">Your page has no links yet</p>
                 <p className="mx-auto mt-1 max-w-xs text-sm text-meetup-muted">
                   Tap Instagram or WhatsApp above and type your handle — that’s it. You can add more later.
@@ -789,9 +789,9 @@ export function LinksEditor() {
                     items={block.links.map((l) => l.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    <ul className="space-y-3">
+                    <ul className="mu-list border-t border-meetup-border">
                       {block.links.length === 0 && (
-                        <li className="rounded-xl border border-dashed border-meetup-border px-3 py-4 text-center text-xs text-meetup-muted">
+                        <li className="py-4 text-center text-xs text-meetup-muted">
                           Empty section. Add a link here, or move one in from a link’s “Section” menu.
                         </li>
                       )}
@@ -889,7 +889,7 @@ function SectionBlock({
         transition,
         opacity: isDragging ? 0.7 : 1,
       }}
-      className="rounded-2xl border border-meetup-purple/25 bg-meetup-purple/5 p-3 md:p-4"
+      className="py-4"
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <button
@@ -1043,8 +1043,8 @@ function SortableLink({
     <li
       ref={setNodeRef}
       style={style}
-      className={`rounded-2xl border bg-white p-4 shadow-meetup ${
-        link.is_featured ? "border-meetup-purple/40 ring-1 ring-meetup-purple/20" : "border-meetup-border"
+      className={`py-4 ${
+        link.is_featured ? "bg-meetup-lavender/30 -mx-2 rounded-xl px-2" : ""
       } ${link.is_active ? "" : "opacity-60"}`}
     >
       <div className="flex items-start gap-3">

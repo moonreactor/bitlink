@@ -28,51 +28,46 @@ export function SetupChecklist({
   const nextId = steps.find((s) => !s.done)?.id;
 
   return (
-    <section className="mu-card overflow-hidden" aria-labelledby="setup-title">
-      <div className="p-5 md:p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 id="setup-title" className="font-display text-lg font-bold text-ink">
-              Set up your page
-            </h2>
-            <p className="mt-0.5 text-sm text-meetup-muted">
-              {doneCount} of {steps.length} done — finish these and your page is ready to share.
-            </p>
-          </div>
-          {onDismiss && doneCount >= 1 && (
-            <button
-              type="button"
-              onClick={onDismiss}
-              className="shrink-0 rounded-full px-2 py-1 text-xs font-semibold text-meetup-muted hover:bg-mist"
-            >
-              Hide
-            </button>
-          )}
+    <section className="mu-dash-block" aria-labelledby="setup-title">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 id="setup-title" className="mu-dash-h2">
+            Set up your page
+          </h2>
+          <p className="mu-dash-lead">
+            {doneCount} of {steps.length} done — finish these and your page is ready to share.
+          </p>
         </div>
+        {onDismiss && doneCount >= 1 && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="shrink-0 rounded-full px-2 py-1 text-xs font-semibold text-meetup-muted hover:bg-mist"
+          >
+            Hide
+          </button>
+        )}
+      </div>
+      <div
+        className="h-2 overflow-hidden rounded-full bg-mist"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct}
+        aria-label="Setup progress"
+      >
         <div
-          className="mt-4 h-2 overflow-hidden rounded-full bg-mist"
-          role="progressbar"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={pct}
-          aria-label="Setup progress"
-        >
-          <div
-            className="h-full rounded-full bg-meetup-purple transition-[width] duration-500"
-            style={{ width: `${Math.max(pct, 4)}%` }}
-          />
-        </div>
+          className="h-full rounded-full bg-meetup-purple transition-[width] duration-500"
+          style={{ width: `${Math.max(pct, 4)}%` }}
+        />
       </div>
 
-      <ol className="border-t border-meetup-border">
+      <ol className="mu-list border-y border-meetup-border">
         {steps.map((step, i) => {
           const isNext = step.id === nextId;
           return (
-            <li
-              key={step.id}
-              className={`border-b border-meetup-border last:border-b-0 ${isNext ? "bg-meetup-lavender/50" : ""}`}
-            >
-              <div className="flex items-start gap-3 px-5 py-4 md:px-6">
+            <li key={step.id} className={isNext ? "bg-meetup-lavender/40" : undefined}>
+              <div className="flex items-start gap-3 py-4">
                 <span
                   className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                     step.done

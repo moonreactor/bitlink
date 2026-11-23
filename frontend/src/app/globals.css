@@ -33,6 +33,35 @@ body {
     @apply rounded-meetup border border-meetup-border bg-white shadow-meetup;
   }
 
+  /* Flat dashboard surfaces — prefer these over stacking mu-card. */
+  .mu-panel {
+    @apply rounded-2xl border border-meetup-border bg-white;
+  }
+
+  .mu-dash-block {
+    @apply space-y-5 border-b border-meetup-border pb-8 last:border-b-0 last:pb-0;
+  }
+
+  .mu-dash-h2 {
+    @apply font-display text-lg font-bold tracking-tight text-ink;
+  }
+
+  .mu-dash-lead {
+    @apply mt-1 text-sm text-meetup-muted;
+  }
+
+  .mu-list {
+    @apply divide-y divide-meetup-border;
+  }
+
+  .mu-row {
+    @apply flex items-start gap-3 py-4;
+  }
+
+  .mu-toggle-row {
+    @apply flex items-start justify-between gap-4 py-3.5;
+  }
+
   .mu-btn-primary {
     @apply inline-flex items-center justify-center rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-ink disabled:opacity-60;
   }
