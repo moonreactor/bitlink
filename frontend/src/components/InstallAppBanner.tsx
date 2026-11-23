@@ -92,7 +92,7 @@ export function InstallAppBanner() {
   }
 
   return (
-    <div className="mu-card mb-4 flex items-center gap-3 p-3 pr-2 md:p-4" role="region" aria-label="Install app">
+    <div className="mb-5 flex items-center gap-3 rounded-2xl bg-white/80 p-3 pr-2 ring-1 ring-meetup-border md:p-3.5" role="region" aria-label="Install app">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/icons/icon-192.png" alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-xl" />
       <div className="min-w-0 flex-1">

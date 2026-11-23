@@ -202,21 +202,15 @@ export default function DashboardOverviewPage() {
       </div>
 
       {links !== null && !hasLinks && (
-        <section className="mu-card overflow-hidden">
-          <div className="bg-gradient-to-br from-meetup-lavender to-white p-5 md:p-6">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-meetup-purple shadow-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden /> Your page is live — but empty
-            </span>
-            <h2 className="mt-3 font-display text-xl font-bold text-ink md:text-2xl">
-              Add your first link
-            </h2>
-            <p className="mt-1 text-sm text-meetup-muted">
-              Tap a platform and type your handle, or paste any link. It shows up on your page instantly.
-            </p>
-            <div className="mt-4">
-              <QuickAddLink onCreated={() => loadSetup()} />
-            </div>
-          </div>
+        <section className="mu-dash-block !border-b-0 !pb-0">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-meetup-lavender px-2.5 py-1 text-xs font-semibold text-meetup-purple">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden /> Your page is live — but empty
+          </span>
+          <h2 className="font-display text-xl font-bold text-ink md:text-2xl">Add your first link</h2>
+          <p className="text-sm text-meetup-muted -mt-3">
+            Tap a platform and type your handle, or paste any link. It shows up on your page instantly.
+          </p>
+          <QuickAddLink onCreated={() => loadSetup()} />
         </section>
       )}
 
@@ -291,9 +285,9 @@ export default function DashboardOverviewPage() {
       )}
 
       {showAnalytics && (tab === "overview" || tab === "clicks") && (
-        <section className="mu-card p-5 md:p-6">
+        <section className="mu-dash-block">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-display text-lg font-bold text-ink">Clicks by link</h2>
+            <h2 className="mu-dash-h2">Clicks by link</h2>
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -308,7 +302,7 @@ export default function DashboardOverviewPage() {
               </Link>
             </div>
           </div>
-          <ul className="mt-4 divide-y divide-meetup-border">
+          <ul className="mu-list border-y border-meetup-border">
             {(stats?.links || []).length === 0 && (
               <li className="py-6 text-center text-sm text-meetup-muted">
                 No links yet.{" "}
@@ -347,9 +341,9 @@ export default function DashboardOverviewPage() {
       )}
 
       {showAnalytics && (tab === "overview" || tab === "audience") && (
-        <section className="mu-card p-5 md:p-6">
+        <section className="mu-dash-block">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-display text-lg font-bold text-ink">Email subscribers</h2>
+            <h2 className="mu-dash-h2">Email subscribers</h2>
             <button
               type="button"
               onClick={exportSubscribers}
@@ -359,7 +353,7 @@ export default function DashboardOverviewPage() {
               Export CSV
             </button>
           </div>
-          <ul className="mt-4 divide-y divide-meetup-border">
+          <ul className="mu-list border-y border-meetup-border">
             {subs.length === 0 && (
               <li className="py-6 text-center text-sm text-meetup-muted">No subscribers yet.</li>
             )}
@@ -390,7 +384,7 @@ function StatCard({
   hint?: string;
 }) {
   return (
-    <div className="mu-card p-4 sm:p-5 md:p-6">
+    <div className="rounded-2xl bg-white/70 px-4 py-4 ring-1 ring-meetup-border sm:px-5 sm:py-5">
       <div className="flex flex-wrap items-start justify-between gap-1">
         <p className="text-sm font-semibold text-meetup-muted">{label}</p>
         {hint && (
@@ -414,9 +408,9 @@ function DailyChart({
   const max = Math.max(...daily.map((d) => Math.max(d.views, d.clicks)), 1);
 
   return (
-    <section className="mu-card p-5 md:p-6">
+    <section className="mu-dash-block">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-display text-lg font-bold text-ink">Daily activity</h2>
+        <h2 className="mu-dash-h2">Daily activity</h2>
         <div className="flex gap-3 text-[11px] font-semibold text-meetup-muted">
           <span className="inline-flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-meetup-purple" /> Views
@@ -464,9 +458,9 @@ function DailyChart({
 
 function Breakdown({ title, rows }: { title: string; rows: [string, number][] }) {
   return (
-    <section className="mu-card p-5 md:p-6">
-      <h2 className="font-display text-lg font-bold text-ink">{title}</h2>
-      <ul className="mt-4 space-y-3">
+    <section className="space-y-4">
+      <h2 className="mu-dash-h2">{title}</h2>
+      <ul className="space-y-3">
         {rows.length === 0 && <li className="text-sm text-meetup-muted">No data yet.</li>}
         {rows.map(([k, v]) => {
           const max = Math.max(...rows.map((r) => r[1]), 1);

@@ -104,15 +104,15 @@ export default function QrToolPage() {
       {loading ? (
         <p className="text-sm text-meetup-muted">Loading…</p>
       ) : items.length === 0 ? (
-        <div className="mu-card space-y-3 p-6 text-center">
+        <div className="space-y-3 border-y border-dashed border-meetup-border py-10 text-center">
           <p className="text-sm text-meetup-muted">You don&apos;t have any short links yet.</p>
           <Link href="/dashboard/short-links" className="mu-btn-primary inline-block">
             Create a short link
           </Link>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-[1fr_260px]">
-          <div className="mu-card space-y-5 p-5 md:p-6">
+        <div className="grid gap-8 md:grid-cols-[1fr_240px] md:items-start">
+          <div className="space-y-5">
             <label className="block space-y-1.5">
               <span className="text-sm font-medium text-ink">Short link</span>
               <select
@@ -144,7 +144,7 @@ export default function QrToolPage() {
                     setBg(p.bg);
                   }}
                   aria-label={`Preset ${p.fg} on ${p.bg}`}
-                  className="h-9 w-9 rounded-lg border border-black/10"
+                  className="h-9 w-9 rounded-lg ring-1 ring-meetup-border"
                   style={{ background: p.bg, color: p.fg }}
                 >
                   <span className="text-lg font-bold">▪</span>
@@ -159,7 +159,7 @@ export default function QrToolPage() {
                   type="color"
                   value={fg}
                   onChange={(e) => setFg(e.target.value)}
-                  className="h-10 w-full cursor-pointer rounded-lg border border-black/10"
+                  className="h-10 w-full cursor-pointer rounded-lg ring-1 ring-meetup-border"
                 />
               </label>
               <label className="space-y-1.5">
@@ -168,7 +168,7 @@ export default function QrToolPage() {
                   type="color"
                   value={bg}
                   onChange={(e) => setBg(e.target.value)}
-                  className="h-10 w-full cursor-pointer rounded-lg border border-black/10"
+                  className="h-10 w-full cursor-pointer rounded-lg ring-1 ring-meetup-border"
                 />
               </label>
             </div>
@@ -192,7 +192,7 @@ export default function QrToolPage() {
               </button>
               <button
                 type="button"
-                className="mu-btn-secondary disabled:opacity-60"
+                className="mu-btn-ghost disabled:opacity-60"
                 disabled={busy || !selected}
                 onClick={() => download("svg")}
               >
@@ -201,7 +201,7 @@ export default function QrToolPage() {
             </div>
           </div>
 
-          <div className="mu-card flex items-center justify-center p-5">
+          <div className="flex items-center justify-center rounded-2xl bg-white p-5 ring-1 ring-meetup-border">
             {preview ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={preview} alt="QR code preview" className="w-full max-w-[220px] rounded-lg" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiError, mediaApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 
@@ -12,6 +12,20 @@ type Props = {
   allowUrl?: boolean;
 };
 
+/** Uploaded files are served under /media/… — those should not fill the paste-URL input. */
+function isUploadedMediaUrl(url: string): boolean {
+  try {
+    return new URL(url).pathname.startsWith("/media/");
+  } catch {
+    return url.startsWith("/media/");
+  }
+}
+
+function manualUrlFromValue(value: string | null): string {
+  if (!value || isUploadedMediaUrl(value)) return "";
+  return value;
+}
+
 export function MediaUploadField({
   label,
   value,
@@ -22,6 +36,11 @@ export function MediaUploadField({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [manualUrl, setManualUrl] = useState(() => manualUrlFromValue(value));
+
+  useEffect(() => {
+    setManualUrl(manualUrlFromValue(value));
+  }, [value]);
 
   async function onFile(file: File | undefined) {
     if (!file) return;
@@ -34,6 +53,7 @@ export function MediaUploadField({
     setUploading(true);
     try {
       const res = await mediaApi.upload(token, file);
+      setManualUrl("");
       onChange(res.url);
     } catch (err) {
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Upload failed");
@@ -41,6 +61,11 @@ export function MediaUploadField({
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
     }
+  }
+
+  function clear() {
+    setManualUrl("");
+    onChange(null);
   }
 
   return (
@@ -68,7 +93,7 @@ export function MediaUploadField({
             {value && (
               <button
                 type="button"
-                onClick={() => onChange(null)}
+                onClick={clear}
                 className="rounded-xl px-3 py-2 text-sm font-medium text-meetup-muted hover:text-ink"
               >
                 Remove
@@ -86,8 +111,12 @@ export function MediaUploadField({
             <input
               className="w-full rounded-xl border border-meetup-border px-3 py-2 text-sm"
               placeholder="or paste https://…/image.jpg"
-              value={value || ""}
-              onChange={(e) => onChange(e.target.value.trim() || null)}
+              value={manualUrl}
+              onChange={(e) => {
+                const next = e.target.value;
+                setManualUrl(next);
+                onChange(next.trim() || null);
+              }}
             />
           )}
           {hint && <p className="text-[11px] text-ink/40">{hint}</p>}

@@ -202,17 +202,15 @@ function ShellInner({ children }: { children: React.ReactNode }) {
       <div className="mx-auto grid max-w-[1400px] gap-6 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-5 md:grid-cols-[240px_1fr] md:px-6 md:py-8">
         {/* Sidebar (desktop) */}
         <aside className="hidden md:block">
-          <div className="sticky top-[4.5rem] space-y-4">
-            <div className="mu-card p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-meetup-lavender text-sm font-bold text-meetup-purple">
+          <div className="sticky top-[4.5rem] space-y-6">
+            <div>
+              <div className="flex items-center gap-3 px-1">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-meetup-lavender text-sm font-bold text-meetup-purple">
                   {initials || "U"}
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold text-ink">{displayName}</p>
-                  {username && (
-                    <p className="truncate text-xs text-meetup-muted">@{username}</p>
-                  )}
+                  {username && <p className="truncate text-xs text-meetup-muted">@{username}</p>}
                 </div>
               </div>
               <Link
@@ -224,7 +222,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
               </Link>
             </div>
 
-            <nav className="mu-card p-2" aria-label="Dashboard">
+            <nav className="space-y-0.5" aria-label="Dashboard">
               {NAV.map((item) => {
                 const active = isActive(pathname, item.href);
                 const Icon = item.icon;
@@ -235,8 +233,8 @@ function ShellInner({ children }: { children: React.ReactNode }) {
                     aria-current={active ? "page" : undefined}
                     className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
                       active
-                        ? "bg-meetup-lavender text-meetup-purple"
-                        : "text-meetup-muted hover:bg-mist hover:text-ink"
+                        ? "bg-white text-meetup-purple ring-1 ring-meetup-border"
+                        : "text-meetup-muted hover:bg-white/70 hover:text-ink"
                     }`}
                   >
                     <Icon />
@@ -247,7 +245,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
               {isSuperuser && (
                 <Link
                   href="/admin"
-                  className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-meetup-purple hover:bg-meetup-lavender"
+                  className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-meetup-purple hover:bg-white/70"
                 >
                   <AdminIcon />
                   Admin
@@ -256,7 +254,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
               <div className="my-2 border-t border-meetup-border" />
               <button
                 type="button"
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-meetup-muted hover:bg-mist hover:text-ink"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-meetup-muted hover:bg-white/70 hover:text-ink"
                 onClick={logout}
               >
                 <LogoutIcon />

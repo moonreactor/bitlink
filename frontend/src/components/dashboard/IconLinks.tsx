@@ -20,14 +20,14 @@ export function IconLinks({
 }) {
   if (icons.length === 0) return null;
   return (
-    <section className="mu-card space-y-3 p-4 md:p-5" aria-label="Social icons">
+    <section className="mu-dash-block" aria-label="Social icons">
       <div>
-        <h2 className="font-display text-lg font-bold text-ink">Social icons</h2>
-        <p className="text-sm text-meetup-muted">
+        <h2 className="mu-dash-h2">Social icons</h2>
+        <p className="mu-dash-lead">
           Shown as a row of icons at the top of your page. Switch any link between icon and button.
         </p>
       </div>
-      <ul className="space-y-2">
+      <ul className="mu-list border-y border-meetup-border">
         {icons.map((link, i) => (
           <IconRow
             key={link.id}
@@ -67,7 +67,7 @@ function IconRow({
   const btn =
     "inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-meetup-border px-2 text-xs font-semibold text-ink hover:bg-mist disabled:opacity-30";
   return (
-    <li className="flex flex-wrap items-center gap-2 rounded-xl border border-meetup-border bg-white p-2.5">
+    <li className="flex flex-wrap items-center gap-2 py-3">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-mist text-lg">
         {brand ? <SocialBrandIcon brandId={brand.id} className="text-lg" /> : "🔗"}
       </span>
