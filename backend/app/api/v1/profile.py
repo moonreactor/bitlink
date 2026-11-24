@@ -9,6 +9,7 @@ from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.profile import ProfileOut, ProfileUpdate
 from app.services.qr import generate_profile_qr
+from app.services.verification import badge_color
 from app.services.youtube import extract_youtube_video_id
 
 router = APIRouter(prefix="/me", tags=["profile"])
@@ -26,6 +27,8 @@ def _profile_out(profile: Profile) -> ProfileOut:
         seo_description=profile.seo_description,
         remove_branding=profile.remove_branding,
         is_verified=bool(getattr(profile, "is_verified", False)),
+        verification_type=profile.verification_type if profile.is_verified else None,
+        verified_at=profile.verified_at if profile.is_verified else None,
         show_email_capture=profile.show_email_capture,
         show_phone_capture=bool(getattr(profile, "show_phone_capture", False)),
         tip_jar_enabled=bool(getattr(profile, "tip_jar_enabled", False)),
@@ -168,6 +171,7 @@ def get_qr(
         back_color=back,
         logo_url=logo,
         fmt=fmt,
+        verified_color=badge_color(profile) if logo else None,
     )
     media = "image/svg+xml" if fmt == "svg" else "image/png"
     return Response(content=content, media_type=media)

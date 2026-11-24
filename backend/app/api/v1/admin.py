@@ -10,7 +10,7 @@ from app.db.session import get_db
 from app.models.analytics import LinkClick, PageView
 from app.models.growth import GrowthCtaClick
 from app.models.link import Link
-from app.models.profile import Profile
+from app.models.profile import DEFAULT_VERIFICATION_TYPE, Profile
 from app.models.report import STATUSES as REPORT_STATUSES, Report
 from app.models.short_link import ShortLink
 from app.models.shortener_event import FUNNEL_EVENTS, SOURCES, ShortenerEvent
@@ -99,6 +99,8 @@ def _build_user_detail(db: Session, user: User) -> AdminUserDetail:
         bio=profile.bio if profile else None,
         avatar_url=profile.avatar_url if profile else None,
         is_verified=bool(getattr(profile, "is_verified", False)) if profile else False,
+        verification_type=profile.verification_type if profile and profile.is_verified else None,
+        verified_at=profile.verified_at if profile and profile.is_verified else None,
         is_suspicious=bool(profile.is_suspicious) if profile else False,
         suspicious_at=profile.suspicious_at if profile else None,
         suspicious_note=profile.suspicious_note if profile else None,
@@ -424,11 +426,26 @@ def update_user(
     if payload.is_superuser is not None:
         user.is_superuser = payload.is_superuser
 
-    if payload.is_verified is not None:
+    if payload.is_verified is not None or payload.verification_type is not None:
         profile = db.query(Profile).filter(Profile.user_id == user.id).first()
         if profile is None:
             raise HTTPException(status_code=400, detail="User has no profile to verify")
-        profile.is_verified = payload.is_verified
+        verify = profile.is_verified if payload.is_verified is None else payload.is_verified
+        if verify:
+            profile.is_verified = True
+            if profile.verified_at is None:
+                profile.verified_at = datetime.now(timezone.utc)
+            profile.verification_type = (
+                payload.verification_type
+                or profile.verification_type
+                or DEFAULT_VERIFICATION_TYPE
+            )
+        elif payload.is_verified is False:
+            profile.is_verified = False
+            profile.verification_type = None
+            profile.verified_at = None
+        else:
+            raise HTTPException(status_code=400, detail="Profile is not verified")
 
     if payload.is_suspicious is not None:
         profile = db.query(Profile).filter(Profile.user_id == user.id).first()

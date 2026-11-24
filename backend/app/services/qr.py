@@ -3,7 +3,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import qrcode
-from PIL import Image
+from PIL import Image, ImageDraw
 from qrcode.constants import ERROR_CORRECT_H
 from qrcode.image.pil import PilImage
 from qrcode.image.svg import SvgPathImage
@@ -39,6 +39,23 @@ def _load_logo(logo_url: str | None) -> Image.Image | None:
     return None
 
 
+def _draw_verified_badge(pad: Image.Image, color: str) -> None:
+    """Verified check in the bottom-right corner of the logo pad (same look as the profile badge)."""
+    w, h = pad.size
+    size = max(14, w * 2 // 5)
+    ring = max(2, size // 10)
+    x0, y0 = w - size, h - size
+    draw = ImageDraw.Draw(pad)
+    draw.ellipse((x0, y0, w - 1, h - 1), fill=(255, 255, 255, 255))
+    draw.ellipse((x0 + ring, y0 + ring, w - 1 - ring, h - 1 - ring), fill=color)
+    # Check mark, in the same proportions as the "M20 6 9 17l-5-5" icon on the web.
+    def pt(px: float, py: float) -> tuple[float, float]:
+        inner = size - 2 * ring
+        return (x0 + ring + inner * (0.2 + px * 0.6), y0 + ring + inner * (0.2 + py * 0.6))
+
+    draw.line([pt(0.0, 0.5), pt(0.35, 0.85), pt(1.0, 0.15)], fill="white", width=max(2, size // 7), joint="curve")
+
+
 def generate_profile_qr(
     username: str,
     *,
@@ -47,6 +64,7 @@ def generate_profile_qr(
     logo_url: str | None = None,
     fmt: str = "png",
     base_url: str | None = None,
+    verified_color: str | None = None,
 ) -> bytes:
     url = _public_path_url(username, base_url=base_url)
     fmt = (fmt or "png").lower()
@@ -76,6 +94,8 @@ def generate_profile_qr(
         # White pad behind logo for scannability
         pad = Image.new("RGBA", (logo_size + 12, logo_size + 12), (255, 255, 255, 255))
         pad.paste(logo, (6, 6), logo if logo.mode == "RGBA" else None)
+        if verified_color:
+            _draw_verified_badge(pad, verified_color)
         pos = ((qr_w - pad.size[0]) // 2, (qr_h - pad.size[1]) // 2)
         img = img.convert("RGBA")
         img.paste(pad, pos, pad)

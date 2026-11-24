@@ -122,6 +122,27 @@ class ShortLinkOut(BaseModel):
     updated_at: datetime
 
 
+class ShortLinkOwnerOut(BaseModel):
+    username: str
+    display_name: str
+    avatar_url: str | None = None
+    is_verified: bool = False
+    verification_type: str | None = None
+    verified_at: datetime | None = None
+
+
+class ShortLinkPreviewOut(BaseModel):
+    """What `bitlink.click/{code}+` shows before following a short link (no click recorded)."""
+
+    code: str
+    url: str
+    host: str
+    title: str | None = None
+    created_at: datetime
+    # None for anonymous links, or when the owner has no public profile.
+    owner: ShortLinkOwnerOut | None = None
+
+
 class ShortLinkVisitOut(BaseModel):
     code: str
     url: str

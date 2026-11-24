@@ -1,3 +1,5 @@
+import type { VerificationType } from "@/lib/verification";
+
 export type SocialIconStyle = "brand" | "mono";
 
 export type Theme = {
@@ -41,6 +43,8 @@ export type Profile = {
   seo_description: string | null;
   remove_branding: boolean;
   is_verified: boolean;
+  verification_type: VerificationType | null;
+  verified_at: string | null;
   show_email_capture: boolean;
   show_phone_capture: boolean;
   tip_jar_enabled: boolean;
@@ -158,6 +162,10 @@ export type PublicProfile = {
   seo_description: string | null;
   remove_branding: boolean;
   is_verified: boolean;
+  verification_type: VerificationType | null;
+  verified_at: string | null;
+  /** Custom domain the owner proved they control. */
+  verified_domain: string | null;
   show_email_capture: boolean;
   show_phone_capture: boolean;
   tip_jar_enabled: boolean;
@@ -186,6 +194,7 @@ export type PublicDirectoryItem = {
   avatar_url: string | null;
   language: "en" | "es" | "pt" | null;
   is_verified: boolean;
+  verification_type: VerificationType | null;
   updated_at: string;
 };
 
@@ -334,6 +343,8 @@ export type AdminUserDetail = {
   bio: string | null;
   avatar_url: string | null;
   is_verified: boolean;
+  verification_type: VerificationType | null;
+  verified_at: string | null;
   is_suspicious: boolean;
   suspicious_at: string | null;
   suspicious_note: string | null;

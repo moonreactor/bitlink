@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
@@ -97,6 +98,8 @@ class AdminUserDetail(BaseModel):
     bio: str | None = None
     avatar_url: str | None = None
     is_verified: bool = False
+    verification_type: str | None = None
+    verified_at: datetime | None = None
     is_suspicious: bool = False
     suspicious_at: datetime | None = None
     suspicious_note: str | None = None
@@ -113,6 +116,8 @@ class AdminUserUpdate(BaseModel):
     is_active: bool | None = None
     is_superuser: bool | None = None
     is_verified: bool | None = None
+    # Kind of verified account; also accepted alone to change the kind of an already verified profile.
+    verification_type: Literal["creator", "public_figure", "brand", "organization"] | None = None
     is_suspicious: bool | None = None
     # Shown to the owner in the warning banner; only used when flagging.
     suspicious_note: str | None = Field(default=None, max_length=500)

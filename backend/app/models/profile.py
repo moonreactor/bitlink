@@ -8,6 +8,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
+# Kind of verified account; drives the badge color and the schema.org type (Person vs Organization).
+VERIFICATION_TYPES = ("creator", "public_figure", "brand", "organization")
+DEFAULT_VERIFICATION_TYPE = "creator"
+
 DEFAULT_THEME: dict[str, Any] = {
     "preset": "midnight",
     "background_color": "#0f172a",
@@ -42,6 +46,9 @@ class Profile(Base):
         UUID(as_uuid=True), ForeignKey("links.id", ondelete="SET NULL", use_alter=True), nullable=True
     )
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Set together with is_verified by a superadmin; cleared when the badge is removed.
+    verification_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     tip_jar_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     tip_jar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     tip_jar_label: Mapped[str] = mapped_column(String(80), default="Tip me", nullable=False)

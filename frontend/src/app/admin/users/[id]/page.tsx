@@ -5,7 +5,14 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { adminApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
+import { VerifiedMark } from "@/components/VerifiedBadge";
 import type { AdminUserDetail } from "@/lib/types";
+import {
+  VERIFICATION_COPY,
+  VERIFICATION_TYPES,
+  verificationType,
+  type VerificationType,
+} from "@/lib/verification";
 
 export default function AdminUserDetailPage() {
   const params = useParams<{ id: string }>();
@@ -13,6 +20,7 @@ export default function AdminUserDetailPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [flagNote, setFlagNote] = useState("");
+  const [verifyType, setVerifyType] = useState<VerificationType>("creator");
 
   const load = useCallback(async () => {
     const token = getAccessToken();
@@ -112,13 +120,41 @@ export default function AdminUserDetailPage() {
           >
             {user.is_superuser ? "Remove superuser" : "Make superuser"}
           </button>
-          <button
-            disabled={saving || !user.profile_id}
-            onClick={() => patch({ is_verified: !user.is_verified })}
-            className="rounded-xl border border-ink/10 px-4 py-2 text-sm font-medium hover:bg-ink/5 disabled:opacity-50"
-          >
-            {user.is_verified ? "Remove verified badge" : "Verify profile"}
-          </button>
+          <div className="inline-flex overflow-hidden rounded-xl border border-ink/10">
+            <label className="sr-only" htmlFor="verification-type">
+              Kind of verified account
+            </label>
+            <select
+              id="verification-type"
+              disabled={saving || !user.profile_id}
+              value={user.is_verified ? verificationType(user.verification_type) : verifyType}
+              onChange={(e) => {
+                const value = e.target.value as VerificationType;
+                if (user.is_verified) patch({ verification_type: value });
+                else setVerifyType(value);
+              }}
+              className="border-r border-ink/10 bg-white px-3 py-2 text-sm disabled:opacity-50"
+            >
+              {VERIFICATION_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {VERIFICATION_COPY.en.types[type]}
+                </option>
+              ))}
+            </select>
+            <button
+              disabled={saving || !user.profile_id}
+              onClick={() =>
+                patch(
+                  user.is_verified
+                    ? { is_verified: false }
+                    : { is_verified: true, verification_type: verifyType },
+                )
+              }
+              className="px-4 py-2 text-sm font-medium hover:bg-ink/5 disabled:opacity-50"
+            >
+              {user.is_verified ? "Remove verified badge" : "Verify profile"}
+            </button>
+          </div>
           {user.profile_id && !user.is_suspicious && (
             <input
               value={flagNote}
@@ -159,7 +195,13 @@ export default function AdminUserDetailPage() {
         <div className="mt-3 flex gap-2 text-xs">
           <Badge ok={user.is_active}>{user.is_active ? "Active" : "Disabled"}</Badge>
           {user.is_superuser && <Badge ok>Superuser</Badge>}
-          {user.is_verified && <Badge ok>Verified</Badge>}
+          {user.is_verified && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 font-medium text-emerald-800">
+              <VerifiedMark type={user.verification_type} lang="en" size={12} />
+              Verified · {VERIFICATION_COPY.en.types[verificationType(user.verification_type)]}
+              {user.verified_at && ` · since ${new Date(user.verified_at).toLocaleDateString()}`}
+            </span>
+          )}
           {user.is_suspicious && <Badge>Suspicious</Badge>}
         </div>
       </section>

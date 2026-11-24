@@ -2,6 +2,7 @@ import { plain } from "@/components/blog/RichText";
 import { articlePath, blogBase, categoryPath, getCategory, getTranslations, LOCALE, readingMinutes, UI, type Article, type Faq } from "@/lib/content";
 import { LANG_LABEL, shortenerPath, type SiteLang } from "@/lib/i18n/site";
 import { absoluteAsset, OG_IMAGE_PATH, siteUrl } from "@/lib/site";
+import { isOrganization } from "@/lib/verification";
 
 const WEB = siteUrl();
 export const ORG_ID = `${WEB}/#organization`;
@@ -225,6 +226,9 @@ export function profilePageLd(profile: {
   language: string | null;
   created_at: string | null;
   updated_at: string | null;
+  is_verified?: boolean;
+  verification_type?: string | null;
+  verified_domain?: string | null;
 }) {
   const url = `${WEB}/${profile.username}`;
   const image = profile.avatar_url
@@ -232,16 +236,25 @@ export function profilePageLd(profile: {
       ? profile.avatar_url
       : `${WEB}${profile.avatar_url}`
     : `${url}/opengraph-image`;
-  const person: Record<string, unknown> = {
-    "@type": "Person",
-    "@id": `${url}#person`,
+  // Verified brands and organizations are described as companies; everyone else as a person.
+  const isOrg = Boolean(profile.is_verified && isOrganization(profile.verification_type));
+  const entityId = `${url}#${isOrg ? "organization" : "person"}`;
+  // A custom domain the owner proved they control is a strong "same entity" signal.
+  const sameAs = [
+    ...(profile.verified_domain ? [`https://${profile.verified_domain}`] : []),
+    ...profile.social_links.map((s) => s.url),
+  ];
+  const entity: Record<string, unknown> = {
+    "@type": isOrg ? "Organization" : "Person",
+    "@id": entityId,
     name: profile.display_name,
     alternateName: `@${profile.username}`,
     identifier: profile.username,
     url,
+    ...(isOrg ? { logo: image } : {}),
     image,
     ...(profile.bio ? { description: profile.bio } : {}),
-    ...(profile.social_links.length ? { sameAs: profile.social_links.map((s) => s.url) } : {}),
+    ...(sameAs.length ? { sameAs: Array.from(new Set(sameAs)) } : {}),
   };
   return {
     "@context": "https://schema.org",
@@ -255,9 +268,9 @@ export function profilePageLd(profile: {
         ...(profile.created_at ? { dateCreated: profile.created_at } : {}),
         ...(profile.updated_at ? { dateModified: profile.updated_at } : {}),
         isPartOf: { "@id": SITE_ID },
-        mainEntity: { "@id": `${url}#person` },
+        mainEntity: { "@id": entityId },
       },
-      person,
+      entity,
       {
         "@type": "BreadcrumbList",
         itemListElement: [

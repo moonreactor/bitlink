@@ -22,9 +22,14 @@ from app.services.analytics import detect_device, hash_visitor, normalize_referr
 from app.services.domain import normalize_domain
 from app.services.embeds import public_embed_payload
 from app.services.scheduling import is_link_visible
+from app.services.verification import verification_fields
 from app.services.youtube import extract_youtube_video_id
 
 router = APIRouter(prefix="/public", tags=["public"])
+
+
+def _verified_domain(profile: Profile) -> str | None:
+    return profile.custom_domain if profile.custom_domain and profile.custom_domain_verified else None
 
 
 def _get_profile(db: Session, username: str) -> Profile:
@@ -147,6 +152,7 @@ def public_directory(
             avatar_url=p.avatar_url,
             language=p.language,
             is_verified=bool(p.is_verified),
+            verification_type=verification_fields(p)["verification_type"],
             updated_at=p.updated_at,
         )
         for p in rows
@@ -175,7 +181,8 @@ def get_public_profile(
             seo_title=profile.seo_title,
             seo_description=profile.seo_description,
             remove_branding=profile.remove_branding,
-            is_verified=bool(getattr(profile, "is_verified", False)),
+            **verification_fields(profile),
+            verified_domain=_verified_domain(profile),
             show_email_capture=False,
             show_phone_capture=False,
             tip_jar_enabled=False,
@@ -229,7 +236,8 @@ def get_public_profile(
         seo_title=profile.seo_title,
         seo_description=profile.seo_description,
         remove_branding=profile.remove_branding,
-        is_verified=bool(getattr(profile, "is_verified", False)),
+        **verification_fields(profile),
+        verified_domain=_verified_domain(profile),
         show_email_capture=profile.show_email_capture,
         show_phone_capture=bool(getattr(profile, "show_phone_capture", False)),
         tip_jar_enabled=bool(

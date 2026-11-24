@@ -5,6 +5,7 @@ import { BackgroundMusicPlayer } from "@/components/BackgroundMusicPlayer";
 import { BitlinkLogo } from "@/components/BitlinkLogo";
 import { LinkVisual } from "@/components/LinkVisual";
 import { TrackingPixels } from "@/components/TrackingPixels";
+import { VerifiedBadge, VerifiedMark } from "@/components/VerifiedBadge";
 import { publicApi } from "@/lib/api";
 import { fontStack, googleFontsHref } from "@/lib/fonts";
 import { buildLinkBlocks } from "@/lib/linkBlocks";
@@ -245,24 +246,15 @@ export function PublicProfileView({
             {profile.display_name.slice(0, 1).toUpperCase()}
           </div>
         )}
-        <h1 className="mt-4 flex items-center justify-center gap-2 text-center text-2xl font-bold">
+        <h1 className="relative mt-4 flex items-center justify-center gap-2 text-center text-2xl font-bold">
           <span>{profile.display_name}</span>
           {profile.is_verified && (
-            <span
-              title={t.verified}
-              className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-sky-500 text-white shadow"
-              aria-label={t.verified}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path
-                  d="M20 6 9 17l-5-5"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </span>
+            <VerifiedBadge
+              type={profile.verification_type}
+              verifiedAt={profile.verified_at}
+              domain={profile.verified_domain}
+              lang={lang}
+            />
           )}
         </h1>
         {!profile.is_locked && profile.bio && (
@@ -450,6 +442,7 @@ export function PublicProfileView({
                       </span>
                     )}
                     <span className="min-w-0 truncate text-xs font-semibold">{p.display_name}</span>
+                    {p.is_verified && <VerifiedMark type={p.verification_type} lang={lang} size={14} />}
                   </a>
                 </li>
               ))}

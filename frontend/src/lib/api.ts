@@ -1,3 +1,4 @@
+import type { VerificationType } from "@/lib/verification";
 import type {
   AdminReportItem,
   AdminReportListResponse,
@@ -204,6 +205,7 @@ export const adminApi = {
       is_active?: boolean;
       is_superuser?: boolean;
       is_verified?: boolean;
+      verification_type?: VerificationType;
       is_suspicious?: boolean;
       suspicious_note?: string;
     },
