@@ -49,6 +49,7 @@ function humanizeValidationMsg(msg: string, loc?: unknown): string {
   const cleaned = msg.replace(/^Value error,\s*/i, "").trim();
   const field = Array.isArray(loc) ? String(loc[loc.length - 1] || "") : "";
 
+  if (/test addresses/i.test(cleaned)) return cleaned;
   if (/email/i.test(cleaned) || field === "email") {
     return "Please enter a valid email address.";
   }
@@ -312,6 +313,7 @@ export type EmailKindStats = {
   total: number;
   sent: number;
   failed: number;
+  rejected: number;
   skipped: number;
   delivered: number;
   opened: number;
@@ -341,7 +343,7 @@ export type AdminEmailLog = {
   kind: string;
   language: string;
   subject: string | null;
-  status: "sent" | "failed" | "skipped";
+  status: "sent" | "failed" | "rejected" | "skipped";
   delivery_status: string | null;
   error: string | null;
   provider_id: string | null;

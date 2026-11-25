@@ -7,9 +7,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
-# sent = accepted by Resend; failed = Resend refused it (retried next run for lifecycle emails);
-# skipped = no RESEND_API_KEY configured, only logged.
-EMAIL_STATUSES = ("sent", "failed", "skipped")
+# sent = accepted by Resend; failed = temporary problem (retried next run for lifecycle emails);
+# rejected = Resend refused the address itself (never retried); skipped = no RESEND_API_KEY, only logged.
+EMAIL_STATUSES = ("sent", "failed", "rejected", "skipped")
 # What happened after Resend accepted it (from its webhook); later states don't go backwards.
 DELIVERY_STATUSES = ("delivered", "delayed", "opened", "clicked", "bounced", "complained", "failed")
 

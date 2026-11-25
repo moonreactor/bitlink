@@ -16,6 +16,15 @@ class RegisterRequest(BaseModel):
     # UI language the visitor was browsing in; becomes the default language of their public page.
     language: str | None = Field(default=None, max_length=8)
 
+    @field_validator("email")
+    @classmethod
+    def validate_real_email(cls, v: str) -> str:
+        from app.services.email_domains import is_undeliverable
+
+        if is_undeliverable(v):
+            raise ValueError("Please use a real email address — test addresses like @example.com can't receive email.")
+        return v
+
     @field_validator("language")
     @classmethod
     def validate_language(cls, v: str | None) -> str | None:

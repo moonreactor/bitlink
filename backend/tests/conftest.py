@@ -55,7 +55,7 @@ def register(client: TestClient, username: str, **extra) -> dict:
     res = client.post(
         "/api/v1/auth/register",
         json={
-            "email": f"{username}@example.com",
+            "email": f"{username}@mail.bitlink.dev",
             "password": "password123",
             "username": username,
             "display_name": username.title(),
