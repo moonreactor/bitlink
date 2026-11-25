@@ -29,11 +29,14 @@ from app.schemas.short_link import (
     ShortLinkCreate,
     ShortLinkOut,
     ShortLinkUpdate,
+    ShortLinkOwnerOut,
+    ShortLinkPreviewOut,
     ShortLinkVisitOut,
 )
 from app.services.analytics import detect_device, hash_visitor, normalize_referrer
 from app.services.safe_browsing import UNSAFE_MESSAGE, find_unsafe_urls
 from app.services.qr import generate_profile_qr
+from app.services.verification import badge_color, verification_fields
 from app.services.short_links import (
     CODE_RE,
     RESERVED_CODES,
@@ -507,10 +510,10 @@ def short_link_qr(
             return default
         return value if value.startswith("#") else f"#{value}"
 
-    logo_url = None
-    if logo and fmt == "png":
-        profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
-        logo_url = profile.avatar_url if profile else None
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    logo_url = profile.avatar_url if profile and logo and fmt == "png" else None
+    # Verified owners get the badge on every QR (on the logo, or centered without one).
+    verified_color = badge_color(profile) if profile else None
     # Encode the public short URL (bitlink.click/code), not the Railway host.
     content = generate_profile_qr(
         link.code,
@@ -519,6 +522,7 @@ def short_link_qr(
         logo_url=logo_url,
         fmt=fmt,
         base_url=settings.short_base_url,
+        verified_color=verified_color,
     )
     media = "image/svg+xml" if fmt == "svg" else "image/png"
     return Response(content=content, media_type=media)
@@ -543,6 +547,40 @@ def resolve_short_link(
     url = _final_url(link, device=device, country=country)
     _track_click(db, link, request)
     return ShortLinkVisitOut(code=link.code, url=url, title=link.title)
+
+
+@router.get("/r/{code}/preview", response_model=ShortLinkPreviewOut)
+def preview_short_link(code: str, db: Session = Depends(get_db)) -> ShortLinkPreviewOut:
+    """Where a short link goes and who created it, without counting a click."""
+    link = (
+        db.query(ShortLink)
+        .filter(ShortLink.code == normalize_code(code), ShortLink.is_active.is_(True))
+        .first()
+    )
+    if link is None:
+        raise HTTPException(status_code=404, detail="Short link not found")
+
+    owner = None
+    if link.user_id is not None:
+        profile = db.query(Profile).filter(Profile.user_id == link.user_id).first()
+        # A flagged profile does not lend its name (or its badge) to the link.
+        if profile is not None and not profile.is_suspicious:
+            owner = ShortLinkOwnerOut(
+                username=profile.username,
+                display_name=profile.display_name,
+                avatar_url=profile.avatar_url,
+                **verification_fields(profile),
+            )
+
+    url = _final_url(link)
+    return ShortLinkPreviewOut(
+        code=link.code,
+        url=url,
+        host=(urlparse(url).hostname or "").removeprefix("www."),
+        title=link.title,
+        created_at=link.created_at,
+        owner=owner,
+    )
 
 
 @router.get("/r/{code}/go")

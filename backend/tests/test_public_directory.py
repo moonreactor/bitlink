@@ -31,6 +31,7 @@ def test_only_opted_in_profiles_are_listed(client):
         "avatar_url",
         "language",
         "is_verified",
+        "verification_type",
         "updated_at",
     }
 

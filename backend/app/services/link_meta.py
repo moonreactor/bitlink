@@ -6,7 +6,8 @@ import re
 from html.parser import HTMLParser
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
-from urllib.request import Request, urlopen
+
+from app.services.safe_fetch import open_public_url
 
 
 class _MetaParser(HTMLParser):
@@ -74,17 +75,14 @@ def fetch_link_meta(raw_url: str, timeout: float = 6.0) -> dict[str, str | None]
     title: str | None = None
     favicon: str | None = None
 
-    req = Request(
-        url,
-        headers={
-            "User-Agent": "BitlinkBot/1.0 (+https://bitlink.click)",
-            "Accept": "text/html,application/xhtml+xml",
-        },
-        method="GET",
-    )
+    headers = {
+        "User-Agent": "BitlinkBot/1.0 (+https://bitlink.click)",
+        "Accept": "text/html,application/xhtml+xml",
+    }
 
     try:
-        with urlopen(req, timeout=timeout) as resp:
+        # Users choose this URL: never let it reach internal addresses (SSRF).
+        with open_public_url(url, headers=headers, timeout=timeout) as resp:
             content_type = (resp.headers.get("Content-Type") or "").lower()
             final_url = resp.geturl() or url
             raw = resp.read(250_000)
@@ -102,7 +100,8 @@ def fetch_link_meta(raw_url: str, timeout: float = 6.0) -> dict[str, str | None]
                     title = re.sub(r"\s+", " ", title).strip()[:120]
                 if parser.icons:
                     favicon = urljoin(final_url, parser.icons[0])
-    except (HTTPError, URLError, TimeoutError, ValueError):
+    except (HTTPError, URLError, TimeoutError, OSError, ValueError):
+        # UnsafeUrl is a ValueError: a private target gets the same fallback as a dead link.
         pass
 
     if not title:

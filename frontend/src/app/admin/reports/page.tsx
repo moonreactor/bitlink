@@ -32,6 +32,7 @@ const REASON_LABEL: Record<string, string> = {
   spam: "Spam",
   adult: "Adult",
   illegal: "Illegal",
+  impersonation: "Impersonation",
   other: "Other",
 };
 
@@ -207,6 +208,19 @@ export default function AdminReportsPage() {
                       <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 font-medium text-red-700">
                         disabled
                       </span>
+                    )}
+                  </p>
+                )}
+                {r.impersonates_username && (
+                  <p className="text-xs font-semibold text-red-700">
+                    Looks like verified{" "}
+                    <a href={`/${r.impersonates_username}`} target="_blank" rel="noreferrer" className="underline">
+                      @{r.impersonates_username}
+                    </a>
+                    {r.impersonates_user_id && (
+                      <Link href={`/admin/users/${r.impersonates_user_id}`} className="ml-1 font-normal text-accent hover:underline">
+                        (user)
+                      </Link>
                     )}
                   </p>
                 )}

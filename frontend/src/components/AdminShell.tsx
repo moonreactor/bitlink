@@ -13,6 +13,7 @@ const NAV = [
   { href: "/admin/users", label: "Users" },
   { href: "/admin/links", label: "Links" },
   { href: "/admin/reports", label: "Reports" },
+  { href: "/admin/verification", label: "Verification" },
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -21,6 +22,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
   const [pendingReports, setPendingReports] = useState(0);
+  const [pendingVerifications, setPendingVerifications] = useState(0);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -40,6 +42,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         adminApi
           .reports(token, { status: "pending", page_size: 1 })
           .then((r) => setPendingReports(r.total))
+          .catch(() => {});
+        adminApi
+          .verificationRequests(token, { status: "pending", page_size: 1 })
+          .then((r) => setPendingVerifications(r.total))
           .catch(() => {});
       })
       .catch(() => {
@@ -93,6 +99,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   {item.href === "/admin/reports" && pendingReports > 0 && (
                     <span className="ml-2 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                       {pendingReports}
+                    </span>
+                  )}
+                  {item.href === "/admin/verification" && pendingVerifications > 0 && (
+                    <span className="ml-2 rounded-full bg-sky-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {pendingVerifications}
                     </span>
                   )}
                 </Link>

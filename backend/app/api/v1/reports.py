@@ -11,6 +11,7 @@ from app.models.profile import Profile
 from app.models.report import Report
 from app.models.short_link import ShortLink
 from app.schemas.report import ReportCreate
+from app.services.identity import alert_owner, impersonated_profile
 from app.services.short_links import normalize_code
 
 router = APIRouter(tags=["reports"])
@@ -84,4 +85,17 @@ def create_report(payload: ReportCreate, request: Request, db: Session = Depends
         return
 
     db.add(report)
+    db.flush()
+    # Reported profile looks like a verified account: let its owner know.
+    if report.profile_id:
+        reported = db.get(Profile, report.profile_id)
+        if owner := impersonated_profile(db, reported):
+            alert_owner(
+                db,
+                owner,
+                "reported_lookalike",
+                f"@{reported.username}",
+                report_id=report.id,
+                report_reason=report.reason,
+            )
     db.commit()

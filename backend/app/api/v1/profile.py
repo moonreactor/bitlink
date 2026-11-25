@@ -9,6 +9,15 @@ from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.profile import ProfileOut, ProfileUpdate
 from app.services.qr import generate_profile_qr
+from app.services.identity import (
+    alert_owner,
+    lookalike_verified_username,
+    protected_display_name_owner,
+)
+from app.services.verification import badge_color, revoke_for_review
+
+LOOKALIKE_USERNAME = "This username is too similar to a verified account. Please choose another."
+PROTECTED_NAME = "This name belongs to a verified account. Please use a different display name."
 from app.services.youtube import extract_youtube_video_id
 
 router = APIRouter(prefix="/me", tags=["profile"])
@@ -26,6 +35,8 @@ def _profile_out(profile: Profile) -> ProfileOut:
         seo_description=profile.seo_description,
         remove_branding=profile.remove_branding,
         is_verified=bool(getattr(profile, "is_verified", False)),
+        verification_type=profile.verification_type if profile.is_verified else None,
+        verified_at=profile.verified_at if profile.is_verified else None,
         show_email_capture=profile.show_email_capture,
         show_phone_capture=bool(getattr(profile, "show_phone_capture", False)),
         tip_jar_enabled=bool(getattr(profile, "tip_jar_enabled", False)),
@@ -78,7 +89,12 @@ def update_profile(
     profile = get_user_profile(db, current_user)
     data = payload.model_dump(exclude_unset=True)
 
-    if "username" in data and data["username"] != profile.username:
+    renaming = "username" in data and data["username"] != profile.username
+    renaming_display = "display_name" in data and data["display_name"] != profile.display_name
+
+    # Validate both names before changing anything: a refused name records an alert for the
+    # verified owner (committed), and that commit must not carry half of this update with it.
+    if renaming:
         exists = (
             db.query(Profile)
             .filter(Profile.username == data["username"], Profile.id != profile.id)
@@ -86,7 +102,28 @@ def update_profile(
         )
         if exists:
             raise HTTPException(status_code=400, detail="Username already taken")
+        if owner := lookalike_verified_username(db, data["username"], profile.id):
+            alert_owner(db, owner, "blocked_username", data["username"])
+            db.commit()
+            raise HTTPException(status_code=400, detail=LOOKALIKE_USERNAME)
+    if renaming_display:
+        if owner := protected_display_name_owner(db, data["display_name"], profile.id):
+            alert_owner(db, owner, "blocked_display_name", data["display_name"])
+            db.commit()
+            raise HTTPException(status_code=400, detail=PROTECTED_NAME)
+
+    # A verified badge vouches for a specific name: renaming sends it back to review.
+    if renaming:
+        revoke_for_review(
+            db, profile, f"Username changed from @{profile.username} to @{data['username']}"
+        )
         profile.username = data["username"]
+    if renaming_display:
+        revoke_for_review(
+            db,
+            profile,
+            f"Display name changed from “{profile.display_name}” to “{data['display_name']}”",
+        )
 
     for field in (
         "display_name",
@@ -168,6 +205,7 @@ def get_qr(
         back_color=back,
         logo_url=logo,
         fmt=fmt,
+        verified_color=badge_color(profile),
     )
     media = "image/svg+xml" if fmt == "svg" else "image/png"
     return Response(content=content, media_type=media)

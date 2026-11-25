@@ -1,7 +1,10 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
+
+from app.schemas.verification import ProofResult
 
 
 class AdminReferralSource(BaseModel):
@@ -86,6 +89,75 @@ class AdminLinkItem(BaseModel):
     profile_id: UUID
 
 
+class AdminVerificationEvent(BaseModel):
+    id: UUID
+    action: str
+    verification_type: str | None = None
+    # None when a rule did it (automatic revocation).
+    actor_email: str | None = None
+    note: str | None = None
+    created_at: datetime
+
+
+class AdminVerificationSignals(BaseModel):
+    """Facts that help decide whether a profile deserves the badge."""
+
+    account_age_days: int
+    has_avatar: bool
+    has_bio: bool
+    verified_domain: str | None = None
+    social_profiles: list[str] = Field(default_factory=list)
+    links_count: int = 0
+    views_count: int = 0
+    clicks_count: int = 0
+    subscribers_count: int = 0
+    reports_total: int = 0
+    reports_pending: int = 0
+    is_suspicious: bool = False
+    previously_revoked: int = 0
+
+
+class AdminVerificationRequestItem(BaseModel):
+    id: UUID
+    profile_id: UUID
+    user_id: UUID
+    username: str
+    display_name: str
+    avatar_url: str | None = None
+    is_verified: bool = False
+    verification_type: str
+    source: str
+    reason: str | None = None
+    evidence_urls: list[str] = Field(default_factory=list)
+    # Code the owner was asked to publish, and where the automatic check found it.
+    proof_code: str
+    proof_results: list[ProofResult] | None = None
+    status: str
+    decision_note: str | None = None
+    reviewed_by_email: str | None = None
+    reviewed_at: datetime | None = None
+    created_at: datetime
+    signals: AdminVerificationSignals
+
+
+class AdminVerificationRequestList(BaseModel):
+    items: list[AdminVerificationRequestItem]
+    total: int
+    page: int
+    page_size: int
+    pending: int = 0
+    approved: int = 0
+    rejected: int = 0
+
+
+class AdminVerificationDecision(BaseModel):
+    status: Literal["approved", "rejected"]
+    # Approve as a different kind than the one requested.
+    verification_type: Literal["creator", "public_figure", "brand", "organization"] | None = None
+    # Shown to the owner when rejected; stored as the internal note when approved.
+    note: str | None = Field(default=None, max_length=500)
+
+
 class AdminUserDetail(BaseModel):
     id: UUID
     email: EmailStr
@@ -97,6 +169,12 @@ class AdminUserDetail(BaseModel):
     bio: str | None = None
     avatar_url: str | None = None
     is_verified: bool = False
+    verification_type: str | None = None
+    verified_at: datetime | None = None
+    verified_by_email: str | None = None
+    verification_note: str | None = None
+    verification_history: list[AdminVerificationEvent] = Field(default_factory=list)
+    pending_verification_request_id: UUID | None = None
     is_suspicious: bool = False
     suspicious_at: datetime | None = None
     suspicious_note: str | None = None
@@ -113,6 +191,10 @@ class AdminUserUpdate(BaseModel):
     is_active: bool | None = None
     is_superuser: bool | None = None
     is_verified: bool | None = None
+    # Kind of verified account; also accepted alone to change the kind of an already verified profile.
+    verification_type: Literal["creator", "public_figure", "brand", "organization"] | None = None
+    # Internal note for superadmins, saved with the verification.
+    verification_note: str | None = Field(default=None, max_length=500)
     is_suspicious: bool | None = None
     # Shown to the owner in the warning banner; only used when flagging.
     suspicious_note: str | None = Field(default=None, max_length=500)

@@ -163,6 +163,8 @@ class ProfileOut(BaseModel):
     seo_description: str | None
     remove_branding: bool
     is_verified: bool = False
+    verification_type: str | None = None
+    verified_at: datetime | None = None
     show_email_capture: bool
     show_phone_capture: bool = False
     tip_jar_enabled: bool = False

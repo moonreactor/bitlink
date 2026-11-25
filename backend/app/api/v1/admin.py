@@ -16,6 +16,10 @@ from app.models.short_link import ShortLink
 from app.models.shortener_event import FUNNEL_EVENTS, SOURCES, ShortenerEvent
 from app.models.subscriber import Subscriber
 from app.models.user import User
+from app.models.verification import REQUEST_STATUSES, VerificationEvent, VerificationRequest
+from app.services.identity import impersonated_profile
+from app.services.verification import grant_verification, revoke_verification
+from app.services.verification_proof import proof_code, run_proof_checks
 from app.schemas.report import AdminReportItem, AdminReportListResponse, AdminReportUpdate
 from app.schemas.admin import (
     AdminDailyStat,
@@ -28,11 +32,86 @@ from app.schemas.admin import (
     AdminUserListItem,
     AdminUserListResponse,
     AdminUserUpdate,
+    AdminVerificationDecision,
+    AdminVerificationEvent,
+    AdminVerificationRequestItem,
+    AdminVerificationRequestList,
+    AdminVerificationSignals,
     ShortenerFunnel,
     ShortenerFunnelStep,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+def _emails(db: Session, ids: set) -> dict:
+    ids = {i for i in ids if i}
+    if not ids:
+        return {}
+    return dict(db.query(User.id, User.email).filter(User.id.in_(ids)).all())
+
+
+def _verification_history(db: Session, profile: Profile) -> list[AdminVerificationEvent]:
+    events = (
+        db.query(VerificationEvent)
+        .filter(VerificationEvent.profile_id == profile.id)
+        .order_by(VerificationEvent.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    emails = _emails(db, {e.actor_id for e in events})
+    return [
+        AdminVerificationEvent(
+            id=e.id,
+            action=e.action,
+            verification_type=e.verification_type,
+            actor_email=emails.get(e.actor_id),
+            note=e.note,
+            created_at=e.created_at,
+        )
+        for e in events
+    ]
+
+
+def _verification_signals(db: Session, profile: Profile) -> AdminVerificationSignals:
+    links = db.query(Link.display, Link.title).filter(Link.profile_id == profile.id).all()
+    reports = dict(
+        db.query(Report.status, func.count(Report.id))
+        .filter(Report.profile_id == profile.id)
+        .group_by(Report.status)
+        .all()
+    )
+    created = profile.created_at
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    return AdminVerificationSignals(
+        account_age_days=max(0, (datetime.now(timezone.utc) - created).days),
+        has_avatar=bool(profile.avatar_url),
+        has_bio=bool((profile.bio or "").strip()),
+        verified_domain=(
+            profile.custom_domain if profile.custom_domain and profile.custom_domain_verified else None
+        ),
+        social_profiles=[title for display, title in links if display == "icon"],
+        links_count=sum(1 for display, _ in links if display != "icon"),
+        views_count=db.query(func.count(PageView.id)).filter(PageView.profile_id == profile.id).scalar()
+        or 0,
+        clicks_count=db.query(func.count(LinkClick.id)).filter(LinkClick.profile_id == profile.id).scalar()
+        or 0,
+        subscribers_count=db.query(func.count(Subscriber.id))
+        .filter(Subscriber.profile_id == profile.id)
+        .scalar()
+        or 0,
+        reports_total=sum(reports.values()),
+        reports_pending=reports.get("pending", 0),
+        is_suspicious=bool(profile.is_suspicious),
+        previously_revoked=db.query(func.count(VerificationEvent.id))
+        .filter(
+            VerificationEvent.profile_id == profile.id,
+            VerificationEvent.action.in_(("revoked", "auto_revoked")),
+        )
+        .scalar()
+        or 0,
+    )
 
 
 def _build_user_detail(db: Session, user: User) -> AdminUserDetail:
@@ -99,6 +178,25 @@ def _build_user_detail(db: Session, user: User) -> AdminUserDetail:
         bio=profile.bio if profile else None,
         avatar_url=profile.avatar_url if profile else None,
         is_verified=bool(getattr(profile, "is_verified", False)) if profile else False,
+        verification_type=profile.verification_type if profile and profile.is_verified else None,
+        verified_at=profile.verified_at if profile and profile.is_verified else None,
+        verified_by_email=(
+            _emails(db, {profile.verified_by_id}).get(profile.verified_by_id)
+            if profile and profile.is_verified
+            else None
+        ),
+        verification_note=profile.verification_note if profile else None,
+        verification_history=_verification_history(db, profile) if profile else [],
+        pending_verification_request_id=(
+            db.query(VerificationRequest.id)
+            .filter(
+                VerificationRequest.profile_id == profile.id,
+                VerificationRequest.status == "pending",
+            )
+            .scalar()
+            if profile
+            else None
+        ),
         is_suspicious=bool(profile.is_suspicious) if profile else False,
         suspicious_at=profile.suspicious_at if profile else None,
         suspicious_note=profile.suspicious_note if profile else None,
@@ -424,17 +522,39 @@ def update_user(
     if payload.is_superuser is not None:
         user.is_superuser = payload.is_superuser
 
-    if payload.is_verified is not None:
+    if (
+        payload.is_verified is not None
+        or payload.verification_type is not None
+        or payload.verification_note is not None
+    ):
         profile = db.query(Profile).filter(Profile.user_id == user.id).first()
         if profile is None:
             raise HTTPException(status_code=400, detail="User has no profile to verify")
-        profile.is_verified = payload.is_verified
+        verify = profile.is_verified if payload.is_verified is None else payload.is_verified
+        if verify:
+            if payload.is_verified and profile.is_suspicious:
+                raise HTTPException(
+                    status_code=400, detail="Clear the suspicious flag before verifying this profile"
+                )
+            grant_verification(
+                db,
+                profile,
+                actor_id=current_user.id,
+                verification_type=payload.verification_type,
+                note=payload.verification_note,
+            )
+        elif payload.is_verified is False:
+            revoke_verification(db, profile, actor_id=current_user.id, note=payload.verification_note)
+        else:
+            raise HTTPException(status_code=400, detail="Profile is not verified")
 
     if payload.is_suspicious is not None:
         profile = db.query(Profile).filter(Profile.user_id == user.id).first()
         if profile is None:
             raise HTTPException(status_code=400, detail="User has no profile to flag")
         if payload.is_suspicious:
+            # A flagged profile cannot keep the badge (no review request: it needs a fresh look).
+            revoke_verification(db, profile, actor_id=None, note="Flagged as suspicious")
             profile.is_suspicious = True
             if profile.suspicious_at is None:
                 profile.suspicious_at = datetime.now(timezone.utc)
@@ -598,9 +718,13 @@ def _report_items(db: Session, reports: list[Report]) -> list[AdminReportItem]:
             ):
                 counts[key] = counts.get(key, 0) + n
 
+    # Verified account each reported profile seems to copy (one lookup per profile).
+    lookalikes = {pid: impersonated_profile(db, p) for pid, p in profiles.items()}
+
     out: list[AdminReportItem] = []
     for r in reports:
         profile = profiles.get(r.profile_id) if r.profile_id else None
+        copied = lookalikes.get(r.profile_id) if r.profile_id else None
         active: bool | None = None
         if r.target_type == "link":
             link = links.get(r.link_id) if r.link_id else None
@@ -627,6 +751,8 @@ def _report_items(db: Session, reports: list[Report]) -> list[AdminReportItem]:
                 resolved_by_email=resolvers.get(r.resolved_by_id) if r.resolved_by_id else None,
                 created_at=r.created_at,
                 reports_for_target=counts.get(target_key(r), 1),
+                impersonates_username=copied.username if copied else None,
+                impersonates_user_id=copied.user_id if copied else None,
             )
         )
     return out
@@ -699,3 +825,131 @@ def update_report(
     db.commit()
     db.refresh(report)
     return _report_items(db, [report])[0]
+
+
+def _request_items(db: Session, rows: list[VerificationRequest]) -> list[AdminVerificationRequestItem]:
+    profiles = {
+        p.id: p
+        for p in db.query(Profile).filter(Profile.id.in_({r.profile_id for r in rows})).all()
+    } if rows else {}
+    reviewers = _emails(db, {r.reviewed_by_id for r in rows})
+    out = []
+    for r in rows:
+        p = profiles[r.profile_id]
+        out.append(
+            AdminVerificationRequestItem(
+                id=r.id,
+                profile_id=p.id,
+                user_id=p.user_id,
+                username=p.username,
+                display_name=p.display_name,
+                avatar_url=p.avatar_url,
+                is_verified=bool(p.is_verified),
+                verification_type=r.verification_type,
+                source=r.source,
+                reason=r.reason,
+                evidence_urls=list(r.evidence_urls or []),
+                proof_code=proof_code(p.id),
+                proof_results=r.proof_results,
+                status=r.status,
+                decision_note=r.decision_note,
+                reviewed_by_email=reviewers.get(r.reviewed_by_id),
+                reviewed_at=r.reviewed_at,
+                created_at=r.created_at,
+                signals=_verification_signals(db, p),
+            )
+        )
+    return out
+
+
+@router.get("/verification-requests", response_model=AdminVerificationRequestList)
+def list_verification_requests(
+    status_filter: str | None = Query(default=None, alias="status"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> AdminVerificationRequestList:
+    if status_filter and status_filter not in REQUEST_STATUSES:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    query = db.query(VerificationRequest)
+    if status_filter:
+        query = query.filter(VerificationRequest.status == status_filter)
+    total = query.count()
+    # Oldest first while pending (a queue); newest first for the history tabs.
+    order = (
+        VerificationRequest.created_at.asc()
+        if status_filter == "pending"
+        else VerificationRequest.created_at.desc()
+    )
+    rows = query.order_by(order).offset((page - 1) * page_size).limit(page_size).all()
+    by_status = dict(
+        db.query(VerificationRequest.status, func.count(VerificationRequest.id))
+        .group_by(VerificationRequest.status)
+        .all()
+    )
+    return AdminVerificationRequestList(
+        items=_request_items(db, rows),
+        total=total,
+        page=page,
+        page_size=page_size,
+        pending=by_status.get("pending", 0),
+        approved=by_status.get("approved", 0),
+        rejected=by_status.get("rejected", 0),
+    )
+
+
+@router.patch("/verification-requests/{request_id}", response_model=AdminVerificationRequestItem)
+def decide_verification_request(
+    request_id: UUID,
+    payload: AdminVerificationDecision,
+    current_user: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> AdminVerificationRequestItem:
+    req = db.get(VerificationRequest, request_id)
+    if req is None:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if req.status != "pending":
+        raise HTTPException(status_code=400, detail="This request was already reviewed")
+    profile = db.get(Profile, req.profile_id)
+
+    if payload.status == "approved":
+        if profile.is_suspicious:
+            raise HTTPException(
+                status_code=400, detail="Clear the suspicious flag before verifying this profile"
+            )
+        req.verification_type = payload.verification_type or req.verification_type
+        # Closes this request (and any other pending one) as approved.
+        grant_verification(
+            db,
+            profile,
+            actor_id=current_user.id,
+            verification_type=req.verification_type,
+            note=payload.note,
+        )
+    else:
+        req.status = "rejected"
+        req.decision_note = (payload.note or "").strip() or None
+        req.reviewed_by_id = current_user.id
+        req.reviewed_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(req)
+    return _request_items(db, [req])[0]
+
+
+@router.post("/verification-requests/{request_id}/check", response_model=AdminVerificationRequestItem)
+def recheck_verification_proof(
+    request_id: UUID,
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> AdminVerificationRequestItem:
+    """Look for the proof code again (e.g. the owner added it after asking)."""
+    req = db.get(VerificationRequest, request_id)
+    if req is None:
+        raise HTTPException(status_code=404, detail="Request not found")
+    profile = db.get(Profile, req.profile_id)
+    domain = profile.custom_domain if profile.custom_domain_verified else None
+    req.proof_results = run_proof_checks(proof_code(profile.id), list(req.evidence_urls or []), domain)
+    db.commit()
+    db.refresh(req)
+    return _request_items(db, [req])[0]

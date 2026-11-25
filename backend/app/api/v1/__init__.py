@@ -13,11 +13,13 @@ from app.api.v1 import (
     reports,
     sections,
     short_links,
+    verification,
 )
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)
 api_router.include_router(profile.router)
+api_router.include_router(verification.router)
 api_router.include_router(domain.router)
 api_router.include_router(links.router)
 api_router.include_router(sections.router)

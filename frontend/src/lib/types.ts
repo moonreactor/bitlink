@@ -1,3 +1,5 @@
+import type { VerificationType } from "@/lib/verification";
+
 export type SocialIconStyle = "brand" | "mono";
 
 export type Theme = {
@@ -41,6 +43,8 @@ export type Profile = {
   seo_description: string | null;
   remove_branding: boolean;
   is_verified: boolean;
+  verification_type: VerificationType | null;
+  verified_at: string | null;
   show_email_capture: boolean;
   show_phone_capture: boolean;
   tip_jar_enabled: boolean;
@@ -158,6 +162,10 @@ export type PublicProfile = {
   seo_description: string | null;
   remove_branding: boolean;
   is_verified: boolean;
+  verification_type: VerificationType | null;
+  verified_at: string | null;
+  /** Custom domain the owner proved they control. */
+  verified_domain: string | null;
   show_email_capture: boolean;
   show_phone_capture: boolean;
   tip_jar_enabled: boolean;
@@ -186,6 +194,7 @@ export type PublicDirectoryItem = {
   avatar_url: string | null;
   language: "en" | "es" | "pt" | null;
   is_verified: boolean;
+  verification_type: VerificationType | null;
   updated_at: string;
 };
 
@@ -334,6 +343,12 @@ export type AdminUserDetail = {
   bio: string | null;
   avatar_url: string | null;
   is_verified: boolean;
+  verification_type: VerificationType | null;
+  verified_at: string | null;
+  verified_by_email: string | null;
+  verification_note: string | null;
+  verification_history: AdminVerificationEvent[];
+  pending_verification_request_id: string | null;
   is_suspicious: boolean;
   suspicious_at: string | null;
   suspicious_note: string | null;
@@ -370,7 +385,15 @@ export type ShortLinkStats = {
   referrers: { label: string; count: number }[];
 };
 
-export type ReportReason = "phishing" | "malware" | "scam" | "spam" | "adult" | "illegal" | "other";
+export type ReportReason =
+  | "phishing"
+  | "malware"
+  | "scam"
+  | "spam"
+  | "adult"
+  | "illegal"
+  | "impersonation"
+  | "other";
 export type ReportStatus = "pending" | "resolved" | "dismissed";
 
 export type AdminReportItem = {
@@ -391,6 +414,8 @@ export type AdminReportItem = {
   resolved_by_email: string | null;
   created_at: string;
   reports_for_target: number;
+  impersonates_username: string | null;
+  impersonates_user_id: string | null;
 };
 
 export type AdminReportListResponse = {
@@ -402,3 +427,110 @@ export type AdminReportListResponse = {
   resolved: number;
   dismissed: number;
 };
+
+export type AdminVerificationEvent = {
+  id: string;
+  action: "verified" | "type_changed" | "revoked" | "auto_revoked";
+  verification_type: VerificationType | null;
+  actor_email: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+export type VerificationRequestStatus = "pending" | "approved" | "rejected";
+
+export type AdminVerificationSignals = {
+  account_age_days: number;
+  has_avatar: boolean;
+  has_bio: boolean;
+  verified_domain: string | null;
+  social_profiles: string[];
+  links_count: number;
+  views_count: number;
+  clicks_count: number;
+  subscribers_count: number;
+  reports_total: number;
+  reports_pending: number;
+  is_suspicious: boolean;
+  previously_revoked: number;
+};
+
+export type AdminVerificationRequestItem = {
+  id: string;
+  profile_id: string;
+  user_id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  is_verified: boolean;
+  verification_type: VerificationType;
+  source: "user" | "auto";
+  reason: string | null;
+  evidence_urls: string[];
+  proof_code: string;
+  proof_results: ProofResult[] | null;
+  status: VerificationRequestStatus;
+  decision_note: string | null;
+  reviewed_by_email: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  signals: AdminVerificationSignals;
+};
+
+export type AdminVerificationRequestList = {
+  items: AdminVerificationRequestItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+};
+
+export type ProofResult = {
+  kind: "page" | "dns";
+  target: string;
+  found: boolean;
+  error: string | null;
+  checked_at: string;
+};
+
+export type VerificationRequirementKey =
+  | "avatar"
+  | "bio"
+  | "social_profile"
+  | "account_age"
+  | "not_flagged"
+  | "custom_domain";
+
+export type MyVerification = {
+  is_verified: boolean;
+  verification_type: VerificationType | null;
+  verified_at: string | null;
+  proof_code: string;
+  requirements: { key: VerificationRequirementKey; met: boolean; required: boolean }[];
+  can_request: boolean;
+  blocked_reason: "requirements" | "pending" | "cooldown" | "verified" | "flagged" | null;
+  cooldown_until: string | null;
+  latest_request: {
+    id: string;
+    status: VerificationRequestStatus;
+    source: "user" | "auto";
+    verification_type: VerificationType;
+    created_at: string;
+    reviewed_at: string | null;
+    decision_note: string | null;
+    proof_results: ProofResult[] | null;
+  } | null;
+};
+
+export type IdentityAlert = {
+  id: string;
+  kind: "blocked_username" | "blocked_display_name" | "reported_lookalike";
+  subject: string;
+  report_reason: string | null;
+  seen: boolean;
+  created_at: string;
+};
+
+export type IdentityAlertList = { items: IdentityAlert[]; unseen: number };

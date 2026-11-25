@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { cookies, headers } from "next/headers";
 import { PublicProfileView } from "@/components/PublicProfileView";
-import { LANG_LABEL } from "@/lib/i18n/site";
+import { ShortLinkPreview, type ShortLinkPreviewData } from "@/components/ShortLinkPreview";
+import { detectLang, isSiteLang, LANG_COOKIE, LANG_LABEL, type SiteLang } from "@/lib/i18n/site";
 import { JsonLd, profilePageLd } from "@/lib/jsonld";
+import type { PublicDirectoryItem } from "@/lib/types";
 import {
   API,
   fetchDirectory,
@@ -23,12 +26,46 @@ async function resolveShortLink(code: string): Promise<string | null> {
   }
 }
 
+/** `bitlink.click/{code}+` (Bitly-style) shows where a short link goes instead of following it. */
+function previewCode(param: string): string | null {
+  const raw = decodeURIComponent(param);
+  return raw.length > 1 && raw.endsWith("+") ? raw.slice(0, -1).toLowerCase() : null;
+}
+
+async function fetchShortLinkPreview(code: string): Promise<ShortLinkPreviewData | null> {
+  try {
+    const res = await fetch(`${API}/api/v1/r/${encodeURIComponent(code)}/preview`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return (await res.json()) as ShortLinkPreviewData;
+  } catch {
+    return null;
+  }
+}
+
+async function visitorLang(): Promise<SiteLang> {
+  const saved = (await cookies()).get(LANG_COOKIE)?.value;
+  if (isSiteLang(saved)) return saved;
+  const h = await headers();
+  return detectLang(h.get("accept-language"), h.get("x-vercel-ip-country") || h.get("cf-ipcountry"));
+}
+
+/** "Discover more": up to 2 verified profiles (a perk of the badge), the rest the most recent. */
+function pickRelated(directory: PublicDirectoryItem[], self: string): PublicDirectoryItem[] {
+  const others = directory.filter((p) => p.username !== self);
+  const verified = others.filter((p) => p.is_verified).slice(0, 2);
+  const rest = others.filter((p) => !verified.includes(p));
+  return [...verified, ...rest].slice(0, 4);
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
+  if (previewCode(username)) {
+    return { title: "Link preview | Bitlink", robots: { index: false, follow: false } };
+  }
   if (RESERVED.has(username.toLowerCase())) return { title: "Not found | Bitlink" };
 
   const profile = await fetchProfile(username.toLowerCase());
@@ -75,6 +112,12 @@ export default async function PublicUsernamePage({
   params: Promise<{ username: string }>;
 }) {
   const { username } = await params;
+  const code = previewCode(username);
+  if (code) {
+    const preview = await fetchShortLinkPreview(code);
+    if (!preview) notFound();
+    return <ShortLinkPreview data={preview} lang={await visitorLang()} />;
+  }
   const slug = username.toLowerCase();
   if (RESERVED.has(slug)) notFound();
 
@@ -83,7 +126,7 @@ export default async function PublicUsernamePage({
     // Cross-promotion is opt-in on both sides: only discoverable profiles show others.
     const related =
       profile.discoverable && !profile.is_locked
-        ? (await fetchDirectory(12)).filter((p) => p.username !== profile.username).slice(0, 4)
+        ? pickRelated(await fetchDirectory(24), profile.username)
         : [];
     return (
       <>

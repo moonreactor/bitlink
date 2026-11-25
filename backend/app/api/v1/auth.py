@@ -32,6 +32,15 @@ from app.schemas.auth import (
 
 logger = logging.getLogger(__name__)
 
+from app.services.identity import (
+    alert_owner,
+    lookalike_verified_username,
+    protected_display_name_owner,
+)
+
+LOOKALIKE_USERNAME = "This username is too similar to a verified account. Please choose another."
+PROTECTED_NAME = "This name belongs to a verified account. Please use a different display name."
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -55,6 +64,15 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> TokenRe
             status_code=400,
             detail="This username is already taken. Please choose another.",
         )
+
+    if owner := lookalike_verified_username(db, payload.username):
+        alert_owner(db, owner, "blocked_username", payload.username)
+        db.commit()
+        raise HTTPException(status_code=400, detail=LOOKALIKE_USERNAME)
+    if owner := protected_display_name_owner(db, payload.display_name):
+        alert_owner(db, owner, "blocked_display_name", payload.display_name)
+        db.commit()
+        raise HTTPException(status_code=400, detail=PROTECTED_NAME)
 
     referred_by = payload.referred_by_username
     if referred_by and referred_by == payload.username:
