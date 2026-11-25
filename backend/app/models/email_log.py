@@ -10,6 +10,8 @@ from app.db.base import Base
 # sent = accepted by Resend; failed = Resend refused it (retried next run for lifecycle emails);
 # skipped = no RESEND_API_KEY configured, only logged.
 EMAIL_STATUSES = ("sent", "failed", "skipped")
+# What happened after Resend accepted it (from its webhook); later states don't go backwards.
+DELIVERY_STATUSES = ("delivered", "delayed", "opened", "clicked", "bounced", "complained", "failed")
 
 
 class EmailLog(Base):
@@ -24,8 +26,14 @@ class EmailLog(Base):
     kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     language: Mapped[str] = mapped_column(String(2), nullable=False, default="en")
     status: Mapped[str] = mapped_column(String(12), nullable=False)
-    provider_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    provider_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     error: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    delivery_status: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    clicked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    bounced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

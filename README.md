@@ -74,7 +74,9 @@ Without a key, emails are only logged. Every email goes out in the profile's lan
 
 The periodic ones run every 6 h inside the API (`LIFECYCLE_EMAILS_ENABLED=true` to turn on), at most one per
 user per run, 3 days apart, capped by `LIFECYCLE_MAX_PER_RUN`. Tips respect the opt-out (Settings → Emails,
-or the one-click unsubscribe link / `List-Unsubscribe` header). Superadmin tools:
+or the one-click unsubscribe link / `List-Unsubscribe` header). Delivery tracking: create a webhook in Resend → Webhooks pointing to
+`{PUBLIC_API_URL}/api/v1/email/webhook/resend` (all `email.*` events) and set `RESEND_WEBHOOK_SECRET` to its signing
+secret. Bounces and spam complaints turn off tips for that user. Everything is visible at `/admin/emails`. Superadmin tools:
 `GET /api/v1/admin/emails/stats`, `GET /admin/emails/preview/{kind}?lang=es`, `POST /admin/emails/test`
 and `POST /admin/emails/lifecycle/run` (`{"dry_run": true}` shows who would get what).
 

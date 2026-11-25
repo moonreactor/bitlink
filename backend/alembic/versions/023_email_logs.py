@@ -37,11 +37,19 @@ def upgrade() -> None:
         sa.Column("status", sa.String(length=12), nullable=False),
         sa.Column("provider_id", sa.String(length=64), nullable=True),
         sa.Column("error", sa.String(length=300), nullable=True),
+        sa.Column("subject", sa.String(length=200), nullable=True),
+        sa.Column("delivery_status", sa.String(length=16), nullable=True),
+        sa.Column("delivered_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("opened_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("clicked_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("bounced_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
     op.create_index("ix_email_logs_user_id", "email_logs", ["user_id"])
     op.create_index("ix_email_logs_kind", "email_logs", ["kind"])
     op.create_index("ix_email_logs_created_at", "email_logs", ["created_at"])
+    op.create_index("ix_email_logs_provider_id", "email_logs", ["provider_id"])
+    op.create_index("ix_email_logs_delivery_status", "email_logs", ["delivery_status"])
 
 
 def downgrade() -> None:

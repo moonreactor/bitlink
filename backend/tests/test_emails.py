@@ -233,3 +233,74 @@ def test_admin_dry_run_and_preview(client, db, outbox):
     page = client.get("/api/v1/admin/emails/preview/weekly_summary?lang=es", headers=admin)
     assert "Tus últimos 7 días" in page.text
     assert client.get("/api/v1/admin/emails/preview/nope", headers=admin).status_code == 404
+
+
+def _signed(secret_b64: str, body: bytes, msg_id="msg_1", ts=None):
+    import base64
+    import hashlib
+    import hmac
+    import time
+
+    ts = str(int(time.time()) if ts is None else ts)
+    sig = base64.b64encode(
+        hmac.new(base64.b64decode(secret_b64), f"{msg_id}.{ts}.".encode() + body, hashlib.sha256).digest()
+    ).decode()
+    return {"svix-id": msg_id, "svix-timestamp": ts, "svix-signature": f"v1,{sig}", "content-type": "application/json"}
+
+
+def test_admin_logs_and_stats(client, db, outbox):
+    admin = _superuser(client, db)
+    register(client, "ana", language="es")
+    res = client.get("/api/v1/admin/emails/logs?q=ana", headers=admin)
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["total"] == 1
+    item = data["items"][0]
+    assert (item["username"], item["kind"], item["status"]) == ("ana", "welcome", "sent")
+    assert item["subject"].startswith("Bienvenido")
+
+    assert client.get("/api/v1/admin/emails/logs?kind=password_reset", headers=admin).json()["total"] == 0
+    stats = client.get("/api/v1/admin/emails/stats?days=7", headers=admin).json()
+    assert stats["totals"]["sent"] == 2  # boss + ana welcome
+    assert {r["kind"] for r in stats["by_kind"]} == {"welcome"}
+
+    # Not for regular users.
+    user = register(client, "plain")
+    assert client.get("/api/v1/admin/emails/logs", headers=user).status_code == 403
+
+
+def test_resend_webhook_tracks_delivery(client, db, outbox, monkeypatch):
+    import base64
+    import json
+
+    from app.core.config import settings
+
+    secret = base64.b64encode(b"super-secret-key-bytes").decode()
+    monkeypatch.setattr(settings, "RESEND_WEBHOOK_SECRET", f"whsec_{secret}")
+    register(client, "track")
+    log = db.query(EmailLog).one()
+    url = "/api/v1/email/webhook/resend"
+
+    def event(kind):
+        return json.dumps({"type": f"email.{kind}", "data": {"email_id": log.provider_id}}).encode()
+
+    body = event("delivered")
+    assert client.post(url, content=body, headers={**_signed(secret, body), "svix-signature": "v1,bad"}).status_code == 401
+    assert client.post(url, content=body, headers=_signed(secret, body, ts=1)).status_code == 401  # too old
+
+    for kind in ("clicked", "delivered"):  # out of order: delivered must not downgrade clicked
+        body = event(kind)
+        assert client.post(url, content=body, headers=_signed(secret, body)).status_code == 200
+    db.refresh(log)
+    assert log.delivery_status == "clicked"
+    assert log.delivered_at and log.opened_at and log.clicked_at
+
+    body = event("complained")
+    client.post(url, content=body, headers=_signed(secret, body))
+    db.refresh(log)
+    assert log.delivery_status == "complained"
+    assert _user(db, "track").marketing_emails is False
+
+
+def test_webhook_off_without_secret(client):
+    assert client.post("/api/v1/email/webhook/resend", content=b"{}").status_code == 404

@@ -307,6 +307,102 @@ export const profileApi = {
 
 export type EmailPreferences = { marketing_emails: boolean };
 
+export type EmailKindStats = {
+  kind: string;
+  total: number;
+  sent: number;
+  failed: number;
+  skipped: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  bounced: number;
+  complained: number;
+};
+
+export type AdminEmailStats = {
+  configured: boolean;
+  webhook_configured: boolean;
+  lifecycle_enabled: boolean;
+  lifecycle_max_per_run: number;
+  sender: string;
+  days: number;
+  totals: EmailKindStats;
+  by_kind: EmailKindStats[];
+  unsubscribed_users: number;
+  first_email_at: string | null;
+};
+
+export type AdminEmailLog = {
+  id: string;
+  user_id: string;
+  email: string;
+  username: string | null;
+  kind: string;
+  language: string;
+  subject: string | null;
+  status: "sent" | "failed" | "skipped";
+  delivery_status: string | null;
+  error: string | null;
+  provider_id: string | null;
+  created_at: string;
+  delivered_at: string | null;
+  opened_at: string | null;
+  clicked_at: string | null;
+  bounced_at: string | null;
+};
+
+export type AdminEmailLogList = {
+  items: AdminEmailLog[];
+  total: number;
+  page: number;
+  page_size: number;
+};
+
+export type LifecycleRunResult = {
+  dry_run: boolean;
+  checked: number;
+  by_kind: Record<string, number>;
+  sent: number;
+  failed: number;
+  capped: boolean;
+};
+
+export const adminEmailsApi = {
+  stats: (token: string, days: number) =>
+    request<AdminEmailStats>(`/admin/emails/stats?days=${days}`, {}, token),
+  logs: (
+    token: string,
+    params: { kind?: string; status?: string; delivery?: string; q?: string; page?: number; page_size?: number },
+  ) => {
+    const sp = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") sp.set(k, String(v));
+    });
+    const qs = sp.toString();
+    return request<AdminEmailLogList>(`/admin/emails/logs${qs ? `?${qs}` : ""}`, {}, token);
+  },
+  runLifecycle: (token: string, dry_run: boolean) =>
+    request<LifecycleRunResult>(
+      "/admin/emails/lifecycle/run",
+      { method: "POST", body: JSON.stringify({ dry_run }) },
+      token,
+    ),
+  sendTest: (token: string, kind: string, language: string) =>
+    request<{ status: string; error: string | null; to: string }>(
+      "/admin/emails/test",
+      { method: "POST", body: JSON.stringify({ kind, language }) },
+      token,
+    ),
+  previewHtml: async (token: string, kind: string, lang: string) => {
+    const res = await fetch(`${BROWSER_API}/api/v1/admin/emails/preview/${kind}?lang=${lang}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new ApiError(res.status, "Could not load preview");
+    return res.text();
+  },
+};
+
 export const emailPrefsApi = {
   get: (token: string) => request<EmailPreferences>("/me/email-preferences", {}, token),
   update: (token: string, body: EmailPreferences) =>

@@ -1,25 +1,33 @@
 """Email preferences, unsubscribe links and the superadmin email tools."""
 
+import base64
+import hashlib
+import hmac
 import html
+import json
+import logging
+import time
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.deps import get_current_superuser, get_current_user
 from app.db.session import get_db
 from app.models.email_log import EmailLog
+from app.models.profile import Profile
 from app.models.user import User
 from app.services.email_templates import EMAIL_KINDS, LANGUAGES, pick_language, render
 from app.services.lifecycle_emails import run_lifecycle
 from app.services.mailer import send_email, valid_unsubscribe_token, web_url
 
 router = APIRouter(tags=["emails"])
+logger = logging.getLogger("bitlink.email")
 
 
 class EmailPreferences(BaseModel):
@@ -136,6 +144,79 @@ def unsubscribe(
     return _page(lang, _UNSUB_COPY[lang]["done"])
 
 
+# ---------------------------------------------------------------- Resend webhook
+
+WEBHOOK_TOLERANCE_SECONDS = 5 * 60
+# Rank so a late "delivered" event never overwrites "clicked" or "bounced".
+_RANK = {"delayed": 1, "delivered": 2, "opened": 3, "clicked": 4, "failed": 5, "bounced": 5, "complained": 6}
+
+
+def _valid_svix_signature(secret: str, headers, body: bytes) -> bool:
+    """Resend signs webhooks the Svix way: HMAC-SHA256 of "id.timestamp.body", base64."""
+    msg_id = headers.get("svix-id") or ""
+    timestamp = headers.get("svix-timestamp") or ""
+    signatures = headers.get("svix-signature") or ""
+    if not (msg_id and timestamp and signatures):
+        return False
+    try:
+        if abs(time.time() - int(timestamp)) > WEBHOOK_TOLERANCE_SECONDS:
+            return False
+        key = base64.b64decode(secret.split("_", 1)[1] if secret.startswith("whsec_") else secret)
+    except ValueError:
+        return False
+    expected = base64.b64encode(
+        hmac.new(key, f"{msg_id}.{timestamp}.".encode() + body, hashlib.sha256).digest()
+    ).decode()
+    return any(
+        hmac.compare_digest(expected, sig.split(",", 1)[1])
+        for sig in signatures.split()
+        if sig.startswith("v1,")
+    )
+
+
+@router.post("/email/webhook/resend", include_in_schema=False)
+async def resend_webhook(request: Request, db: Session = Depends(get_db)) -> dict:
+    secret = settings.RESEND_WEBHOOK_SECRET
+    if not secret:
+        raise HTTPException(status_code=404, detail="Not found")
+    body = await request.body()
+    if not _valid_svix_signature(secret, request.headers, body):
+        raise HTTPException(status_code=401, detail="Invalid signature")
+    try:
+        event = json.loads(body)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+
+    state = str(event.get("type", "")).removeprefix("email.").replace("delivery_delayed", "delayed")
+    email_id = str((event.get("data") or {}).get("email_id") or "")
+    if state not in _RANK or not email_id:
+        return {"ok": True, "ignored": True}
+    log = db.query(EmailLog).filter(EmailLog.provider_id == email_id).first()
+    if log is None:
+        return {"ok": True, "ignored": True}
+
+    now = datetime.now(timezone.utc)
+    stamp = {"delivered": "delivered_at", "opened": "opened_at", "clicked": "clicked_at", "bounced": "bounced_at"}
+    if state in stamp and getattr(log, stamp[state]) is None:
+        setattr(log, stamp[state], now)
+    if state in ("opened", "clicked") and log.delivered_at is None:
+        log.delivered_at = now
+    if state == "clicked" and log.opened_at is None:
+        log.opened_at = now
+    if _RANK[state] >= _RANK.get(log.delivery_status or "", 0):
+        log.delivery_status = state
+    if state == "failed" or state == "bounced":
+        reason = (event.get("data") or {}).get("bounce", {}) or {}
+        log.error = (str(reason.get("message") or reason.get("type") or state))[:300]
+    if state in ("bounced", "complained"):
+        # Stop tips to addresses that bounce or mark us as spam (protects sender reputation).
+        user = db.get(User, log.user_id)
+        if user is not None:
+            user.marketing_emails = False
+    db.commit()
+    return {"ok": True}
+
+
 # ---------------------------------------------------------------- superadmin
 
 admin = APIRouter(prefix="/admin/emails", tags=["admin"])
@@ -143,37 +224,183 @@ admin = APIRouter(prefix="/admin/emails", tags=["admin"])
 
 class EmailKindStats(BaseModel):
     kind: str
-    sent: int
-    failed: int
-    skipped: int
+    total: int = 0
+    sent: int = 0
+    failed: int = 0
+    skipped: int = 0
+    delivered: int = 0
+    opened: int = 0
+    clicked: int = 0
+    bounced: int = 0
+    complained: int = 0
 
 
 class EmailStats(BaseModel):
     configured: bool
+    webhook_configured: bool
     lifecycle_enabled: bool
+    lifecycle_max_per_run: int
     sender: str
-    last_30_days: list[EmailKindStats]
+    days: int
+    totals: EmailKindStats
+    by_kind: list[EmailKindStats]
     unsubscribed_users: int
+    first_email_at: datetime | None
 
 
 @admin.get("/stats", response_model=EmailStats)
-def email_stats(_: User = Depends(get_current_superuser), db: Session = Depends(get_db)) -> EmailStats:
-    since = datetime.now(timezone.utc) - timedelta(days=30)
-    rows = (
-        db.query(EmailLog.kind, EmailLog.status, func.count(EmailLog.id))
-        .filter(EmailLog.created_at >= since)
+def email_stats(
+    days: int = Query(30, ge=1, le=3650),
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> EmailStats:
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    by_kind: dict[str, EmailKindStats] = {}
+    totals = EmailKindStats(kind="all")
+
+    def bump(kind: str, field: str, n: int) -> None:
+        row = by_kind.setdefault(kind, EmailKindStats(kind=kind))
+        setattr(row, field, getattr(row, field) + n)
+        setattr(totals, field, getattr(totals, field) + n)
+
+    base = db.query(EmailLog).filter(EmailLog.created_at >= since)
+    for kind, status_, n in (
+        base.with_entities(EmailLog.kind, EmailLog.status, func.count(EmailLog.id))
         .group_by(EmailLog.kind, EmailLog.status)
         .all()
-    )
-    by_kind: dict[str, dict[str, int]] = {}
-    for kind, status_, n in rows:
-        by_kind.setdefault(kind, {"sent": 0, "failed": 0, "skipped": 0})[status_] = n
+    ):
+        bump(kind, "total", n)
+        if status_ in ("sent", "failed", "skipped"):
+            bump(kind, status_, n)
+    # Each later state implies the earlier ones (a click was also opened and delivered).
+    timestamps = {
+        "delivered": EmailLog.delivered_at,
+        "opened": EmailLog.opened_at,
+        "clicked": EmailLog.clicked_at,
+        "bounced": EmailLog.bounced_at,
+    }
+    for field, column in timestamps.items():
+        for kind, n in (
+            base.filter(column.is_not(None))
+            .with_entities(EmailLog.kind, func.count(EmailLog.id))
+            .group_by(EmailLog.kind)
+            .all()
+        ):
+            bump(kind, field, n)
+    for kind, n in (
+        base.filter(EmailLog.delivery_status == "complained")
+        .with_entities(EmailLog.kind, func.count(EmailLog.id))
+        .group_by(EmailLog.kind)
+        .all()
+    ):
+        bump(kind, "complained", n)
+
     return EmailStats(
         configured=bool(settings.RESEND_API_KEY),
+        webhook_configured=bool(settings.RESEND_WEBHOOK_SECRET),
         lifecycle_enabled=settings.LIFECYCLE_EMAILS_ENABLED,
+        lifecycle_max_per_run=settings.LIFECYCLE_MAX_PER_RUN,
         sender=settings.EMAIL_FROM,
-        last_30_days=[EmailKindStats(kind=k, **v) for k, v in sorted(by_kind.items())],
+        days=days,
+        totals=totals,
+        by_kind=sorted(by_kind.values(), key=lambda r: -r.total),
         unsubscribed_users=db.query(func.count(User.id)).filter(User.marketing_emails.is_(False)).scalar() or 0,
+        first_email_at=db.query(func.min(EmailLog.created_at)).scalar(),
+    )
+
+
+class EmailLogItem(BaseModel):
+    id: UUID
+    user_id: UUID
+    email: str
+    username: str | None
+    kind: str
+    language: str
+    subject: str | None
+    status: str
+    delivery_status: str | None
+    error: str | None
+    provider_id: str | None
+    created_at: datetime
+    delivered_at: datetime | None
+    opened_at: datetime | None
+    clicked_at: datetime | None
+    bounced_at: datetime | None
+
+
+class EmailLogList(BaseModel):
+    items: list[EmailLogItem]
+    total: int
+    page: int
+    page_size: int
+
+
+@admin.get("/logs", response_model=EmailLogList)
+def email_logs(
+    kind: str | None = None,
+    status: str | None = Query(None, description="sent | failed | skipped"),
+    delivery: str | None = Query(None, description="delivered | opened | clicked | bounced | complained | pending"),
+    q: str | None = Query(None, description="email or username"),
+    user_id: UUID | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> EmailLogList:
+    query = (
+        db.query(EmailLog, User.email, Profile.username)
+        .join(User, User.id == EmailLog.user_id)
+        .outerjoin(Profile, Profile.user_id == User.id)
+    )
+    if kind:
+        query = query.filter(EmailLog.kind == kind)
+    if status:
+        query = query.filter(EmailLog.status == status)
+    if delivery == "pending":
+        query = query.filter(EmailLog.status == "sent", EmailLog.delivery_status.is_(None))
+    elif delivery == "opened":
+        query = query.filter(EmailLog.opened_at.is_not(None))
+    elif delivery == "clicked":
+        query = query.filter(EmailLog.clicked_at.is_not(None))
+    elif delivery:
+        query = query.filter(EmailLog.delivery_status == delivery)
+    if user_id:
+        query = query.filter(EmailLog.user_id == user_id)
+    if q and q.strip():
+        term = f"%{q.strip().lower().lstrip('@')}%"
+        query = query.filter(or_(func.lower(User.email).like(term), func.lower(Profile.username).like(term)))
+    total = query.count()
+    rows = (
+        query.order_by(EmailLog.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return EmailLogList(
+        items=[
+            EmailLogItem(
+                id=log.id,
+                user_id=log.user_id,
+                email=email,
+                username=username,
+                kind=log.kind,
+                language=log.language,
+                subject=log.subject,
+                status=log.status,
+                delivery_status=log.delivery_status,
+                error=log.error,
+                provider_id=log.provider_id,
+                created_at=log.created_at,
+                delivered_at=log.delivered_at,
+                opened_at=log.opened_at,
+                clicked_at=log.clicked_at,
+                bounced_at=log.bounced_at,
+            )
+            for log, email, username in rows
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
     )
 
 

@@ -151,6 +151,7 @@ def send_email(
         status=result.status,
         provider_id=result.provider_id,
         error=result.error,
+        subject=rendered.subject[:200],
     )
     db.add(log)
     return log
