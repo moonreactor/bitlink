@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { MediaUploadField } from "@/components/MediaUploadField";
 import { useToast } from "@/components/Toast";
-import { authApi, domainApi, linksApi, profileApi } from "@/lib/api";
+import { authApi, domainApi, emailPrefsApi, linksApi, profileApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import type { DomainInfo, LinkItem, Profile } from "@/lib/types";
 import { VerificationSection } from "@/components/VerificationSection";
@@ -16,6 +16,7 @@ const NAV = [
   { id: "domain", label: "Domain" },
   { id: "verification", label: "Verification" },
   { id: "security", label: "Security" },
+  { id: "emails", label: "Emails" },
   { id: "qr", label: "QR" },
 ] as const;
 
@@ -32,6 +33,7 @@ export default function SettingsPage() {
   const [domainBusy, setDomainBusy] = useState(false);
   const [domainMsg, setDomainMsg] = useState("");
   const [saving, setSaving] = useState(false);
+  const [marketingEmails, setMarketingEmails] = useState<boolean | null>(null);
   // Name as last saved: renaming a verified profile removes the badge until it is reviewed again.
   const [savedName, setSavedName] = useState({ username: "", display_name: "" });
 
@@ -47,7 +49,26 @@ export default function SettingsPage() {
         setDomainInput(d.custom_domain || "");
       },
     );
+    emailPrefsApi
+      .get(token)
+      .then((p) => setMarketingEmails(p.marketing_emails))
+      .catch(() => setMarketingEmails(null));
   }, []);
+
+  async function toggleMarketingEmails(value: boolean) {
+    const token = getAccessToken();
+    if (!token) return;
+    const previous = marketingEmails;
+    setMarketingEmails(value);
+    try {
+      const res = await emailPrefsApi.update(token, { marketing_emails: value });
+      setMarketingEmails(res.marketing_emails);
+      success(value ? "You'll get tips and weekly summaries" : "Tips and summaries turned off");
+    } catch {
+      setMarketingEmails(previous);
+      toastError("Couldn't update email preferences");
+    }
+  }
 
   const profileLoaded = profile !== null;
   useEffect(() => {
@@ -591,6 +612,22 @@ export default function SettingsPage() {
             {changingPassword ? "Updating…" : "Update password"}
           </button>
         </form>
+      </section>
+
+      <section id="emails" className="mu-dash-block scroll-mt-24">
+        <header>
+          <h2 className="mu-dash-h2">Emails</h2>
+          <p className="mu-dash-lead">
+            Emails about your account (password resets, verification, impersonation alerts) are always sent.
+          </p>
+        </header>
+        <ToggleRow
+          title="Tips & weekly summary"
+          hint="Reminders to finish your page, ideas for new links, the verified badge and your weekly visits."
+          checked={marketingEmails ?? false}
+          disabled={marketingEmails === null}
+          onChange={toggleMarketingEmails}
+        />
       </section>
     </div>
   );

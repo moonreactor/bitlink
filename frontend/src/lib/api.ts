@@ -305,6 +305,18 @@ export const profileApi = {
   qrUrl: () => `${BROWSER_API}/api/v1/me/qr`,
 };
 
+export type EmailPreferences = { marketing_emails: boolean };
+
+export const emailPrefsApi = {
+  get: (token: string) => request<EmailPreferences>("/me/email-preferences", {}, token),
+  update: (token: string, body: EmailPreferences) =>
+    request<EmailPreferences>(
+      "/me/email-preferences",
+      { method: "PUT", body: JSON.stringify(body) },
+      token,
+    ),
+};
+
 export type LinkMeta = {
   url: string;
   title: string;

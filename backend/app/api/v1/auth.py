@@ -3,7 +3,7 @@ import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -18,6 +18,7 @@ from app.core.security import (
 from app.db.session import get_db
 from app.models.profile import DEFAULT_THEME, Profile
 from app.models.user import User
+from app.services.mailer import send_in_background
 from app.schemas.auth import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
@@ -45,7 +46,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> TokenResponse:
+def register(
+    payload: RegisterRequest, background: BackgroundTasks, db: Session = Depends(get_db)
+) -> TokenResponse:
     if db.query(User).filter(User.email == payload.email.lower()).first():
         raise HTTPException(
             status_code=400,
@@ -95,6 +98,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> TokenRe
     )
     db.add(profile)
     db.commit()
+    background.add_task(send_in_background, user.id, "welcome")
 
     return TokenResponse(
         access_token=create_access_token(str(user.id)),
@@ -153,7 +157,7 @@ def _hash_reset_token(token: str) -> str:
 
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)
 def forgot_password(
-    payload: ForgotPasswordRequest, db: Session = Depends(get_db)
+    payload: ForgotPasswordRequest, background: BackgroundTasks, db: Session = Depends(get_db)
 ) -> ForgotPasswordResponse:
     user = db.query(User).filter(User.email == payload.email.lower()).first()
     reset_url: str | None = None
@@ -164,7 +168,9 @@ def forgot_password(
         user.password_reset_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
         db.commit()
         reset_url = f"{settings.PUBLIC_WEB_URL.rstrip('/')}/reset-password?token={raw}"
-        logger.info("Password reset link for %s: %s", user.email, reset_url)
+        if settings.EXPOSE_RESET_URL:
+            logger.info("Password reset link for %s: %s", user.email, reset_url)
+        background.add_task(send_in_background, user.id, "password_reset", cta_url=reset_url)
 
     return ForgotPasswordResponse(
         reset_url=reset_url if settings.EXPOSE_RESET_URL else None,

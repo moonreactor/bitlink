@@ -22,6 +22,10 @@ class User(Base):
     )
     # Username of the public profile whose “Create Bitlink” CTA led to signup.
     referred_by_username: Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
+    # Tips, reminders and summaries. Account/security emails are sent regardless.
+    marketing_emails: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true", nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

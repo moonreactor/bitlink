@@ -56,6 +56,28 @@ make shell-db
 UPDATE users SET is_superuser = true WHERE email = 'you@example.com';
 ```
 
+## Emails (Resend)
+
+Set `RESEND_API_KEY`, `EMAIL_FROM` (domain verified in Resend) and optionally `EMAIL_REPLY_TO`.
+Without a key, emails are only logged. Every email goes out in the profile's language (EN/ES/PT).
+
+| Email | When |
+|-------|------|
+| `welcome` | Right after signup |
+| `password_reset` | Forgot password |
+| `verification_approved` / `verification_rejected` | Superadmin decides on the badge (with the reviewer's note) |
+| `identity_alert` | Verified owner has new unseen impersonation alerts (max 1/day) |
+| `complete_profile` | Missing photo, bio or first link — from day 1, every 7 days, max 3 |
+| `verification_invite` | Meets badge requirements, hasn't asked — every 30 days, max 2 |
+| `add_links` | Only 1–4 links — from day 3, every 14 days, max 4 |
+| `weekly_summary` | Visits in the last 7 days — weekly |
+
+The periodic ones run every 6 h inside the API (`LIFECYCLE_EMAILS_ENABLED=true` to turn on), at most one per
+user per run, 3 days apart, capped by `LIFECYCLE_MAX_PER_RUN`. Tips respect the opt-out (Settings → Emails,
+or the one-click unsubscribe link / `List-Unsubscribe` header). Superadmin tools:
+`GET /api/v1/admin/emails/stats`, `GET /admin/emails/preview/{kind}?lang=es`, `POST /admin/emails/test`
+and `POST /admin/emails/lifecycle/run` (`{"dry_run": true}` shows who would get what).
+
 ## Features (v1)
 
 - Auth (register / login / refresh / forgot & reset password)
