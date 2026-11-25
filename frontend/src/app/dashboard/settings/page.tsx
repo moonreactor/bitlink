@@ -558,7 +558,7 @@ export default function SettingsPage() {
         </form>
       </section>
 
-      <VerificationSection />
+      <VerificationSection username={savedName.username} />
 
       <section id="security" className="mu-dash-block scroll-mt-24">
         <header>

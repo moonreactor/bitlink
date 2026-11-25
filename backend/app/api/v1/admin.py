@@ -17,6 +17,7 @@ from app.models.shortener_event import FUNNEL_EVENTS, SOURCES, ShortenerEvent
 from app.models.subscriber import Subscriber
 from app.models.user import User
 from app.models.verification import REQUEST_STATUSES, VerificationEvent, VerificationRequest
+from app.services.identity import impersonated_profile
 from app.services.verification import grant_verification, revoke_verification
 from app.services.verification_proof import proof_code, run_proof_checks
 from app.schemas.report import AdminReportItem, AdminReportListResponse, AdminReportUpdate
@@ -717,9 +718,13 @@ def _report_items(db: Session, reports: list[Report]) -> list[AdminReportItem]:
             ):
                 counts[key] = counts.get(key, 0) + n
 
+    # Verified account each reported profile seems to copy (one lookup per profile).
+    lookalikes = {pid: impersonated_profile(db, p) for pid, p in profiles.items()}
+
     out: list[AdminReportItem] = []
     for r in reports:
         profile = profiles.get(r.profile_id) if r.profile_id else None
+        copied = lookalikes.get(r.profile_id) if r.profile_id else None
         active: bool | None = None
         if r.target_type == "link":
             link = links.get(r.link_id) if r.link_id else None
@@ -746,6 +751,8 @@ def _report_items(db: Session, reports: list[Report]) -> list[AdminReportItem]:
                 resolved_by_email=resolvers.get(r.resolved_by_id) if r.resolved_by_id else None,
                 created_at=r.created_at,
                 reports_for_target=counts.get(target_key(r), 1),
+                impersonates_username=copied.username if copied else None,
+                impersonates_user_id=copied.user_id if copied else None,
             )
         )
     return out

@@ -67,3 +67,35 @@ class VerificationRequest(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
+
+
+# blocked_username / blocked_display_name = someone tried to take a name like the owner's and we
+# refused it; reported_lookalike = a visitor reported a profile that looks like the owner's.
+ALERT_KINDS = ("blocked_username", "blocked_display_name", "reported_lookalike")
+
+
+class IdentityAlert(Base):
+    """Tells a verified owner that someone may be impersonating them."""
+
+    __tablename__ = "identity_alerts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # The verified profile being imitated (the one who sees the alert).
+    profile_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    # The attempted username / display name, or the reported profile's username.
+    subject: Mapped[str] = mapped_column(String(120), nullable=False)
+    report_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("reports.id", ondelete="SET NULL"), nullable=True
+    )
+    report_reason: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
+        index=True,
+    )

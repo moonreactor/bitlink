@@ -5,6 +5,7 @@ import { PublicProfileView } from "@/components/PublicProfileView";
 import { ShortLinkPreview, type ShortLinkPreviewData } from "@/components/ShortLinkPreview";
 import { detectLang, isSiteLang, LANG_COOKIE, LANG_LABEL, type SiteLang } from "@/lib/i18n/site";
 import { JsonLd, profilePageLd } from "@/lib/jsonld";
+import type { PublicDirectoryItem } from "@/lib/types";
 import {
   API,
   fetchDirectory,
@@ -46,6 +47,14 @@ async function visitorLang(): Promise<SiteLang> {
   if (isSiteLang(saved)) return saved;
   const h = await headers();
   return detectLang(h.get("accept-language"), h.get("x-vercel-ip-country") || h.get("cf-ipcountry"));
+}
+
+/** "Discover more": up to 2 verified profiles (a perk of the badge), the rest the most recent. */
+function pickRelated(directory: PublicDirectoryItem[], self: string): PublicDirectoryItem[] {
+  const others = directory.filter((p) => p.username !== self);
+  const verified = others.filter((p) => p.is_verified).slice(0, 2);
+  const rest = others.filter((p) => !verified.includes(p));
+  return [...verified, ...rest].slice(0, 4);
 }
 
 export async function generateMetadata({
@@ -117,7 +126,7 @@ export default async function PublicUsernamePage({
     // Cross-promotion is opt-in on both sides: only discoverable profiles show others.
     const related =
       profile.discoverable && !profile.is_locked
-        ? (await fetchDirectory(12)).filter((p) => p.username !== profile.username).slice(0, 4)
+        ? pickRelated(await fetchDirectory(24), profile.username)
         : [];
     return (
       <>

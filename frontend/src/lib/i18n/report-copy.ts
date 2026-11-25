@@ -33,6 +33,7 @@ export const REPORT_REASONS: ReportReason[] = [
   "spam",
   "adult",
   "illegal",
+  "impersonation",
   "other",
 ];
 
@@ -53,6 +54,7 @@ export const REPORT_COPY: Record<SiteLang, ReportCopy> = {
       spam: "Spam",
       adult: "Adult or inappropriate content",
       illegal: "Illegal content",
+      impersonation: "Pretends to be someone else",
       other: "Something else",
     },
     details: "Details (optional)",
@@ -86,6 +88,7 @@ export const REPORT_COPY: Record<SiteLang, ReportCopy> = {
       spam: "Spam",
       adult: "Contenido para adultos o inapropiado",
       illegal: "Contenido ilegal",
+      impersonation: "Se hace pasar por otra persona o marca",
       other: "Otro motivo",
     },
     details: "Detalles (opcional)",
@@ -119,6 +122,7 @@ export const REPORT_COPY: Record<SiteLang, ReportCopy> = {
       spam: "Spam",
       adult: "Conteúdo adulto ou impróprio",
       illegal: "Conteúdo ilegal",
+      impersonation: "Finge ser outra pessoa ou marca",
       other: "Outro motivo",
     },
     details: "Detalhes (opcional)",

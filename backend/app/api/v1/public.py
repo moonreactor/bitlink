@@ -143,7 +143,8 @@ def public_directory(
     )
     if lang:
         q = q.filter(Profile.language == lang)
-    rows = q.order_by(Profile.updated_at.desc()).limit(limit).all()
+    # Verified profiles first (a perk of the badge), then the most recently updated.
+    rows = q.order_by(Profile.is_verified.desc(), Profile.updated_at.desc()).limit(limit).all()
     return [
         PublicDirectoryItem(
             username=p.username,

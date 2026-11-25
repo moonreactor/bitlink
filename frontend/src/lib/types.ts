@@ -385,7 +385,15 @@ export type ShortLinkStats = {
   referrers: { label: string; count: number }[];
 };
 
-export type ReportReason = "phishing" | "malware" | "scam" | "spam" | "adult" | "illegal" | "other";
+export type ReportReason =
+  | "phishing"
+  | "malware"
+  | "scam"
+  | "spam"
+  | "adult"
+  | "illegal"
+  | "impersonation"
+  | "other";
 export type ReportStatus = "pending" | "resolved" | "dismissed";
 
 export type AdminReportItem = {
@@ -406,6 +414,8 @@ export type AdminReportItem = {
   resolved_by_email: string | null;
   created_at: string;
   reports_for_target: number;
+  impersonates_username: string | null;
+  impersonates_user_id: string | null;
 };
 
 export type AdminReportListResponse = {
@@ -513,3 +523,14 @@ export type MyVerification = {
     proof_results: ProofResult[] | null;
   } | null;
 };
+
+export type IdentityAlert = {
+  id: string;
+  kind: "blocked_username" | "blocked_display_name" | "reported_lookalike";
+  subject: string;
+  report_reason: string | null;
+  seen: boolean;
+  created_at: string;
+};
+
+export type IdentityAlertList = { items: IdentityAlert[]; unseen: number };

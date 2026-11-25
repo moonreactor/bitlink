@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.v1.profile import get_user_profile
@@ -12,8 +13,10 @@ from app.db.session import SessionLocal, get_db
 from app.models.link import Link
 from app.models.profile import Profile
 from app.models.user import User
-from app.models.verification import VerificationRequest
+from app.models.verification import IdentityAlert, VerificationRequest
 from app.schemas.verification import (
+    IdentityAlertList,
+    IdentityAlertOut,
     MyVerificationOut,
     MyVerificationRequest,
     VerificationRequestCreate,
@@ -158,3 +161,55 @@ def request_verification(
     db.refresh(req)
     background.add_task(check_request_proof, req.id)
     return _status(db, profile)
+
+
+def _alerts(db: Session, profile: Profile) -> IdentityAlertList:
+    rows = (
+        db.query(IdentityAlert)
+        .filter(IdentityAlert.profile_id == profile.id)
+        .order_by(IdentityAlert.created_at.desc())
+        .limit(30)
+        .all()
+    )
+    unseen = (
+        db.query(func.count(IdentityAlert.id))
+        .filter(IdentityAlert.profile_id == profile.id, IdentityAlert.seen_at.is_(None))
+        .scalar()
+        or 0
+    )
+    return IdentityAlertList(
+        items=[
+            IdentityAlertOut(
+                id=str(a.id),
+                kind=a.kind,
+                subject=a.subject,
+                report_reason=a.report_reason,
+                seen=a.seen_at is not None,
+                created_at=a.created_at,
+            )
+            for a in rows
+        ],
+        unseen=unseen,
+    )
+
+
+@router.get("/alerts", response_model=IdentityAlertList)
+def my_identity_alerts(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> IdentityAlertList:
+    """Attempts to take a name like yours, and reports against profiles that look like yours."""
+    return _alerts(db, get_user_profile(db, current_user))
+
+
+@router.post("/alerts/seen", response_model=IdentityAlertList)
+def mark_identity_alerts_seen(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> IdentityAlertList:
+    profile = get_user_profile(db, current_user)
+    db.query(IdentityAlert).filter(
+        IdentityAlert.profile_id == profile.id, IdentityAlert.seen_at.is_(None)
+    ).update({IdentityAlert.seen_at: datetime.now(timezone.utc)}, synchronize_session=False)
+    db.commit()
+    return _alerts(db, profile)

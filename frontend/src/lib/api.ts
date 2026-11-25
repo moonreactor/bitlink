@@ -3,6 +3,7 @@ import type {
   AdminVerificationRequestItem,
   AdminVerificationRequestList,
   MyVerification,
+  IdentityAlertList,
   VerificationRequestStatus,
   AdminReportItem,
   AdminReportListResponse,
@@ -283,6 +284,9 @@ export const adminApi = {
 
 export const verificationApi = {
   get: (token: string) => request<MyVerification>("/me/verification", {}, token),
+  alerts: (token: string) => request<IdentityAlertList>("/me/verification/alerts", {}, token),
+  markAlertsSeen: (token: string) =>
+    request<IdentityAlertList>("/me/verification/alerts/seen", { method: "POST" }, token),
   request: (
     token: string,
     body: { verification_type: VerificationType; reason?: string; evidence_urls: string[] },

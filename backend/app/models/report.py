@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
 TARGET_TYPES = ("profile", "link", "short_link")
-REASONS = ("phishing", "malware", "scam", "spam", "adult", "illegal", "other")
+REASONS = ("phishing", "malware", "scam", "spam", "adult", "illegal", "impersonation", "other")
 # pending = nobody looked at it yet; resolved = reviewed and acted on; dismissed = reviewed, no action.
 STATUSES = ("pending", "resolved", "dismissed")
 

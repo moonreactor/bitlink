@@ -5,7 +5,10 @@ import { useToast } from "@/components/Toast";
 import { VerifiedMark } from "@/components/VerifiedBadge";
 import { verificationApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
-import type { MyVerification, VerificationRequirementKey } from "@/lib/types";
+import type { BadgeTheme } from "@/lib/badgeSvg";
+import type { SiteLang } from "@/lib/i18n/site";
+import { siteUrl } from "@/lib/site";
+import type { IdentityAlert, IdentityAlertList, MyVerification, VerificationRequirementKey } from "@/lib/types";
 import {
   VERIFICATION_COPY,
   VERIFICATION_TYPES,
@@ -33,7 +36,7 @@ const TYPE_HINT: Record<VerificationType, string> = {
 const TYPES = VERIFICATION_COPY.en.types;
 
 /** Owner's side of the badge: requirements, proof code, request form and its status. */
-export function VerificationSection() {
+export function VerificationSection({ username }: { username: string }) {
   const { success, error: toastError } = useToast();
   const [data, setData] = useState<MyVerification | null>(null);
   const [type, setType] = useState<VerificationType>("creator");
@@ -46,6 +49,18 @@ export function VerificationSection() {
     if (!token) return;
     verificationApi.get(token).then(setData).catch(() => {});
   }, []);
+
+  // The page scrolls to #verification before this section has loaded; finish the job once it has.
+  const loaded = data !== null;
+  useEffect(() => {
+    if (!loaded || window.location.hash !== "#verification") return;
+    // After this render and the router's own scroll handling, which would otherwise undo it.
+    const id = window.setTimeout(
+      () => document.getElementById("verification")?.scrollIntoView({ block: "start" }),
+      50,
+    );
+    return () => window.clearTimeout(id);
+  }, [loaded]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -67,14 +82,17 @@ export function VerificationSection() {
     }
   }
 
-  async function copyCode() {
-    if (!data) return;
+  async function copyText(text: string, done = "Copied") {
     try {
-      await navigator.clipboard.writeText(data.proof_code);
-      success("Code copied");
+      await navigator.clipboard.writeText(text);
+      success(done);
     } catch {
       toastError("Could not copy");
     }
+  }
+
+  async function copyCode() {
+    if (data) await copyText(data.proof_code, "Code copied");
   }
 
   if (!data) return null;
@@ -99,7 +117,11 @@ export function VerificationSection() {
             <span className="text-ink/55">since {verifiedSince(data.verified_at, "en")}</span>
           )}
         </p>
-      ) : (
+      ) : null}
+      {data.is_verified && <IdentityAlerts />}
+      {data.is_verified && username ? (
+        <EmbedKit username={username} onCopy={copyText} />
+      ) : data.is_verified ? null : (
         <div className="space-y-5">
           <Status data={data} />
 
@@ -294,4 +316,172 @@ function Status({ data }: { data: MyVerification }) {
     );
   }
   return null;
+}
+
+/** "Verified on Bitlink" badge for the owner's website or README, linking back to their page. */
+function EmbedKit({ username, onCopy }: { username: string; onCopy: (text: string) => void }) {
+  const [theme, setTheme] = useState<BadgeTheme>("light");
+  const [lang, setLang] = useState<SiteLang>("en");
+  const base = siteUrl();
+  const page = `${base}/${username}`;
+  const params = new URLSearchParams();
+  if (theme === "dark") params.set("theme", "dark");
+  if (lang !== "en") params.set("lang", lang);
+  const qs = params.toString();
+  const img = `${base}/${username}/badge.svg${qs ? `?${qs}` : ""}`;
+  const alt = `@${username} — Verified on Bitlink`;
+  const html = `<a href="${page}" target="_blank" rel="noopener"><img src="${img}" alt="${alt}" height="28"></a>`;
+  const markdown = `[![${alt}](${img})](${page})`;
+
+  return (
+    <div className="mt-5 space-y-3 rounded-2xl border border-ink/10 bg-white/70 p-4 text-sm">
+      <div>
+        <p className="font-medium">Show your badge elsewhere</p>
+        <p className="mt-0.5 text-xs text-ink/60">
+          Put it on your website, newsletter or GitHub README. It links to your page and updates by
+          itself: if the badge is ever removed, it turns into a plain “on Bitlink” label.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <label className="flex items-center gap-1.5">
+          Style
+          <select value={theme} onChange={(e) => setTheme(e.target.value as BadgeTheme)} className="mu-input !w-auto !py-1">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-1.5">
+          Language
+          <select value={lang} onChange={(e) => setLang(e.target.value as SiteLang)} className="mu-input !w-auto !py-1">
+            <option value="en">English</option>
+            <option value="es">Español</option>
+            <option value="pt">Português</option>
+          </select>
+        </label>
+      </div>
+      <div className={`flex justify-center rounded-xl p-4 ${theme === "dark" ? "bg-slate-800" : "bg-slate-50"}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={img} alt={alt} height={28} />
+      </div>
+      {[
+        { label: "HTML", value: html },
+        { label: "Markdown", value: markdown },
+      ].map((s) => (
+        <div key={s.label}>
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-xs font-medium text-ink/70">{s.label}</span>
+            <button type="button" className="text-xs font-semibold text-meetup-purple" onClick={() => onCopy(s.value)}>
+              Copy
+            </button>
+          </div>
+          <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg bg-ink/5 p-2 font-mono text-[11px] text-ink/80">
+            {s.value}
+          </pre>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const REPORT_REASON_LABEL: Record<string, string> = {
+  impersonation: "pretending to be someone else",
+  phishing: "phishing",
+  malware: "malware",
+  scam: "a scam",
+  spam: "spam",
+  adult: "adult content",
+  illegal: "illegal content",
+  other: "another reason",
+};
+
+function alertText(a: IdentityAlert): { title: string; detail: string } {
+  if (a.kind === "blocked_username") {
+    return {
+      title: `Someone tried to take the username @${a.subject}`,
+      detail: "It looks too much like yours, so we didn't allow it.",
+    };
+  }
+  if (a.kind === "blocked_display_name") {
+    return {
+      title: `Someone tried to use the name “${a.subject}”`,
+      detail: "It's your verified name, so we didn't allow it.",
+    };
+  }
+  return {
+    title: `${a.subject} was reported`,
+    detail: `A visitor reported this profile, which looks like yours, for ${
+      REPORT_REASON_LABEL[a.report_reason ?? "other"] ?? "another reason"
+    }. Our team is reviewing it.`,
+  };
+}
+
+/** Impersonation alerts: names like yours we refused, and reported look-alike profiles. */
+function IdentityAlerts() {
+  const [data, setData] = useState<IdentityAlertList | null>(null);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+    verificationApi.alerts(token).then(setData).catch(() => {});
+  }, []);
+
+  async function markSeen() {
+    const token = getAccessToken();
+    if (!token) return;
+    try {
+      setData(await verificationApi.markAlertsSeen(token));
+      window.dispatchEvent(new Event("bitlink:identity-alerts-seen"));
+    } catch {
+      /* keep the list as is */
+    }
+  }
+
+  if (!data) return null;
+  return (
+    <div className="mt-5 rounded-2xl border border-ink/10 bg-white/70 p-4 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-medium">
+          Impersonation alerts
+          {data.unseen > 0 && (
+            <span className="ml-2 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              {data.unseen} new
+            </span>
+          )}
+        </p>
+        {data.unseen > 0 && (
+          <button type="button" className="text-xs font-semibold text-meetup-purple" onClick={markSeen}>
+            Mark all as seen
+          </button>
+        )}
+      </div>
+      {data.items.length === 0 ? (
+        <p className="mt-1 text-xs text-ink/60">
+          Nothing so far. We block usernames that look like yours and let you know here if someone tries,
+          or if a look-alike profile gets reported.
+        </p>
+      ) : (
+        <ul className="mt-2 divide-y divide-ink/5">
+          {data.items.map((a) => {
+            const t = alertText(a);
+            return (
+              <li key={a.id} className="flex gap-2 py-2">
+                <span
+                  aria-hidden
+                  className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${a.seen ? "bg-ink/15" : "bg-red-500"}`}
+                />
+                <div className="min-w-0">
+                  <p className={`break-words ${a.seen ? "" : "font-semibold"}`}>
+                    {t.title}
+                    {!a.seen && <span className="sr-only"> (new)</span>}
+                  </p>
+                  <p className="text-xs text-ink/60">{t.detail}</p>
+                  <p className="text-[11px] text-ink/45">{new Date(a.created_at).toLocaleString()}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
 }

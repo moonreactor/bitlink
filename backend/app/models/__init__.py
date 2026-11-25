@@ -9,7 +9,7 @@ from app.models.shortener_event import ShortenerEvent
 from app.models.short_link import ShortLink, ShortLinkClick
 from app.models.subscriber import Subscriber
 from app.models.user import User
-from app.models.verification import VerificationEvent, VerificationRequest
+from app.models.verification import IdentityAlert, VerificationEvent, VerificationRequest
 
 __all__ = [
     "User",
@@ -27,4 +27,5 @@ __all__ = [
     "Report",
     "VerificationEvent",
     "VerificationRequest",
+    "IdentityAlert",
 ]

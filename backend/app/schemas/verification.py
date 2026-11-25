@@ -88,3 +88,17 @@ class VerificationRequestCreate(BaseModel):
     @classmethod
     def _reason(cls, v: str | None) -> str | None:
         return (v or "").strip() or None
+
+
+class IdentityAlertOut(BaseModel):
+    id: str
+    kind: Literal["blocked_username", "blocked_display_name", "reported_lookalike"]
+    subject: str
+    report_reason: str | None = None
+    seen: bool
+    created_at: datetime
+
+
+class IdentityAlertList(BaseModel):
+    items: list[IdentityAlertOut]
+    unseen: int

@@ -7,7 +7,7 @@ import { BitlinkLogo } from "@/components/BitlinkLogo";
 import { InstallAppBanner } from "@/components/InstallAppBanner";
 import { ToastProvider, useToast } from "@/components/Toast";
 import { clearTokens, getAccessToken } from "@/lib/auth";
-import { authApi, profileApi } from "@/lib/api";
+import { authApi, profileApi, verificationApi } from "@/lib/api";
 import { copyPageUrl, displayPageUrl, sharePage } from "@/lib/share";
 
 const NAV = [
@@ -44,6 +44,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   const [displayName, setDisplayName] = useState<string>("");
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [flag, setFlag] = useState<{ note: string | null } | null>(null);
+  const [unseenAlerts, setUnseenAlerts] = useState(0);
   const [ready, setReady] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -60,6 +61,12 @@ function ShellInner({ children }: { children: React.ReactNode }) {
         setIsSuperuser(user.is_superuser);
         setFlag(p.is_suspicious ? { note: p.suspicious_note } : null);
         setReady(true);
+        if (p.is_verified) {
+          verificationApi
+            .alerts(token)
+            .then((a) => setUnseenAlerts(a.unseen))
+            .catch(() => {});
+        }
       })
       .catch(() => {
         clearTokens();
@@ -70,6 +77,12 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMoreOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const clear = () => setUnseenAlerts(0);
+    window.addEventListener("bitlink:identity-alerts-seen", clear);
+    return () => window.removeEventListener("bitlink:identity-alerts-seen", clear);
+  }, []);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -145,6 +158,21 @@ function ShellInner({ children }: { children: React.ReactNode }) {
                 Review your links and content. If you think this is a mistake, contact support.
               </p>
             </div>
+          </div>
+        </div>
+      )}
+      {unseenAlerts > 0 && (
+        <div role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+          <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-2">
+            <p>
+              <span className="font-semibold">
+                {unseenAlerts === 1 ? "1 new impersonation alert" : `${unseenAlerts} new impersonation alerts`}
+              </span>{" "}
+              — someone tried to use a name like yours or a look-alike profile was reported.
+            </p>
+            <Link href="/dashboard/settings#verification" className="font-semibold underline">
+              Review
+            </Link>
           </div>
         </div>
       )}

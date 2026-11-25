@@ -4,7 +4,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
-ReasonLiteral = Literal["phishing", "malware", "scam", "spam", "adult", "illegal", "other"]
+ReasonLiteral = Literal[
+    "phishing", "malware", "scam", "spam", "adult", "illegal", "impersonation", "other"
+]
 StatusLiteral = Literal["pending", "resolved", "dismissed"]
 
 
@@ -45,6 +47,9 @@ class AdminReportItem(BaseModel):
     created_at: datetime
     # Other reports against the same target (including this one).
     reports_for_target: int = 1
+    # Verified account the reported profile seems to copy (username or protected name).
+    impersonates_username: str | None = None
+    impersonates_user_id: UUID | None = None
 
 
 class AdminReportListResponse(BaseModel):
