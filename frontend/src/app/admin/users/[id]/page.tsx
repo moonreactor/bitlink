@@ -6,13 +6,20 @@ import { useCallback, useEffect, useState } from "react";
 import { adminApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { VerifiedMark } from "@/components/VerifiedBadge";
-import type { AdminUserDetail } from "@/lib/types";
+import type { AdminUserDetail, AdminVerificationEvent } from "@/lib/types";
 import {
   VERIFICATION_COPY,
   VERIFICATION_TYPES,
   verificationType,
   type VerificationType,
 } from "@/lib/verification";
+
+const EVENT_LABEL: Record<AdminVerificationEvent["action"], string> = {
+  verified: "Verified",
+  type_changed: "Kind changed",
+  revoked: "Removed",
+  auto_revoked: "Removed automatically",
+};
 
 export default function AdminUserDetailPage() {
   const params = useParams<{ id: string }>();
@@ -21,6 +28,7 @@ export default function AdminUserDetailPage() {
   const [saving, setSaving] = useState(false);
   const [flagNote, setFlagNote] = useState("");
   const [verifyType, setVerifyType] = useState<VerificationType>("creator");
+  const [verifyNote, setVerifyNote] = useState("");
 
   const load = useCallback(async () => {
     const token = getAccessToken();
@@ -120,41 +128,6 @@ export default function AdminUserDetailPage() {
           >
             {user.is_superuser ? "Remove superuser" : "Make superuser"}
           </button>
-          <div className="inline-flex overflow-hidden rounded-xl border border-ink/10">
-            <label className="sr-only" htmlFor="verification-type">
-              Kind of verified account
-            </label>
-            <select
-              id="verification-type"
-              disabled={saving || !user.profile_id}
-              value={user.is_verified ? verificationType(user.verification_type) : verifyType}
-              onChange={(e) => {
-                const value = e.target.value as VerificationType;
-                if (user.is_verified) patch({ verification_type: value });
-                else setVerifyType(value);
-              }}
-              className="border-r border-ink/10 bg-white px-3 py-2 text-sm disabled:opacity-50"
-            >
-              {VERIFICATION_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {VERIFICATION_COPY.en.types[type]}
-                </option>
-              ))}
-            </select>
-            <button
-              disabled={saving || !user.profile_id}
-              onClick={() =>
-                patch(
-                  user.is_verified
-                    ? { is_verified: false }
-                    : { is_verified: true, verification_type: verifyType },
-                )
-              }
-              className="px-4 py-2 text-sm font-medium hover:bg-ink/5 disabled:opacity-50"
-            >
-              {user.is_verified ? "Remove verified badge" : "Verify profile"}
-            </button>
-          </div>
           {user.profile_id && !user.is_suspicious && (
             <input
               value={flagNote}
@@ -205,6 +178,104 @@ export default function AdminUserDetailPage() {
           {user.is_suspicious && <Badge>Suspicious</Badge>}
         </div>
       </section>
+
+      {user.profile_id && (
+        <section className="rounded-2xl border border-ink/10 bg-white/70 p-5 backdrop-blur">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-display text-lg font-semibold">Verification</h2>
+            {user.pending_verification_request_id && (
+              <Link href="/admin/verification" className="text-xs font-medium text-accent hover:underline">
+                Has a pending request →
+              </Link>
+            )}
+          </div>
+          <p className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+            {user.is_verified ? (
+              <>
+                <VerifiedMark type={user.verification_type} lang="en" size={16} />
+                <span className="font-medium">
+                  {VERIFICATION_COPY.en.types[verificationType(user.verification_type)]}
+                </span>
+                <span className="text-ink/55">
+                  {user.verified_at && `since ${new Date(user.verified_at).toLocaleDateString()}`}
+                  {user.verified_by_email && ` · by ${user.verified_by_email}`}
+                </span>
+              </>
+            ) : (
+              <span className="text-ink/55">Not verified</span>
+            )}
+          </p>
+          {user.verification_note && (
+            <p className="mt-1 text-sm text-ink/70">Note: {user.verification_note}</p>
+          )}
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <label className="sr-only" htmlFor="verification-type">
+              Kind of verified account
+            </label>
+            <select
+              id="verification-type"
+              disabled={saving}
+              value={user.is_verified ? verificationType(user.verification_type) : verifyType}
+              onChange={(e) => {
+                const value = e.target.value as VerificationType;
+                if (user.is_verified) patch({ verification_type: value });
+                else setVerifyType(value);
+              }}
+              className="rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm disabled:opacity-50"
+            >
+              {VERIFICATION_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {VERIFICATION_COPY.en.types[type]}
+                </option>
+              ))}
+            </select>
+            <input
+              value={verifyNote}
+              onChange={(e) => setVerifyNote(e.target.value)}
+              placeholder={user.is_verified ? "Reason for removing (internal)" : "Why it is verified (internal)"}
+              maxLength={500}
+              className="min-w-[220px] flex-1 rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm"
+            />
+            <button
+              disabled={saving || (!user.is_verified && user.is_suspicious)}
+              title={!user.is_verified && user.is_suspicious ? "Clear the suspicious flag first" : undefined}
+              onClick={async () => {
+                const note = verifyNote.trim() || undefined;
+                await patch(
+                  user.is_verified
+                    ? { is_verified: false, verification_note: note }
+                    : { is_verified: true, verification_type: verifyType, verification_note: note },
+                );
+                setVerifyNote("");
+              }}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
+                user.is_verified ? "border border-ink/10 hover:bg-ink/5" : "bg-ink text-white hover:bg-ink/90"
+              }`}
+            >
+              {user.is_verified ? "Remove verified badge" : "Verify profile"}
+            </button>
+          </div>
+
+          {user.verification_history.length > 0 && (
+            <ol className="mt-5 space-y-2 border-l border-ink/10 pl-4 text-sm">
+              {user.verification_history.map((e) => (
+                <li key={e.id}>
+                  <p>
+                    <span className="font-medium">{EVENT_LABEL[e.action]}</span>
+                    {e.verification_type && ` · ${VERIFICATION_COPY.en.types[e.verification_type]}`}
+                    <span className="text-ink/50">
+                      {" "}
+                      — {e.actor_email ?? "automatic"} · {new Date(e.created_at).toLocaleString()}
+                    </span>
+                  </p>
+                  {e.note && <p className="text-xs text-ink/60">{e.note}</p>}
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+      )}
 
       <section className="rounded-2xl border border-ink/10 bg-white/70 p-5 backdrop-blur">
         <h2 className="font-display text-lg font-semibold">Links</h2>

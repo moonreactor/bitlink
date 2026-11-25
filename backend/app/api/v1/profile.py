@@ -9,7 +9,7 @@ from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.profile import ProfileOut, ProfileUpdate
 from app.services.qr import generate_profile_qr
-from app.services.verification import badge_color
+from app.services.verification import badge_color, revoke_for_review
 from app.services.youtube import extract_youtube_video_id
 
 router = APIRouter(prefix="/me", tags=["profile"])
@@ -89,7 +89,18 @@ def update_profile(
         )
         if exists:
             raise HTTPException(status_code=400, detail="Username already taken")
+        # A verified badge vouches for a specific name: renaming sends it back to review.
+        revoke_for_review(
+            db, profile, f"Username changed from @{profile.username} to @{data['username']}"
+        )
         profile.username = data["username"]
+
+    if "display_name" in data and data["display_name"] != profile.display_name:
+        revoke_for_review(
+            db,
+            profile,
+            f"Display name changed from “{profile.display_name}” to “{data['display_name']}”",
+        )
 
     for field in (
         "display_name",
@@ -171,7 +182,7 @@ def get_qr(
         back_color=back,
         logo_url=logo,
         fmt=fmt,
-        verified_color=badge_color(profile) if logo else None,
+        verified_color=badge_color(profile),
     )
     media = "image/svg+xml" if fmt == "svg" else "image/png"
     return Response(content=content, media_type=media)

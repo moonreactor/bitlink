@@ -49,6 +49,11 @@ class Profile(Base):
     # Set together with is_verified by a superadmin; cleared when the badge is removed.
     verification_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    verified_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    # Internal note for superadmins (why it was verified); never shown publicly.
+    verification_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
     tip_jar_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     tip_jar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     tip_jar_label: Mapped[str] = mapped_column(String(80), default="Tip me", nullable=False)
@@ -81,7 +86,7 @@ class Profile(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    user = relationship("User", back_populates="profile")
+    user = relationship("User", back_populates="profile", foreign_keys=[user_id])
     links = relationship(
         "Link",
         back_populates="profile",

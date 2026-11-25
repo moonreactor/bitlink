@@ -1,4 +1,5 @@
 import io
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -56,6 +57,50 @@ def _draw_verified_badge(pad: Image.Image, color: str) -> None:
     draw.line([pt(0.0, 0.5), pt(0.35, 0.85), pt(1.0, 0.15)], fill="white", width=max(2, size // 7), joint="curve")
 
 
+def _check_points(x0: float, y0: float, size: float) -> list[tuple[float, float]]:
+    """Check mark inside a circle of `size` at (x0, y0), like the "M20 6 9 17l-5-5" web icon."""
+    return [
+        (x0 + size * 0.28, y0 + size * 0.52),
+        (x0 + size * 0.44, y0 + size * 0.68),
+        (x0 + size * 0.73, y0 + size * 0.34),
+    ]
+
+
+def _draw_center_badge(img: Image.Image, color: str) -> Image.Image:
+    """Verified badge in the middle of a QR without logo. Small enough for ERROR_CORRECT_H."""
+    img = img.convert("RGBA")
+    w, h = img.size
+    size = w // 7
+    ring = max(3, size // 8)
+    x0, y0 = (w - size) // 2, (h - size) // 2
+    draw = ImageDraw.Draw(img)
+    draw.ellipse((x0 - ring, y0 - ring, x0 + size + ring, y0 + size + ring), fill="white")
+    draw.ellipse((x0, y0, x0 + size, y0 + size), fill=color)
+    draw.line(_check_points(x0, y0, size), fill="white", width=max(3, size // 7), joint="curve")
+    return img.convert("RGB")
+
+
+def _svg_center_badge(svg: bytes, color: str) -> bytes:
+    """Same badge as _draw_center_badge, appended to the SVG in its own (module) units."""
+    text = svg.decode()
+    m = re.search(r'viewBox="0 0 ([\d.]+) ([\d.]+)"', text)
+    if not m:
+        return svg
+    w = float(m.group(1))
+    size = w / 7
+    ring = size / 8
+    c = w / 2
+    x0 = c - size / 2
+    pts = " ".join(f"{x:.3f},{y:.3f}" for x, y in _check_points(x0, x0, size))
+    badge = (
+        f'<circle cx="{c:.3f}" cy="{c:.3f}" r="{size / 2 + ring:.3f}" fill="#ffffff"/>'
+        f'<circle cx="{c:.3f}" cy="{c:.3f}" r="{size / 2:.3f}" fill="{color}"/>'
+        f'<polyline points="{pts}" fill="none" stroke="#ffffff" stroke-width="{size / 7:.3f}" '
+        'stroke-linecap="round" stroke-linejoin="round"/>'
+    )
+    return text.replace("</svg>", f"{badge}</svg>").encode()
+
+
 def generate_profile_qr(
     username: str,
     *,
@@ -78,6 +123,8 @@ def generate_profile_qr(
         img = qr.make_image(image_factory=SvgPathImage, fill_color=fill_color, back_color=back_color)
         buf = io.BytesIO()
         img.save(buf)
+        if verified_color:
+            return _svg_center_badge(buf.getvalue(), verified_color)
         return buf.getvalue()
 
     qr = qrcode.QRCode(version=1, box_size=12, border=2, error_correction=ERROR_CORRECT_H)
@@ -100,6 +147,8 @@ def generate_profile_qr(
         img = img.convert("RGBA")
         img.paste(pad, pos, pad)
         img = img.convert("RGB")
+    elif verified_color:
+        img = _draw_center_badge(img, verified_color)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")

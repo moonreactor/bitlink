@@ -1,3 +1,4 @@
+import type { VerificationType } from "@/lib/verification";
 import { EXAMPLES_TEXT, LANDING } from "@/lib/i18n/landing-copy";
 import type { SiteLang } from "@/lib/i18n/site";
 import type { SocialBrandId } from "@/lib/socialBrands";
@@ -31,6 +32,8 @@ export type ExampleProfile = {
   tag: string;
   bio: string;
   verified?: boolean;
+  /** Kind of verified account: sets the badge color, as on real profiles. */
+  verificationType?: VerificationType;
   /** Accessible label for the verified badge (localised). */
   verifiedLabel?: string;
   avatar: string;
@@ -59,6 +62,7 @@ export const EXAMPLES: ExampleProfile[] = [
     role: "Singer-songwriter",
     bio: "New single “Marea” out now 🌊 Tour 2026",
     verified: true,
+    verificationType: "public_figure",
     avatar: photo("1529626455594-4ff0802cfb7e", 160, 160),
     cover: photo("1493225457124-a3eb161ffa5f", 900, 1100),
     socials: ["instagram", "tiktok", "spotify", "youtube"],
@@ -118,6 +122,7 @@ export const EXAMPLES: ExampleProfile[] = [
     role: "Travel photographer",
     bio: "Shooting light in faraway places 📷",
     verified: true,
+    verificationType: "creator",
     avatar: photo("1534528741775-53994a69daeb", 160, 160),
     cover: photo("1554080353-a576cf803bda", 900, 1100),
     domain: "links.sofiavidal.com",

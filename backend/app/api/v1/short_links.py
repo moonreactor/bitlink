@@ -510,12 +510,10 @@ def short_link_qr(
             return default
         return value if value.startswith("#") else f"#{value}"
 
-    logo_url = None
-    verified_color = None
-    if logo and fmt == "png":
-        profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
-        logo_url = profile.avatar_url if profile else None
-        verified_color = badge_color(profile) if profile else None
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    logo_url = profile.avatar_url if profile and logo and fmt == "png" else None
+    # Verified owners get the badge on every QR (on the logo, or centered without one).
+    verified_color = badge_color(profile) if profile else None
     # Encode the public short URL (bitlink.click/code), not the Railway host.
     content = generate_profile_qr(
         link.code,

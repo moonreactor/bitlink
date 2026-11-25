@@ -195,6 +195,10 @@ export default function ShortLinksPage() {
         <p className="mt-1 text-sm text-meetup-muted">
           Unlimited branded shorts with UTMs, editable destinations, and QR — free.
         </p>
+        <p className="mt-1 text-xs text-meetup-muted">
+          Add a <strong>+</strong> to the end of any short link to get a preview page that shows where it
+          goes and that you shared it — handy where people are wary of short links.
+        </p>
       </div>
 
       <form onSubmit={onCreate} className="mu-dash-block space-y-4">
@@ -380,6 +384,7 @@ export default function ShortLinksPage() {
                   {statsId === item.id ? "Hide stats" : "Stats"}
                 </MiniBtn>
                 <MiniBtn onClick={() => copyText(item.short_url)}>Copy</MiniBtn>
+                <MiniBtn onClick={() => copyText(`${item.short_url}+`)}>Copy preview link (+)</MiniBtn>
                 <MiniBtn
                   onClick={() => {
                     setEditingId(item.id);

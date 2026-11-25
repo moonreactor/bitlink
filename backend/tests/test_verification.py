@@ -117,3 +117,24 @@ def test_qr_badge_is_drawn_in_the_corner():
     # Ring is white, inside is the badge color, top-left of the pad is untouched.
     assert pad.getpixel((70, 90))[:3] == (245, 158, 11)
     assert pad.getpixel((5, 5)) == (255, 255, 255, 255)
+
+
+def test_svg_qr_gets_centered_badge_only_when_verified():
+    from app.services.qr import generate_profile_qr
+
+    plain = generate_profile_qr("alice", fmt="svg").decode()
+    badged = generate_profile_qr("alice", fmt="svg", verified_color="#8b5cf6").decode()
+    assert "<circle" not in plain
+    assert 'fill="#8b5cf6"' in badged
+    assert badged.endswith("</svg>")
+
+
+def test_png_qr_without_logo_gets_centered_badge():
+    import io
+
+    from app.services.qr import generate_profile_qr
+
+    img = Image.open(io.BytesIO(generate_profile_qr("alice", verified_color="#f59e0b")))
+    w, h = img.size
+    # Just below the top edge of the badge circle (above the white check mark).
+    assert img.getpixel((w // 2, h // 2 - w // 18))[:3] == (245, 158, 11)

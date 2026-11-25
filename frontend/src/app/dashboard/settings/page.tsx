@@ -6,6 +6,8 @@ import { useToast } from "@/components/Toast";
 import { authApi, domainApi, linksApi, profileApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import type { DomainInfo, LinkItem, Profile } from "@/lib/types";
+import { VerifiedMark } from "@/components/VerifiedBadge";
+import { VERIFICATION_COPY, verificationType, verifiedSince } from "@/lib/verification";
 
 const NAV = [
   { id: "profile", label: "Profile" },
@@ -28,6 +30,8 @@ export default function SettingsPage() {
   const [domainBusy, setDomainBusy] = useState(false);
   const [domainMsg, setDomainMsg] = useState("");
   const [saving, setSaving] = useState(false);
+  // Name as last saved: renaming a verified profile removes the badge until it is reviewed again.
+  const [savedName, setSavedName] = useState({ username: "", display_name: "" });
 
   useEffect(() => {
     const token = getAccessToken();
@@ -35,6 +39,7 @@ export default function SettingsPage() {
     Promise.all([profileApi.get(token), linksApi.list(token), domainApi.get(token)]).then(
       ([p, l, d]) => {
         setProfile(p);
+        setSavedName({ username: p.username, display_name: p.display_name });
         setLinks(l);
         setDomain(d);
         setDomainInput(d.custom_domain || "");
@@ -84,10 +89,22 @@ export default function SettingsPage() {
     if (!profile.meta_pixel_id) body.clear_meta_pixel_id = true;
     if (!profile.tip_jar_url) body.clear_tip_jar_url = true;
     if (profilePassword) body.profile_password = profilePassword;
+    const renamed =
+      profile.username !== savedName.username || profile.display_name !== savedName.display_name;
+    if (
+      profile.is_verified &&
+      renamed &&
+      !window.confirm(
+        "Changing your username or display name removes your verified badge until the Bitlink team reviews it again. Continue?",
+      )
+    ) {
+      return;
+    }
     setSaving(true);
     try {
       const updated = await profileApi.update(token, body);
       setProfile(updated);
+      setSavedName({ username: updated.username, display_name: updated.display_name });
       setProfilePassword("");
       success("Profile saved");
     } catch (err) {
@@ -214,6 +231,27 @@ export default function SettingsPage() {
             <p className="mu-dash-lead">How you appear at the top of your page.</p>
           </header>
           <div className="space-y-4">
+            {profile.is_verified && (
+              <div className="flex items-start gap-3 rounded-2xl border border-ink/10 bg-white/70 p-3 text-sm">
+                <VerifiedMark type={profile.verification_type} lang="en" size={20} />
+                <div>
+                  <p className="font-semibold">
+                    Verified · {VERIFICATION_COPY.en.types[verificationType(profile.verification_type)]}
+                    {profile.verified_at && (
+                      <span className="font-normal text-ink/55">
+                        {" "}
+                        since {verifiedSince(profile.verified_at, "en")}
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-0.5 text-xs text-ink/60">
+                    Your badge shows on your page, your share previews, your QR codes and on your
+                    short links (add a + to see it). Changing your username or display name
+                    removes it until we review it again.
+                  </p>
+                </div>
+              </div>
+            )}
             <MediaUploadField
               label="Avatar"
               value={profile.avatar_url}

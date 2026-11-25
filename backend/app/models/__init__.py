@@ -9,6 +9,7 @@ from app.models.shortener_event import ShortenerEvent
 from app.models.short_link import ShortLink, ShortLinkClick
 from app.models.subscriber import Subscriber
 from app.models.user import User
+from app.models.verification import VerificationEvent, VerificationRequest
 
 __all__ = [
     "User",
@@ -24,4 +25,6 @@ __all__ = [
     "GrowthCtaClick",
     "ShortenerEvent",
     "Report",
+    "VerificationEvent",
+    "VerificationRequest",
 ]

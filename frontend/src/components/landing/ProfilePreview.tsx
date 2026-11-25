@@ -2,13 +2,18 @@
 import { animationClass } from "@/lib/linkAnimations";
 import { SocialBrandIcon } from "@/lib/socialBrands";
 import { buttonRadius } from "@/lib/themes";
+import { BADGE_COLOR, verificationType, type VerificationType } from "@/lib/verification";
 import type { ExampleBlock, ExampleProfile } from "./examples";
 
 type Theme = ExampleProfile["theme"];
 
-function Verified({ label }: { label: string }) {
+function Verified({ label, type }: { label: string; type?: VerificationType }) {
   return (
-    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-500 text-white" aria-label={label}>
+    <span
+      className="inline-flex h-4 w-4 items-center justify-center rounded-full text-white"
+      style={{ background: BADGE_COLOR[verificationType(type)] }}
+      aria-label={label}
+    >
       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" aria-hidden>
         <path d="M20 6 9 17l-5-5" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -151,7 +156,9 @@ export function ProfilePreview({ profile }: { profile: ExampleProfile }) {
         />
         <p className="mt-2 flex items-center gap-1 text-sm font-bold tracking-tight">
           {profile.name}
-          {profile.verified && <Verified label={profile.verifiedLabel ?? "Verified"} />}
+          {profile.verified && (
+            <Verified label={profile.verifiedLabel ?? "Verified"} type={profile.verificationType} />
+          )}
         </p>
         <p className="mt-0.5 max-w-[210px] text-center text-[10px] leading-snug opacity-80">{profile.bio}</p>
         <div className="mt-2 flex gap-2.5 opacity-90">

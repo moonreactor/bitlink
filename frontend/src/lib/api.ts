@@ -1,5 +1,8 @@
 import type { VerificationType } from "@/lib/verification";
 import type {
+  AdminVerificationRequestItem,
+  AdminVerificationRequestList,
+  VerificationRequestStatus,
   AdminReportItem,
   AdminReportListResponse,
   ReportReason,
@@ -206,6 +209,7 @@ export const adminApi = {
       is_superuser?: boolean;
       is_verified?: boolean;
       verification_type?: VerificationType;
+      verification_note?: string;
       is_suspicious?: boolean;
       suspicious_note?: string;
     },
@@ -233,6 +237,31 @@ export const adminApi = {
     const qs = sp.toString();
     return request<AdminReportListResponse>(`/admin/reports${qs ? `?${qs}` : ""}`, {}, token);
   },
+  verificationRequests: (
+    token: string,
+    params?: { status?: VerificationRequestStatus; page?: number; page_size?: number },
+  ) => {
+    const sp = new URLSearchParams();
+    if (params?.status) sp.set("status", params.status);
+    if (params?.page) sp.set("page", String(params.page));
+    if (params?.page_size) sp.set("page_size", String(params.page_size));
+    const qs = sp.toString();
+    return request<AdminVerificationRequestList>(
+      `/admin/verification-requests${qs ? `?${qs}` : ""}`,
+      {},
+      token,
+    );
+  },
+  decideVerificationRequest: (
+    token: string,
+    id: string,
+    body: { status: "approved" | "rejected"; verification_type?: VerificationType; note?: string },
+  ) =>
+    request<AdminVerificationRequestItem>(
+      `/admin/verification-requests/${id}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+      token,
+    ),
   updateReport: (
     token: string,
     id: string,

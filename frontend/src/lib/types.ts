@@ -345,6 +345,10 @@ export type AdminUserDetail = {
   is_verified: boolean;
   verification_type: VerificationType | null;
   verified_at: string | null;
+  verified_by_email: string | null;
+  verification_note: string | null;
+  verification_history: AdminVerificationEvent[];
+  pending_verification_request_id: string | null;
   is_suspicious: boolean;
   suspicious_at: string | null;
   suspicious_note: string | null;
@@ -412,4 +416,61 @@ export type AdminReportListResponse = {
   pending: number;
   resolved: number;
   dismissed: number;
+};
+
+export type AdminVerificationEvent = {
+  id: string;
+  action: "verified" | "type_changed" | "revoked" | "auto_revoked";
+  verification_type: VerificationType | null;
+  actor_email: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+export type VerificationRequestStatus = "pending" | "approved" | "rejected";
+
+export type AdminVerificationSignals = {
+  account_age_days: number;
+  has_avatar: boolean;
+  has_bio: boolean;
+  verified_domain: string | null;
+  social_profiles: string[];
+  links_count: number;
+  views_count: number;
+  clicks_count: number;
+  subscribers_count: number;
+  reports_total: number;
+  reports_pending: number;
+  is_suspicious: boolean;
+  previously_revoked: number;
+};
+
+export type AdminVerificationRequestItem = {
+  id: string;
+  profile_id: string;
+  user_id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  is_verified: boolean;
+  verification_type: VerificationType;
+  source: "user" | "auto";
+  reason: string | null;
+  evidence_urls: string[];
+  status: VerificationRequestStatus;
+  decision_note: string | null;
+  reviewed_by_email: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  signals: AdminVerificationSignals;
+};
+
+export type AdminVerificationRequestList = {
+  items: AdminVerificationRequestItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  pending: number;
+  approved: number;
+  rejected: number;
 };
