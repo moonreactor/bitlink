@@ -11,21 +11,18 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import ipaddress
-import socket
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin, urlparse
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.parse import urlparse
 
 from app.core.config import settings
 from app.services.domain import fetch_txt_records
+from app.services.safe_fetch import UnsafeUrl, open_public_url
 
 MAX_BYTES = 500_000
 TIMEOUT = 6.0
-MAX_REDIRECTS = 3
 
 # Hosts where a DNS TXT record cannot belong to the user.
 SHARED_HOSTS = (
@@ -55,53 +52,14 @@ def proof_code(profile_id: uuid.UUID) -> str:
     return f"bitlink-{digest.hexdigest()[:12]}"
 
 
-class UnsafeUrl(ValueError):
-    pass
-
-
-def _check_public_host(url: str) -> None:
-    """Refuse anything that is not a public http(s) host on a standard port (SSRF guard)."""
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or not parsed.hostname:
-        raise UnsafeUrl("Only http(s) links can be checked")
-    if parsed.port not in (None, 80, 443):
-        raise UnsafeUrl("Only standard ports can be checked")
-    try:
-        infos = socket.getaddrinfo(parsed.hostname, parsed.port or 443, type=socket.SOCK_STREAM)
-    except socket.gaierror as exc:
-        raise UnsafeUrl("Host not found") from exc
-    for info in infos:
-        ip = ipaddress.ip_address(info[4][0])
-        if not ip.is_global or ip.is_multicast:
-            raise UnsafeUrl("Private addresses cannot be checked")
-
-
-class _SafeRedirects(HTTPRedirectHandler):
-    def __init__(self) -> None:
-        self.count = 0
-
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
-        self.count += 1
-        if self.count > MAX_REDIRECTS:
-            raise UnsafeUrl("Too many redirects")
-        target = urljoin(req.full_url, newurl)
-        _check_public_host(target)
-        return super().redirect_request(req, fp, code, msg, headers, target)
-
-
 def page_contains(url: str, code: str) -> tuple[bool, str | None]:
     """(found, error). Reads at most MAX_BYTES of the page."""
     try:
-        _check_public_host(url)
-        opener = build_opener(_SafeRedirects())
-        req = Request(
-            url,
-            headers={
-                "User-Agent": "BitlinkBot/1.0 (+https://bitlink.click; verification check)",
-                "Accept": "text/html,application/xhtml+xml,text/plain",
-            },
-        )
-        with opener.open(req, timeout=TIMEOUT) as resp:
+        headers = {
+            "User-Agent": "BitlinkBot/1.0 (+https://bitlink.click; verification check)",
+            "Accept": "text/html,application/xhtml+xml,text/plain",
+        }
+        with open_public_url(url, headers=headers, timeout=TIMEOUT) as resp:
             body = resp.read(MAX_BYTES).decode("utf-8", errors="ignore")
         return (code in body, None)
     except UnsafeUrl as exc:

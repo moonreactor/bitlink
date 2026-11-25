@@ -6,7 +6,8 @@ from app.models.profile import Profile
 from app.models.user import User
 from app.models.verification import VerificationRequest
 from app.services import verification_proof
-from app.services.verification_proof import UnsafeUrl, _check_public_host, proof_code
+from app.services.safe_fetch import UnsafeUrl, check_public_host
+from app.services.verification_proof import proof_code
 
 from .conftest import register
 
@@ -183,7 +184,7 @@ def test_proof_code_is_stable_and_per_profile():
 )
 def test_proof_fetch_refuses_private_targets(url):
     with pytest.raises(UnsafeUrl):
-        _check_public_host(url)
+        check_public_host(url)
 
 
 def test_shared_hosts_are_not_dns_checked(monkeypatch):
