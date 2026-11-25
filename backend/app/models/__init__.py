@@ -1,4 +1,5 @@
 from app.models.analytics import LinkClick, PageView
+from app.models.email_log import EmailLog
 from app.models.growth import GrowthCtaClick
 from app.models.link import Link
 from app.models.link_section import LinkSection
@@ -28,4 +29,5 @@ __all__ = [
     "VerificationEvent",
     "VerificationRequest",
     "IdentityAlert",
+    "EmailLog",
 ]

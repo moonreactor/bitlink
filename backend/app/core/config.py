@@ -31,6 +31,18 @@ class Settings(BaseSettings):
     # Google Safe Browsing Lookup API key. Empty = check disabled.
     SAFE_BROWSING_API_KEY: str = ""
     SAFE_BROWSING_TIMEOUT: float = 3.0
+    # Resend (https://resend.com). Empty key = emails are only logged, never sent.
+    RESEND_API_KEY: str = ""
+    # Sender; its domain must be verified in Resend.
+    EMAIL_FROM: str = "Bitlink <hola@bitlink.click>"
+    EMAIL_REPLY_TO: str = ""
+    # Signing secret (whsec_…) of the Resend webhook → /api/v1/email/webhook/resend. Empty = webhook off.
+    RESEND_WEBHOOK_SECRET: str = ""
+    # Periodic tips/reminders (complete profile, add links, verified badge, weekly summary).
+    # Off by default so a deploy never mails every existing user by surprise.
+    LIFECYCLE_EMAILS_ENABLED: bool = False
+    # Safety cap: at most this many lifecycle emails per run (runs every few hours).
+    LIFECYCLE_MAX_PER_RUN: int = 200
 
     def model_post_init(self, __context: object) -> None:
         # Railway/Postgres often provides postgresql://; SQLAlchemy+psycopg needs +psycopg

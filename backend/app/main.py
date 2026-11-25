@@ -9,14 +9,16 @@ from fastapi.staticfiles import StaticFiles
 from app.api.v1 import api_router
 from app.core.config import settings
 from app.services.cleanup import cleanup_loop
+from app.services.lifecycle_emails import lifecycle_loop
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    task = asyncio.create_task(cleanup_loop())
+    tasks = [asyncio.create_task(cleanup_loop()), asyncio.create_task(lifecycle_loop())]
     try:
         yield
     finally:
-        task.cancel()
+        for task in tasks:
+            task.cancel()
 
 
 app = FastAPI(title="Bitlink API", version="1.0.0", lifespan=lifespan)

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import Date, cast, func, or_
 from sqlalchemy.orm import Session
 
@@ -18,6 +18,7 @@ from app.models.subscriber import Subscriber
 from app.models.user import User
 from app.models.verification import REQUEST_STATUSES, VerificationEvent, VerificationRequest
 from app.services.identity import impersonated_profile
+from app.services.mailer import profile_url as _mail_profile_url, send_in_background
 from app.services.verification import grant_verification, revoke_verification
 from app.services.verification_proof import proof_code, run_proof_checks
 from app.schemas.report import AdminReportItem, AdminReportListResponse, AdminReportUpdate
@@ -504,6 +505,7 @@ def get_user(
 def update_user(
     user_id: UUID,
     payload: AdminUserUpdate,
+    background: BackgroundTasks,
     current_user: User = Depends(get_current_superuser),
     db: Session = Depends(get_db),
 ) -> AdminUserDetail:
@@ -531,6 +533,10 @@ def update_user(
         if profile is None:
             raise HTTPException(status_code=400, detail="User has no profile to verify")
         verify = profile.is_verified if payload.is_verified is None else payload.is_verified
+        if verify and not profile.is_verified:
+            background.add_task(
+                send_in_background, user.id, "verification_approved", cta_url=_mail_profile_url(profile)
+            )
         if verify:
             if payload.is_verified and profile.is_suspicious:
                 raise HTTPException(
@@ -903,6 +909,7 @@ def list_verification_requests(
 def decide_verification_request(
     request_id: UUID,
     payload: AdminVerificationDecision,
+    background: BackgroundTasks,
     current_user: User = Depends(get_current_superuser),
     db: Session = Depends(get_db),
 ) -> AdminVerificationRequestItem:
@@ -927,11 +934,21 @@ def decide_verification_request(
             verification_type=req.verification_type,
             note=payload.note,
         )
+        background.add_task(
+            send_in_background, profile.user_id, "verification_approved", cta_url=_mail_profile_url(profile)
+        )
     else:
         req.status = "rejected"
         req.decision_note = (payload.note or "").strip() or None
         req.reviewed_by_id = current_user.id
         req.reviewed_at = datetime.now(timezone.utc)
+        background.add_task(
+            send_in_background,
+            profile.user_id,
+            "verification_rejected",
+            cta_path="/dashboard/settings#verification",
+            ctx={"note": req.decision_note or ""},
+        )
     db.commit()
     db.refresh(req)
     return _request_items(db, [req])[0]

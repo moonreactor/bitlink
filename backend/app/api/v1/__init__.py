@@ -5,6 +5,7 @@ from app.api.v1 import (
     analytics,
     auth,
     domain,
+    emails,
     links,
     media,
     products,
@@ -28,5 +29,7 @@ api_router.include_router(media.router)
 api_router.include_router(short_links.router)
 api_router.include_router(products.router)
 api_router.include_router(admin.router)
+api_router.include_router(emails.router)
+api_router.include_router(emails.admin)
 api_router.include_router(reports.router)
 api_router.include_router(public.router)
