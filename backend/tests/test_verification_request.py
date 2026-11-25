@@ -104,7 +104,7 @@ def test_rejection_shows_note_and_cooldown(client, db):
     _ready(client, db, alice)
     _ask(client, alice)
     boss = register(client, "boss")
-    db.query(User).filter(User.email == "boss@example.com").update({"is_superuser": True})
+    db.query(User).filter(User.email == "boss@mail.bitlink.dev").update({"is_superuser": True})
     db.commit()
     req_id = db.query(VerificationRequest).one().id
     client.patch(
@@ -131,7 +131,7 @@ def test_admin_sees_code_and_can_recheck(client, db, monkeypatch):
     _ready(client, db, alice)
     _ask(client, alice, evidence_urls=["https://instagram.com/alice"])
     boss = register(client, "boss")
-    db.query(User).filter(User.email == "boss@example.com").update({"is_superuser": True})
+    db.query(User).filter(User.email == "boss@mail.bitlink.dev").update({"is_superuser": True})
     db.commit()
 
     item = client.get("/api/v1/admin/verification-requests", headers=boss).json()["items"][0]

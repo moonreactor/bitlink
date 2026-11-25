@@ -18,7 +18,7 @@ def _register_raw(client, username, display_name=None, email=None):
     return client.post(
         "/api/v1/auth/register",
         json={
-            "email": email or f"{username}@example.com",
+            "email": email or f"{username}@mail.bitlink.dev",
             "password": "password123",
             "username": username,
             "display_name": display_name or username.title(),
@@ -30,7 +30,7 @@ def test_blocked_signup_alerts_the_owner_once_a_day(client, db):
     lucia = register(client, "luciarios")
     _verify(db, "luciarios")
     assert _register_raw(client, "lucia_rios").status_code == 400
-    assert _register_raw(client, "lucia_rios", email="again@example.com").status_code == 400
+    assert _register_raw(client, "lucia_rios", email="again@mail.bitlink.dev").status_code == 400
     assert _register_raw(client, "luciari0s").status_code == 400
 
     data = client.get(ALERTS, headers=lucia).json()

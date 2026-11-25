@@ -29,6 +29,7 @@ const LANGS = ["es", "en", "pt"];
 const STATUS_STYLE: Record<string, string> = {
   sent: "bg-emerald-100 text-emerald-800",
   failed: "bg-red-100 text-red-700",
+  rejected: "bg-orange-100 text-orange-800",
   skipped: "bg-ink/10 text-ink/60",
 };
 const DELIVERY_STYLE: Record<string, string> = {
@@ -183,7 +184,7 @@ export default function AdminEmailsPage() {
         {t && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat label="Emails" value={t.total} sub={`last ${days} days`} />
-            <Stat label="Accepted by Resend" value={t.sent} sub={`${t.failed} failed · ${t.skipped} not sent`} />
+            <Stat label="Accepted by Resend" value={t.sent} sub={`${t.failed} failed · ${t.rejected} bad address · ${t.skipped} not sent`} />
             <Stat
               label="Delivered"
               value={stats?.webhook_configured ? t.delivered : "—"}
@@ -206,7 +207,7 @@ export default function AdminEmailsPage() {
             <table className="w-full min-w-[640px] text-sm">
               <thead className="text-left text-xs uppercase tracking-wide text-ink/45">
                 <tr>
-                  {["Email", "Total", "Sent", "Failed", "Delivered", "Opened", "Clicked", "Bounced"].map((h) => (
+                  {["Email", "Total", "Sent", "Failed", "Bad address", "Delivered", "Opened", "Clicked", "Bounced"].map((h) => (
                     <th key={h} className="px-4 py-3 font-medium">
                       {h}
                     </th>
@@ -224,7 +225,7 @@ export default function AdminEmailsPage() {
                         {KIND_LABEL[r.kind] ?? r.kind}
                       </button>
                     </td>
-                    {[r.total, r.sent, r.failed, r.delivered, r.opened, r.clicked, r.bounced].map((n, i) => (
+                    {[r.total, r.sent, r.failed, r.rejected, r.delivered, r.opened, r.clicked, r.bounced].map((n, i) => (
                       <td key={i} className="px-4 py-2.5 tabular-nums text-ink/70">
                         {n}
                       </td>
@@ -272,7 +273,8 @@ export default function AdminEmailsPage() {
           >
             <option value="">Any send status</option>
             <option value="sent">Sent</option>
-            <option value="failed">Failed</option>
+            <option value="failed">Failed (retried)</option>
+            <option value="rejected">Bad address</option>
             <option value="skipped">Not sent (no key)</option>
           </select>
           <select
@@ -330,7 +332,7 @@ export default function AdminEmailsPage() {
                   </span>
                 </span>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[log.status]}`}>
-                  {log.status === "skipped" ? "not sent" : log.status}
+                  {log.status === "skipped" ? "not sent" : log.status === "rejected" ? "bad address" : log.status}
                 </span>
                 {log.delivery_status && (
                   <span

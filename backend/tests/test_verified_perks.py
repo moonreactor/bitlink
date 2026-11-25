@@ -21,7 +21,7 @@ def _register_raw(client, username, display_name=None):
     return client.post(
         "/api/v1/auth/register",
         json={
-            "email": f"{username}@example.com",
+            "email": f"{username}@mail.bitlink.dev",
             "password": "password123",
             "username": username,
             "display_name": display_name or username.title(),
@@ -104,7 +104,7 @@ def test_impersonation_report_points_to_verified_account(client, db):
     assert res.status_code == 204, res.text
 
     boss = register(client, "boss")
-    db.query(User).filter(User.email == "boss@example.com").update({"is_superuser": True})
+    db.query(User).filter(User.email == "boss@mail.bitlink.dev").update({"is_superuser": True})
     db.commit()
     item = client.get("/api/v1/admin/reports", headers=boss).json()["items"][0]
     assert item["reason"] == "impersonation"

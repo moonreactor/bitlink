@@ -81,7 +81,7 @@ def test_directory_is_a_reserved_username(client):
     res = client.post(
         "/api/v1/auth/register",
         json={
-            "email": "d@example.com",
+            "email": "d@mail.bitlink.dev",
             "password": "password123",
             "username": "directory",
             "display_name": "Directory",

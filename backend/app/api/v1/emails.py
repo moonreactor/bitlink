@@ -151,6 +151,11 @@ WEBHOOK_TOLERANCE_SECONDS = 5 * 60
 _RANK = {"delayed": 1, "delivered": 2, "opened": 3, "clicked": 4, "failed": 5, "bounced": 5, "complained": 6}
 
 
+def _domain(address: str) -> str:
+    """"Bitlink <hola@bitlink.click>" → "bitlink.click"."""
+    return address.strip().rstrip(">").rsplit("@", 1)[-1].strip().lower()
+
+
 def _valid_svix_signature(secret: str, headers, body: bytes) -> bool:
     """Resend signs webhooks the Svix way: HMAC-SHA256 of "id.timestamp.body", base64."""
     msg_id = headers.get("svix-id") or ""
@@ -188,7 +193,13 @@ async def resend_webhook(request: Request, db: Session = Depends(get_db)) -> dic
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
     state = str(event.get("type", "")).removeprefix("email.").replace("delivery_delayed", "delayed")
-    email_id = str((event.get("data") or {}).get("email_id") or "")
+    data = event.get("data") or {}
+    email_id = str(data.get("email_id") or "")
+    # One Resend account can send for several domains/apps and the webhook gets all of them:
+    # only events for our sender's domain matter (and below, only email ids we logged).
+    sender = str(data.get("from") or "")
+    if sender and _domain(sender) != _domain(settings.EMAIL_FROM):
+        return {"ok": True, "ignored": True}
     if state not in _RANK or not email_id:
         return {"ok": True, "ignored": True}
     log = db.query(EmailLog).filter(EmailLog.provider_id == email_id).first()
@@ -227,6 +238,7 @@ class EmailKindStats(BaseModel):
     total: int = 0
     sent: int = 0
     failed: int = 0
+    rejected: int = 0
     skipped: int = 0
     delivered: int = 0
     opened: int = 0
@@ -270,7 +282,7 @@ def email_stats(
         .all()
     ):
         bump(kind, "total", n)
-        if status_ in ("sent", "failed", "skipped"):
+        if status_ in ("sent", "failed", "rejected", "skipped"):
             bump(kind, status_, n)
     # Each later state implies the earlier ones (a click was also opened and delivered).
     timestamps = {
@@ -338,7 +350,7 @@ class EmailLogList(BaseModel):
 @admin.get("/logs", response_model=EmailLogList)
 def email_logs(
     kind: str | None = None,
-    status: str | None = Query(None, description="sent | failed | skipped"),
+    status: str | None = Query(None, description="sent | failed | rejected | skipped"),
     delivery: str | None = Query(None, description="delivered | opened | clicked | bounced | complained | pending"),
     q: str | None = Query(None, description="email or username"),
     user_id: UUID | None = None,

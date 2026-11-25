@@ -9,7 +9,7 @@ ADMIN = "/api/v1/admin"
 
 def _admin(client, db, name="boss"):
     headers = register(client, name)
-    db.query(User).filter(User.email == f"{name}@example.com").update({"is_superuser": True})
+    db.query(User).filter(User.email == f"{name}@mail.bitlink.dev").update({"is_superuser": True})
     db.commit()
     return headers
 
@@ -47,7 +47,7 @@ def test_history_records_who_did_what(client, db):
 
     actions = [e["action"] for e in detail["verification_history"]]
     assert actions == ["revoked", "type_changed", "verified"]
-    assert {e["actor_email"] for e in detail["verification_history"]} == {"boss@example.com"}
+    assert {e["actor_email"] for e in detail["verification_history"]} == {"boss@mail.bitlink.dev"}
     assert detail["verification_history"][2]["note"] == "Known creator"
     assert detail["verification_history"][0]["note"] == "Expired"
     assert detail["verification_note"] is None
@@ -58,7 +58,7 @@ def test_detail_shows_verifier_and_note(client, db):
     admin = _admin(client, db)
     uid = _profile(db, "alice").user_id
     detail = _patch_user(client, admin, uid, is_verified=True, verification_note="Met in person").json()
-    assert detail["verified_by_email"] == "boss@example.com"
+    assert detail["verified_by_email"] == "boss@mail.bitlink.dev"
     assert detail["verification_note"] == "Met in person"
 
 
@@ -145,7 +145,7 @@ def test_approve_with_other_type_and_reject_with_note(client, db):
         headers=admin,
     ).json()
     assert res["verification_type"] == "public_figure"
-    assert res["reviewed_by_email"] == "boss@example.com"
+    assert res["reviewed_by_email"] == "boss@mail.bitlink.dev"
     alice = _profile(db, "alice")
     assert alice.verification_type == "public_figure"
     assert alice.verification_note == "Checked IG"

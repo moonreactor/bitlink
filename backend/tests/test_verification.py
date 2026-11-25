@@ -12,7 +12,7 @@ PUBLIC = "/api/v1/public"
 
 def _admin(client, db, name="boss"):
     headers = register(client, name)
-    db.query(User).filter(User.email == f"{name}@example.com").update({"is_superuser": True})
+    db.query(User).filter(User.email == f"{name}@mail.bitlink.dev").update({"is_superuser": True})
     db.commit()
     return headers
 

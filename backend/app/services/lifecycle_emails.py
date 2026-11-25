@@ -20,7 +20,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -37,8 +37,6 @@ from app.services.mailer import send_email
 logger = logging.getLogger("bitlink.lifecycle")
 
 RUN_EVERY_SECONDS = 6 * 60 * 60
-# Resend's default limit is 2 requests/second.
-SEND_PAUSE_SECONDS = 0.6
 
 MIN_GAP_BETWEEN_TIPS = timedelta(days=3)
 VERIFICATION_MIN_AGE = timedelta(days=7)
@@ -67,6 +65,8 @@ class History:
     last: dict[str, datetime] = field(default_factory=dict)
     count: dict[str, int] = field(default_factory=dict)
     last_tip: datetime | None = None
+    # Resend refused this address before: don't keep trying it.
+    bad_address: bool = False
 
 
 @dataclass
@@ -83,16 +83,20 @@ def _aware(dt: datetime | None) -> datetime | None:
 
 
 def _history(db: Session, user_ids: list) -> dict:
+    kind_col = case((EmailLog.status == "rejected", "_rejected"), else_=EmailLog.kind)
     rows = (
-        db.query(EmailLog.user_id, EmailLog.kind, func.max(EmailLog.created_at), func.count(EmailLog.id))
-        .filter(EmailLog.user_id.in_(user_ids), EmailLog.status.in_(("sent", "skipped")))
-        .group_by(EmailLog.user_id, EmailLog.kind)
+        db.query(EmailLog.user_id, kind_col, func.max(EmailLog.created_at), func.count(EmailLog.id))
+        .filter(EmailLog.user_id.in_(user_ids), EmailLog.status.in_(("sent", "skipped", "rejected")))
+        .group_by(EmailLog.user_id, kind_col)
         .all()
     )
     out: dict = {}
     for user_id, kind, last, count in rows:
         h = out.setdefault(user_id, History())
         last = _aware(last)
+        if kind == "_rejected":
+            h.bad_address = True
+            continue
         h.last[kind] = last
         h.count[kind] = count
         if kind in MARKETING_KINDS and (h.last_tip is None or last > h.last_tip):
@@ -146,7 +150,7 @@ def _can_request_verification(db: Session, profile: Profile, now: datetime) -> b
 def plan_for(db: Session, user: User, h: History, now: datetime) -> Planned | None:
     """The one email this user should get now, if any."""
     profile = user.profile
-    if profile is None or not user.is_active:
+    if profile is None or not user.is_active or h.bad_address:
         return None
     age = now - _aware(user.created_at)
 
@@ -282,7 +286,7 @@ def run_lifecycle(
             if log is None:
                 continue
             report.planned[plan.kind] = report.planned.get(plan.kind, 0) + 1
-            if log.status == "failed":
+            if log.status in ("failed", "rejected"):
                 report.failed += 1
             else:
                 report.sent += 1
@@ -296,7 +300,7 @@ def _run_once() -> None:
         return
     db = SessionLocal()
     try:
-        report = run_lifecycle(db, pause=SEND_PAUSE_SECONDS)
+        report = run_lifecycle(db)
         if report.sent or report.failed:
             logger.info(
                 "Lifecycle emails: %s sent, %s failed, by kind %s%s",

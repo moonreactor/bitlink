@@ -10,6 +10,8 @@ import hashlib
 import hmac
 import json
 import logging
+import threading
+import time
 import urllib.error
 import urllib.request
 import uuid
@@ -23,6 +25,7 @@ from app.db.session import SessionLocal
 from app.models.email_log import EmailLog
 from app.models.profile import Profile
 from app.models.user import User
+from app.services.email_domains import is_undeliverable
 from app.services.email_templates import MARKETING_KINDS, pick_language, render
 
 logger = logging.getLogger("bitlink.email")
@@ -33,9 +36,38 @@ TIMEOUT_SECONDS = 10
 
 @dataclass
 class SendResult:
-    status: str  # sent | failed | skipped
+    # sent | failed (temporary: retried next run) | rejected (bad address: never retried) | skipped
+    status: str
     provider_id: str | None = None
     error: str | None = None
+
+
+# Resend allows 10 requests/second per account (shared by every domain/app on it). Stay well under.
+MAX_ATTEMPTS = 4
+_throttle_lock = threading.Lock()
+_last_request_at = 0.0
+
+
+def _throttle() -> None:
+    """Space requests out process-wide, whoever sends (background tasks, the 6 h loop, the admin)."""
+    global _last_request_at
+    per_second = max(settings.RESEND_MAX_PER_SECOND, 0.1)
+    with _throttle_lock:
+        wait = _last_request_at + 1 / per_second - time.monotonic()
+        if wait > 0:
+            time.sleep(wait)
+        _last_request_at = time.monotonic()
+
+
+def _retry_delay(exc: urllib.error.HTTPError, attempt: int) -> float:
+    try:
+        return min(float(exc.headers.get("retry-after") or 0), 30.0) or float(2**attempt)
+    except (TypeError, ValueError):
+        return float(2**attempt)
+
+
+def _is_bad_recipient(code: int, detail: str) -> bool:
+    return code in (400, 422) and ("`to`" in detail or "to field" in detail.lower())
 
 
 def _post_resend(payload: dict, idempotency_key: str | None) -> SendResult:
@@ -43,23 +75,36 @@ def _post_resend(payload: dict, idempotency_key: str | None) -> SendResult:
         "Authorization": f"Bearer {settings.RESEND_API_KEY}",
         "Content-Type": "application/json",
         "User-Agent": "bitlink-api/1.0",
+        # Always set: a retry after a timeout must never deliver the email twice.
+        "Idempotency-Key": (idempotency_key or str(uuid.uuid4()))[:256],
     }
-    if idempotency_key:
-        headers["Idempotency-Key"] = idempotency_key[:256]
-    req = urllib.request.Request(
-        RESEND_URL, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST"
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT_SECONDS) as res:  # noqa: S310 - fixed https URL
-            data = json.loads(res.read() or b"{}")
-            return SendResult("sent", provider_id=str(data.get("id") or "")[:64] or None)
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", "replace")[:250]
-        logger.warning("Resend rejected email (%s): %s", exc.code, detail)
-        return SendResult("failed", error=f"{exc.code}: {detail}")
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        logger.warning("Resend request failed: %s", exc)
-        return SendResult("failed", error=str(exc)[:300])
+    body = json.dumps(payload).encode("utf-8")
+    error = ""
+    for attempt in range(MAX_ATTEMPTS):
+        _throttle()
+        req = urllib.request.Request(RESEND_URL, data=body, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT_SECONDS) as res:  # noqa: S310 - fixed https URL
+                data = json.loads(res.read() or b"{}")
+                return SendResult("sent", provider_id=str(data.get("id") or "")[:64] or None)
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", "replace")[:250]
+            error = f"{exc.code}: {detail}"
+            if exc.code == 429 or exc.code >= 500:
+                if attempt + 1 < MAX_ATTEMPTS:
+                    time.sleep(_retry_delay(exc, attempt))
+                    continue
+            logger.warning("Resend rejected email (%s): %s", exc.code, detail)
+            if _is_bad_recipient(exc.code, detail):
+                return SendResult("rejected", error=error)
+            return SendResult("failed", error=error)
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            error = str(exc)[:300]
+            if attempt + 1 < MAX_ATTEMPTS:
+                time.sleep(2**attempt)
+                continue
+            logger.warning("Resend request failed: %s", exc)
+    return SendResult("failed", error=error[:300])
 
 
 def transport(payload: dict, idempotency_key: str | None = None) -> SendResult:
@@ -143,7 +188,11 @@ def send_email(
             "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
         }
 
-    result = transport(payload, idempotency_key)
+    if is_undeliverable(user.email):
+        # Test/reserved domain (e.g. @example.com): Resend would refuse it anyway.
+        result = SendResult("rejected", error="Test or reserved email domain — not sent")
+    else:
+        result = transport(payload, idempotency_key)
     log = EmailLog(
         user_id=user.id,
         kind=kind,

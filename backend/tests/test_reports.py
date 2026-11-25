@@ -12,7 +12,7 @@ ADMIN = "/api/v1/admin/reports"
 
 def _admin(client, db, name="boss"):
     headers = register(client, name)
-    db.query(User).filter(User.email == f"{name}@example.com").update({"is_superuser": True})
+    db.query(User).filter(User.email == f"{name}@mail.bitlink.dev").update({"is_superuser": True})
     db.commit()
     return headers
 
@@ -57,7 +57,7 @@ def test_report_link_and_disable_it(client, db):
     assert res.status_code == 200
     body = res.json()
     assert body["status"] == "resolved" and body["target_active"] is False
-    assert body["resolved_by_email"] == "boss@example.com" and body["resolved_at"]
+    assert body["resolved_by_email"] == "boss@mail.bitlink.dev" and body["resolved_at"]
     assert db.query(Link).filter(Link.id == UUID(link_id)).one().is_active is False
 
     counts = client.get(ADMIN, headers=admin).json()

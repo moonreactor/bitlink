@@ -65,7 +65,7 @@ def test_every_kind_renders_in_every_language():
 def test_welcome_email_in_profile_language(client, db, outbox):
     register(client, "maria", language="es")
     assert len(outbox) == 1
-    assert outbox[0]["to"] == ["maria@example.com"]
+    assert outbox[0]["to"] == ["maria@mail.bitlink.dev"]
     assert outbox[0]["subject"].startswith("Bienvenido a Bitlink")
     assert "List-Unsubscribe" not in outbox[0].get("headers", {})
     log = db.query(EmailLog).one()
@@ -75,11 +75,11 @@ def test_welcome_email_in_profile_language(client, db, outbox):
 def test_password_reset_sends_link(client, db, outbox):
     register(client, "joao", language="pt")
     outbox.clear()
-    client.post("/api/v1/auth/forgot-password", json={"email": "joao@example.com"})
+    client.post("/api/v1/auth/forgot-password", json={"email": "joao@mail.bitlink.dev"})
     assert outbox[0]["subject"] == "Redefina sua senha do Bitlink"
     assert "/reset-password?token=" in outbox[0]["html"]
     # Unknown emails send nothing.
-    client.post("/api/v1/auth/forgot-password", json={"email": "nobody@example.com"})
+    client.post("/api/v1/auth/forgot-password", json={"email": "nobody@mail.bitlink.dev"})
     assert len(outbox) == 1
 
 
@@ -304,3 +304,141 @@ def test_resend_webhook_tracks_delivery(client, db, outbox, monkeypatch):
 
 def test_webhook_off_without_secret(client):
     assert client.post("/api/v1/email/webhook/resend", content=b"{}").status_code == 404
+
+
+class _FakeHTTPError(Exception):
+    pass
+
+
+def _http_error(code, body, retry_after=None):
+    import io
+    import urllib.error
+    from email.message import Message
+
+    headers = Message()
+    if retry_after is not None:
+        headers["retry-after"] = str(retry_after)
+    return urllib.error.HTTPError(mailer.RESEND_URL, code, "err", headers, io.BytesIO(body.encode()))
+
+
+def _fake_urlopen(responses, seen):
+    import io
+    import json
+
+    class _Res(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def urlopen(req, timeout=None):
+        seen.append(req.headers.get("Idempotency-key"))
+        item = responses.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return _Res(json.dumps(item).encode())
+
+    return urlopen
+
+
+def test_resend_429_is_retried_with_same_idempotency_key(monkeypatch):
+    seen: list = []
+    monkeypatch.setattr(mailer.time, "sleep", lambda s: None)
+    monkeypatch.setattr(
+        mailer.urllib.request,
+        "urlopen",
+        _fake_urlopen([_http_error(429, '{"name":"rate_limit_exceeded"}', retry_after=1), {"id": "abc"}], seen),
+    )
+    result = mailer._post_resend({"to": ["a@b.co"], "subject": "x"}, None)
+    assert (result.status, result.provider_id) == ("sent", "abc")
+    assert len(seen) == 2 and seen[0] == seen[1] and seen[0]
+
+
+def test_bad_recipient_is_rejected_not_retried(monkeypatch):
+    seen: list = []
+    monkeypatch.setattr(mailer.time, "sleep", lambda s: None)
+    monkeypatch.setattr(
+        mailer.urllib.request,
+        "urlopen",
+        _fake_urlopen([_http_error(422, '{"message":"Invalid `to` field."}')], seen),
+    )
+    assert mailer._post_resend({"to": ["a@mail.bitlink.dev"], "subject": "x"}, "k").status == "rejected"
+    assert len(seen) == 1
+
+
+def test_throttle_spaces_requests(monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "RESEND_MAX_PER_SECOND", 4)
+    slept: list = []
+    monkeypatch.setattr(mailer.time, "sleep", lambda s: slept.append(s))
+    mailer._throttle()
+    mailer._throttle()
+    assert slept and 0.2 < slept[-1] <= 0.25
+
+
+def test_rejected_address_is_not_retried_by_lifecycle(client, db, monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        mailer, "transport", lambda p, k=None: calls.append(p) or mailer.SendResult("rejected", error="422")
+    )
+    register(client, "ghost")
+    assert len(calls) == 1  # welcome → Resend refused the address
+    _age(db, "ghost", 2)
+    run_lifecycle(db)
+    run_lifecycle(db, now=datetime.now(timezone.utc) + timedelta(days=30))
+    assert len(calls) == 1  # tips never try it again
+
+
+def test_webhook_ignores_other_domains(client, db, outbox, monkeypatch):
+    import base64
+    import json
+
+    from app.core.config import settings
+
+    secret = base64.b64encode(b"k").decode()
+    monkeypatch.setattr(settings, "RESEND_WEBHOOK_SECRET", f"whsec_{secret}")
+    register(client, "other")
+    log = db.query(EmailLog).one()
+    body = json.dumps(
+        {"type": "email.bounced", "data": {"email_id": log.provider_id, "from": "Shop <hi@othershop.com>"}}
+    ).encode()
+    res = client.post("/api/v1/email/webhook/resend", content=body, headers=_signed(secret, body))
+    assert res.json().get("ignored") is True
+    db.refresh(log)
+    assert log.delivery_status is None
+
+
+@pytest.mark.parametrize(
+    "email",
+    ["a@example.com", "a@EXAMPLE.org", "a@mail.example.net", "a@foo.test", "a@x.invalid", "a@test.com", "a@box.localhost"],
+)
+def test_signup_refuses_test_domains(client, email):
+    res = client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": "password123", "username": "tester1", "display_name": "T"},
+    )
+    assert res.status_code == 422
+    # .test/.invalid/.localhost are already refused by email-validator; the rest by our rule.
+    assert "test addresses" in res.text or "special-use or reserved" in res.text
+
+
+def test_real_domains_allowed():
+    from app.services.email_domains import is_undeliverable
+
+    assert not is_undeliverable("ana@gmail.com")
+    assert not is_undeliverable("ana@examples.com")
+    assert not is_undeliverable("ana@latest.com")
+
+
+def test_never_sends_to_existing_test_address(client, db, outbox):
+    register(client, "legacy")
+    user = _user(db, "legacy")
+    user.email = "legacy@example.com"  # account created before the rule
+    db.commit()
+    outbox.clear()
+    log = mailer.send_email(db, user, "password_reset", cta_url="https://x")
+    db.commit()
+    assert outbox == []
+    assert log.status == "rejected"

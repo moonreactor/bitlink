@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     EMAIL_REPLY_TO: str = ""
     # Signing secret (whsec_…) of the Resend webhook → /api/v1/email/webhook/resend. Empty = webhook off.
     RESEND_WEBHOOK_SECRET: str = ""
+    # Requests per second to Resend from this API (the account limit is 10/s, shared by all domains).
+    RESEND_MAX_PER_SECOND: float = 4
     # Periodic tips/reminders (complete profile, add links, verified badge, weekly summary).
     # Off by default so a deploy never mails every existing user by surprise.
     LIFECYCLE_EMAILS_ENABLED: bool = False
