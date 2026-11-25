@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
+from app.schemas.verification import ProofResult
+
 
 class AdminReferralSource(BaseModel):
     username: str
@@ -127,6 +129,9 @@ class AdminVerificationRequestItem(BaseModel):
     source: str
     reason: str | None = None
     evidence_urls: list[str] = Field(default_factory=list)
+    # Code the owner was asked to publish, and where the automatic check found it.
+    proof_code: str
+    proof_results: list[ProofResult] | None = None
     status: str
     decision_note: str | None = None
     reviewed_by_email: str | None = None

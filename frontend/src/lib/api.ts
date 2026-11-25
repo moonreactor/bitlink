@@ -2,6 +2,7 @@ import type { VerificationType } from "@/lib/verification";
 import type {
   AdminVerificationRequestItem,
   AdminVerificationRequestList,
+  MyVerification,
   VerificationRequestStatus,
   AdminReportItem,
   AdminReportListResponse,
@@ -262,6 +263,12 @@ export const adminApi = {
       { method: "PATCH", body: JSON.stringify(body) },
       token,
     ),
+  recheckVerificationProof: (token: string, id: string) =>
+    request<AdminVerificationRequestItem>(
+      `/admin/verification-requests/${id}/check`,
+      { method: "POST" },
+      token,
+    ),
   updateReport: (
     token: string,
     id: string,
@@ -270,6 +277,19 @@ export const adminApi = {
     request<AdminReportItem>(
       `/admin/reports/${id}`,
       { method: "PATCH", body: JSON.stringify(body) },
+      token,
+    ),
+};
+
+export const verificationApi = {
+  get: (token: string) => request<MyVerification>("/me/verification", {}, token),
+  request: (
+    token: string,
+    body: { verification_type: VerificationType; reason?: string; evidence_urls: string[] },
+  ) =>
+    request<MyVerification>(
+      "/me/verification/request",
+      { method: "POST", body: JSON.stringify(body) },
       token,
     ),
 };

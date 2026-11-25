@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toast";
 import { authApi, domainApi, linksApi, profileApi } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import type { DomainInfo, LinkItem, Profile } from "@/lib/types";
+import { VerificationSection } from "@/components/VerificationSection";
 import { VerifiedMark } from "@/components/VerifiedBadge";
 import { VERIFICATION_COPY, verificationType, verifiedSince } from "@/lib/verification";
 
@@ -13,6 +14,7 @@ const NAV = [
   { id: "profile", label: "Profile" },
   { id: "page", label: "Page" },
   { id: "domain", label: "Domain" },
+  { id: "verification", label: "Verification" },
   { id: "security", label: "Security" },
   { id: "qr", label: "QR" },
 ] as const;
@@ -555,6 +557,8 @@ export default function SettingsPage() {
           </div>
         </form>
       </section>
+
+      <VerificationSection />
 
       <section id="security" className="mu-dash-block scroll-mt-24">
         <header>

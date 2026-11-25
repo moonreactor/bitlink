@@ -55,6 +55,8 @@ class VerificationRequest(Base):
     source: Mapped[str] = mapped_column(String(8), default="user", nullable=False)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     evidence_urls: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    # What the automatic proof check found (see services/verification_proof.py); None until it ran.
+    proof_results: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="pending", nullable=False, index=True)
     # Shown to the owner when the request is rejected.
     decision_note: Mapped[str | None] = mapped_column(String(500), nullable=True)

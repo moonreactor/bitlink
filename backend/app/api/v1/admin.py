@@ -18,6 +18,7 @@ from app.models.subscriber import Subscriber
 from app.models.user import User
 from app.models.verification import REQUEST_STATUSES, VerificationEvent, VerificationRequest
 from app.services.verification import grant_verification, revoke_verification
+from app.services.verification_proof import proof_code, run_proof_checks
 from app.schemas.report import AdminReportItem, AdminReportListResponse, AdminReportUpdate
 from app.schemas.admin import (
     AdminDailyStat,
@@ -841,6 +842,8 @@ def _request_items(db: Session, rows: list[VerificationRequest]) -> list[AdminVe
                 source=r.source,
                 reason=r.reason,
                 evidence_urls=list(r.evidence_urls or []),
+                proof_code=proof_code(p.id),
+                proof_results=r.proof_results,
                 status=r.status,
                 decision_note=r.decision_note,
                 reviewed_by_email=reviewers.get(r.reviewed_by_id),
@@ -922,6 +925,24 @@ def decide_verification_request(
         req.decision_note = (payload.note or "").strip() or None
         req.reviewed_by_id = current_user.id
         req.reviewed_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(req)
+    return _request_items(db, [req])[0]
+
+
+@router.post("/verification-requests/{request_id}/check", response_model=AdminVerificationRequestItem)
+def recheck_verification_proof(
+    request_id: UUID,
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> AdminVerificationRequestItem:
+    """Look for the proof code again (e.g. the owner added it after asking)."""
+    req = db.get(VerificationRequest, request_id)
+    if req is None:
+        raise HTTPException(status_code=404, detail="Request not found")
+    profile = db.get(Profile, req.profile_id)
+    domain = profile.custom_domain if profile.custom_domain_verified else None
+    req.proof_results = run_proof_checks(proof_code(profile.id), list(req.evidence_urls or []), domain)
     db.commit()
     db.refresh(req)
     return _request_items(db, [req])[0]

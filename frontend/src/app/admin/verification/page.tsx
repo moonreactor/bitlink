@@ -84,6 +84,21 @@ export default function AdminVerificationPage() {
     }
   }
 
+  async function recheck(r: AdminVerificationRequestItem) {
+    const token = getAccessToken();
+    if (!token) return;
+    setBusyId(r.id);
+    setError("");
+    try {
+      const updated = await adminApi.recheckVerificationProof(token, r.id);
+      setItems((list) => list.map((i) => (i.id === r.id ? updated : i)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to check proof");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
@@ -187,6 +202,7 @@ export default function AdminVerificationPage() {
               </ul>
             )}
 
+            <Proof r={r} busy={busyId === r.id} onRecheck={() => recheck(r)} />
             <Signals s={r.signals} />
 
             {r.status !== "pending" ? (
@@ -302,5 +318,57 @@ function Signals({ s }: { s: AdminVerificationSignals }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Where the automatic check found the owner's proof code. Not found ≠ fake: many networks hide bios. */
+function Proof({
+  r,
+  busy,
+  onRecheck,
+}: {
+  r: AdminVerificationRequestItem;
+  busy: boolean;
+  onRecheck: () => void;
+}) {
+  if (r.source === "auto") return null;
+  const results = r.proof_results;
+  const anyFound = results?.some((p) => p.found);
+  return (
+    <div className="mt-3 rounded-xl bg-ink/[0.03] p-3 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p>
+          Proof code <code className="rounded bg-white px-1.5 py-0.5 font-mono text-ink">{r.proof_code}</code>
+          {results === null ? (
+            <span className="ml-2 text-ink/50">checking…</span>
+          ) : anyFound ? (
+            <span className="ml-2 font-semibold text-emerald-700">found</span>
+          ) : (
+            <span className="ml-2 font-semibold text-amber-700">not found automatically — open the links</span>
+          )}
+        </p>
+        {r.status === "pending" && (
+          <button
+            disabled={busy}
+            onClick={onRecheck}
+            className="rounded-lg border border-ink/15 bg-white px-2.5 py-1 font-semibold disabled:opacity-50"
+          >
+            Check again
+          </button>
+        )}
+      </div>
+      {results && results.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {results.map((p) => (
+            <li key={`${p.kind}-${p.target}`} className="flex flex-wrap items-center gap-1.5">
+              <span className={p.found ? "text-emerald-700" : "text-ink/45"}>{p.found ? "✓" : "✗"}</span>
+              <span className="text-ink/50">{p.kind === "dns" ? "DNS TXT" : "Page"}</span>
+              <span className="break-all text-ink/75">{p.target}</span>
+              {p.error && <span className="text-ink/45">({p.error})</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

@@ -457,6 +457,8 @@ export type AdminVerificationRequestItem = {
   source: "user" | "auto";
   reason: string | null;
   evidence_urls: string[];
+  proof_code: string;
+  proof_results: ProofResult[] | null;
   status: VerificationRequestStatus;
   decision_note: string | null;
   reviewed_by_email: string | null;
@@ -473,4 +475,41 @@ export type AdminVerificationRequestList = {
   pending: number;
   approved: number;
   rejected: number;
+};
+
+export type ProofResult = {
+  kind: "page" | "dns";
+  target: string;
+  found: boolean;
+  error: string | null;
+  checked_at: string;
+};
+
+export type VerificationRequirementKey =
+  | "avatar"
+  | "bio"
+  | "social_profile"
+  | "account_age"
+  | "not_flagged"
+  | "custom_domain";
+
+export type MyVerification = {
+  is_verified: boolean;
+  verification_type: VerificationType | null;
+  verified_at: string | null;
+  proof_code: string;
+  requirements: { key: VerificationRequirementKey; met: boolean; required: boolean }[];
+  can_request: boolean;
+  blocked_reason: "requirements" | "pending" | "cooldown" | "verified" | "flagged" | null;
+  cooldown_until: string | null;
+  latest_request: {
+    id: string;
+    status: VerificationRequestStatus;
+    source: "user" | "auto";
+    verification_type: VerificationType;
+    created_at: string;
+    reviewed_at: string | null;
+    decision_note: string | null;
+    proof_results: ProofResult[] | null;
+  } | null;
 };
